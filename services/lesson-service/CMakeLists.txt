@@ -1,5 +1,19 @@
 # lesson-service (owner: Agent B). Расписание + занятия.
-add_executable(lesson-service src/main.cpp)
+add_executable(lesson-service
+    src/main.cpp
+    src/clients/finance_client.cpp
+    src/clients/identity_client.cpp
+    src/domain/lesson_service.cpp
+    src/domain/models.cpp
+    src/handlers/lesson_handlers.cpp
+    src/repositories/lesson_repository.cpp
+)
 
-# Реализуя репозитории, добавь userver::postgresql.
-target_link_libraries(lesson-service PRIVATE tutorflow_common userver::core)
+target_include_directories(lesson-service PRIVATE src)
+
+target_link_libraries(lesson-service
+    PRIVATE
+        tutorflow_common
+        userver::core
+        userver::postgresql
+)

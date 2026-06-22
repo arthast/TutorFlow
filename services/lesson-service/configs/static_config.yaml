@@ -1,6 +1,4 @@
-# lesson-service — статический конфиг (foundation-скелет).
-# Доменные компоненты (postgres-database, handlers, http-client) добавляет
-# владелец сервиса при реализации.
+# lesson-service — расписание + занятия.
 components_manager:
     task_processors:
         main-task-processor:
@@ -22,4 +20,41 @@ components_manager:
         health-handler:
             path: /health
             method: GET
+            task_processor: main-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        lesson-db:
+            dbconnection#env: LESSON_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        lesson-repository: {}
+        identity-client: {}
+        finance-client: {}
+        lesson-domain-service: {}
+        lesson-create-availability-handler:
+            path: /internal/availability
+            method: POST
+            task_processor: main-task-processor
+        lesson-list-availability-handler:
+            path: /internal/availability
+            method: GET
+            task_processor: main-task-processor
+        lesson-create-handler:
+            path: /internal/lessons
+            method: POST
+            task_processor: main-task-processor
+        lesson-list-handler:
+            path: /internal/lessons
+            method: GET
+            task_processor: main-task-processor
+        lesson-get-handler:
+            path: /internal/lessons/{lessonId}
+            method: GET
+            task_processor: main-task-processor
+        lesson-complete-handler:
+            path: /internal/lessons/{lessonId}/complete
+            method: POST
+            task_processor: main-task-processor
+        lesson-cancel-handler:
+            path: /internal/lessons/{lessonId}/cancel
+            method: POST
             task_processor: main-task-processor
