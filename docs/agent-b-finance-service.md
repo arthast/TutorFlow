@@ -31,6 +31,8 @@ dependency is represented by a local identity client stub.
   `transactions.receipt_id` for `type = 'payment'`.
 - Receipt upload does not change balance. Balance changes only when a teacher
   confirms a receipt.
+- lesson-service is wired to finance-service through `FinanceHttpClient` and
+  calls `POST /internal/charges` on lesson `complete`.
 
 ## Domain decisions
 
@@ -86,11 +88,8 @@ No finance contract changes were made.
 
 ## Next work
 
-1. Commit this finance-service slice after review.
-2. Open PR and let Lead merge to `main`.
-3. After merge, update lesson-service `FinanceClient` from stub to real HTTP
-   call against `POST /internal/charges`.
-4. Replace finance `IdentityClient` stub with real identity
+1. Open PR and let Lead merge to `main`.
+2. Replace finance `IdentityClient` stub with real identity
    `POST /internal/relations/check-access` when Agent A exposes it.
-5. Start assignment-service internal endpoints from
+3. Start assignment-service internal endpoints from
    `docs/api-contracts/assignment.openapi.yaml`.

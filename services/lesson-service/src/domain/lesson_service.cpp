@@ -18,7 +18,7 @@ LessonService::LessonService(
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<LessonRepository>()),
       identity_(context.FindComponent<StubIdentityClient>()),
-      finance_(context.FindComponent<StubFinanceClient>()) {}
+      finance_(context.FindComponent<HttpFinanceClient>()) {}
 
 Slot LessonService::CreateSlot(const tutorflow::common::AuthContext &auth,
                                const CreateSlotRequest &request) const {
