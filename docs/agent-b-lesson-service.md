@@ -11,15 +11,14 @@ Service: `services/lesson-service`.
 Contract source: `docs/api-contracts/lesson.openapi.yaml`.
 
 Do not touch: identity-service, file-service, api-gateway. Cross-service calls are
-behind local client interfaces with temporary stubs until the owning services are
-ready.
+behind local client interfaces and call owning services by OpenAPI contract.
 
 ## Implemented
 
 - Added userver/PostgreSQL-backed lesson-service components.
 - Added local layers:
   - `src/clients/` — `IdentityClient` and `FinanceClient` interfaces;
-    identity is still stubbed, finance uses HTTP.
+    both use HTTP clients.
   - `src/domain/` — lesson domain service and local DTO/model JSON mapping.
   - `src/repositories/` — SQL for `availability_slots` and `lessons`.
   - `src/handlers/` — thin HTTP handlers with common error envelope.
@@ -41,8 +40,8 @@ ready.
 
 - `POST /internal/lessons` requires teacher auth headers and calls
   `IdentityClient::CheckAccess`.
-- The current `IdentityClient` is a stub that returns `{allowed: true,
-  status: active}`.
+- `IdentityClient` calls identity-service
+  `POST /internal/relations/check-access` through `IDENTITY_SERVICE_URL`.
 - `POST /internal/lessons/{lessonId}/complete`:
   - allows only the owning teacher;
   - rejects cancelled lessons;
@@ -133,11 +132,23 @@ Latest integration smoke ids:
 - teacher: `11111111-2222-4333-8444-555555555555`
 - student: `22222222-3333-4444-8555-666666666666`
 
+Identity client wiring verified after replacing the stub:
+
+```bash
+docker compose build lesson-service assignment-service finance-service
+docker compose up -d identity-service lesson-service assignment-service finance-service
+docker compose exec lesson-service curl -s -i http://localhost:8082/health
+```
+
+Current integration limitation: this branch's identity-service still has only
+`/health`, so requests that require `POST /internal/relations/check-access`
+reach identity but receive an upstream 404 envelope until Agent A merges the
+identity endpoint.
+
 ## Next Steps
 
-- Replace `StubIdentityClient` with an HTTP client once identity check-access is
-  available.
+- Re-run lesson create/complete happy-path with real identity check-access once
+  Agent A merges the identity endpoint.
 - Revisit the price contract gap with Lead before changing OpenAPI or identity
   response shape.
 - Add focused tests or script smoke once the repo has an agreed test harness.
-- Continue with assignment-service internal endpoints once this branch is merged.

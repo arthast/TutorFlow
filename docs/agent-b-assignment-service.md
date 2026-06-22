@@ -10,7 +10,8 @@ Contract source: `docs/api-contracts/assignment.openapi.yaml`.
 
 Do not touch: identity-service, file-service, api-gateway. File ids are stored
 as opaque `file_id` values; file-service is not called by assignment-service.
-Identity access check is behind a local client interface and currently stubbed.
+Identity access check is behind a local client interface and calls identity by
+OpenAPI contract.
 
 ## Implemented
 
@@ -23,7 +24,8 @@ Identity access check is behind a local client interface and currently stubbed.
   - `POST /internal/assignments/{assignmentId}/review`
   - `POST /internal/assignments/{assignmentId}/comments`
 - PostgreSQL repository, domain layer, thin HTTP handlers.
-- Identity access check is isolated behind `IdentityClient` and currently stubbed.
+- `IdentityClient` calls identity-service
+  `POST /internal/relations/check-access` through `IDENTITY_SERVICE_URL`.
 
 ## Domain decisions
 
@@ -75,6 +77,25 @@ Checked:
 - detail includes assignment file id and submission file id;
 - missing `title` returns `400 validation_error` envelope.
 
+Identity client wiring verified after replacing the stub:
+
+```bash
+docker compose build lesson-service assignment-service finance-service
+docker compose up -d identity-service lesson-service assignment-service finance-service
+docker compose exec assignment-service curl -s -i http://localhost:8083/health
+docker compose exec assignment-service curl -s -i -X POST http://localhost:8083/internal/assignments \
+  -H 'Content-Type: application/json' \
+  -H 'X-User-Id: 33333333-4444-4555-8666-777777777777' \
+  -H 'X-User-Roles: teacher' \
+  -d '{"student_id":"44444444-5555-4666-8777-888888888888","title":"identity smoke"}'
+```
+
+Observed result for the identity smoke: assignment-service calls identity, but
+the current identity-service in this branch does not yet expose
+`POST /internal/relations/check-access`, so the response is the common upstream
+error envelope with HTTP 404. This is expected until Agent A merges the identity
+endpoint.
+
 Latest smoke ids:
 
 - assignment: `3d121169-e0a6-4cfb-89f6-ddae570e019f`
@@ -86,7 +107,6 @@ No assignment contract changes were made.
 
 ## Next work
 
-1. Commit this assignment-service slice after review.
-2. Open PR and let Lead merge to `main`.
-3. Replace `IdentityClient` stub with real identity
-   `POST /internal/relations/check-access` when Agent A exposes it.
+1. Re-run assignment happy-path with real identity check-access once Agent A
+   merges the identity endpoint.
+2. Add focused tests or script smoke once the repo has an agreed test harness.

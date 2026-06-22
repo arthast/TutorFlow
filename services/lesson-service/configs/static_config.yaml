@@ -30,7 +30,9 @@ components_manager:
             dbconnection#env: LESSON_DATABASE_URL
             blocking_task_processor: fs-task-processor
         lesson-repository: {}
-        identity-client: {}
+        identity-client:
+            base-url#env: IDENTITY_SERVICE_URL
+            timeout-ms: 5000
         finance-client:
             base-url#env: FINANCE_SERVICE_URL
             timeout-ms: 5000

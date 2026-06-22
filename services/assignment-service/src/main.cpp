@@ -1,3 +1,4 @@
+#include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/storages/postgres/component.hpp>
@@ -14,12 +15,13 @@
 int main(int argc, char* argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
+          .AppendComponentList(userver::clients::http::ComponentList())
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::components::Postgres>("assignment-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::assignment::AssignmentRepository>()
-          .Append<tutorflow::assignment::StubIdentityClient>()
+          .Append<tutorflow::assignment::HttpIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
           .Append<tutorflow::assignment::CreateAssignmentHandler>()
           .Append<tutorflow::assignment::ListAssignmentsHandler>()

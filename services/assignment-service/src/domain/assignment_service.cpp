@@ -38,7 +38,7 @@ AssignmentService::AssignmentService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<AssignmentRepository>()),
-      identity_(context.FindComponent<StubIdentityClient>()) {}
+      identity_(context.FindComponent<HttpIdentityClient>()) {}
 
 Assignment AssignmentService::CreateAssignment(
     const tutorflow::common::AuthContext &auth,

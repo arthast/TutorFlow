@@ -40,7 +40,7 @@ FinanceService::FinanceService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<FinanceRepository>()),
-      identity_(context.FindComponent<StubIdentityClient>()) {}
+      identity_(context.FindComponent<HttpIdentityClient>()) {}
 
 CreateChargeResult
 FinanceService::CreateCharge(const CreateChargeRequest &request) const {
