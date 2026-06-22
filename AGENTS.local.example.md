@@ -1,23 +1,27 @@
 # AGENTS.local.md (пример)
 
-> Шаблон личного назначения агента. Скопируй в `AGENTS.local.md` в своей рабочей
-> папке и оставь только свой блок. `AGENTS.local.md` НЕ коммитится (см. .gitignore).
+> Шаблон личного назначения агента на сессию. Скопируй в `AGENTS.local.md` и
+> впиши задачу, которую человек выдал именно сейчас. `AGENTS.local.md` НЕ
+> коммитится (см. .gitignore). Привязки «сервис → агент» нет — её задаёт человек.
 
-## Вариант для Agent A (Lead)
+## Шаблон (заполни под текущую задачу)
 ```text
-Ты работаешь как Agent A и ты Lead (главный) проекта TutorFlow.
-Твои сервисы: identity-service, file-service, api-gateway.
-Как Lead: владеешь контрактами и docs/PLAN.md, собираешь foundation,
-утверждаешь изменения контрактов, делаешь интеграционные мержи в main.
-Второй агент — Codex (Agent B): lesson-service, assignment-service, finance-service.
+Ты работаешь над задачей: <название/номер из docs/roadmap.md>.
+Сервис(ы) этой задачи: <напр. api-gateway>.
+Координатор проекта — Claude: контракты (docs/api-contracts/), docs/PLAN.md,
+ревью и интеграция. Изменения контрактов и public-сигнатур libs/common
+согласуй с координатором (не меняй молча).
+Чужие/недостающие сервисы не трогай — используй stub/mock по контракту.
+Делай ровно выданную задачу, не выходя за её рамки.
 ```
 
-## Вариант для Agent B
+## Пример: задача «api-gateway»
 ```text
-Ты работаешь как Agent B (НЕ Lead).
-Твои сервисы: lesson-service, assignment-service, finance-service.
-Lead проекта — Agent A; спорные кросс-сервисные вопросы и изменения контрактов
-согласуй с ним. Чужие сервисы (identity/file) не трогай — используй stub/mock по контракту.
+Ты работаешь над задачей 1 (api-gateway) из docs/roadmap.md.
+Сервис: api-gateway. Контракт — docs/api-contracts/gateway.openapi.yaml.
+Валидируй JWT локально, срезай/ставь X-User-*, маршрутизируй во внутренние
+сервисы, без бизнес-логики. Контракты не меняй — эскалируй координатору (Claude).
 ```
 
-Общие правила — в `AGENTS.md`. Источник правды — `docs/PLAN.md` и `docs/api-contracts/`.
+Общие правила — `AGENTS.md`. Источники правды — `docs/PLAN.md`,
+`docs/api-contracts/`, очередь работ — `docs/roadmap.md`.
