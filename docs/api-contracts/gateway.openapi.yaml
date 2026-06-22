@@ -1,0 +1,458 @@
+openapi: 3.0.3
+info:
+  title: TutorFlow api-gateway (external public API)
+  version: 0.1.0
+  description: >
+    Единственная точка входа для клиентов. Валидирует JWT, срезает входящие
+    X-User-* и проставляет их заново, маршрутизирует во внутренние сервисы.
+    Бизнес-логики не содержит. Источник правды по домену — docs/PLAN.md.
+servers:
+  - url: http://localhost:8080
+    description: dev
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Health" }
+
+  # ---------- Auth ----------
+  /auth/register:
+    post:
+      summary: Регистрация (teacher или student)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+        "400": { $ref: "#/components/responses/Error" }
+
+  /auth/login:
+    post:
+      summary: Логин
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /me:
+    get:
+      summary: Текущий пользователь
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  # ---------- Students (teacher) ----------
+  /students:
+    post:
+      summary: Создать ученика и связь teacher-student (teacher)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateStudentRequest" }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    get:
+      summary: Список учеников преподавателя (teacher)
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentLink" } } } } }
+  /students/{studentId}:
+    get:
+      summary: Карточка ученика
+      parameters: [ { $ref: "#/components/parameters/StudentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /students/{studentId}/balance:
+    get:
+      summary: Баланс/долг ученика
+      parameters: [ { $ref: "#/components/parameters/StudentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Balance" } } } }
+  /students/{studentId}/transactions:
+    get:
+      summary: Финансовые операции по ученику
+      parameters: [ { $ref: "#/components/parameters/StudentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Transaction" } } } } }
+
+  # ---------- Availability + Lessons ----------
+  /availability:
+    post:
+      summary: Создать слот доступности (teacher)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateSlotRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Slot" } } } }
+    get:
+      summary: Слоты доступности
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Slot" } } } } }
+
+  /lessons:
+    post:
+      summary: Создать занятие (teacher)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateLessonRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    get:
+      summary: Список занятий (teacher видит свои, student — свои)
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Lesson" } } } } }
+  /lessons/{lessonId}:
+    get:
+      summary: Занятие
+      parameters: [ { $ref: "#/components/parameters/LessonId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /lessons/{lessonId}/complete:
+    post:
+      summary: Отметить занятие проведённым (teacher). Триггерит charge в finance (идемпотентно).
+      parameters: [ { $ref: "#/components/parameters/LessonId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /lessons/{lessonId}/cancel:
+    post:
+      summary: Отменить занятие (teacher)
+      parameters: [ { $ref: "#/components/parameters/LessonId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+
+  # ---------- Assignments ----------
+  /assignments:
+    post:
+      summary: Создать ДЗ (teacher)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateAssignmentRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Assignment" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    get:
+      summary: Список ДЗ
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Assignment" } } } } }
+  /assignments/{assignmentId}:
+    get:
+      summary: ДЗ с решениями и комментариями
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentDetail" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /assignments/{assignmentId}/submit:
+    post:
+      summary: Отправить решение (student)
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SubmitRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Submission" } } } }
+  /assignments/{assignmentId}/review:
+    post:
+      summary: Проверить решение (teacher)
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ReviewRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Submission" } } } }
+  /assignments/{assignmentId}/comments:
+    post:
+      summary: Оставить комментарий
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CommentRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Comment" } } } }
+
+  # ---------- Payments ----------
+  /payments/receipts:
+    post:
+      summary: Загрузить чек оплаты (student). Баланс НЕ меняется до подтверждения.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateReceiptRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+  /payments/receipts/{receiptId}/confirm:
+    post:
+      summary: Подтвердить чек (teacher). Создаёт payment, меняет баланс.
+      parameters: [ { $ref: "#/components/parameters/ReceiptId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /payments/receipts/{receiptId}/reject:
+    post:
+      summary: Отклонить чек (teacher)
+      parameters: [ { $ref: "#/components/parameters/ReceiptId" } ]
+      requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/RejectRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+
+  # ---------- Files ----------
+  /files:
+    post:
+      summary: Загрузить файл (multipart). Возвращает file_id.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+                purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/FileMeta" } } } }
+        "413": { $ref: "#/components/responses/Error" }
+        "415": { $ref: "#/components/responses/Error" }
+  /files/{fileId}:
+    get:
+      summary: Метаданные файла
+      parameters: [ { $ref: "#/components/parameters/FileId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/FileMeta" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /files/{fileId}/download:
+    get:
+      summary: Скачать файл (проверка доступа)
+      parameters: [ { $ref: "#/components/parameters/FileId" } ]
+      responses:
+        "200": { description: binary, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "403": { $ref: "#/components/responses/Error" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    StudentId: { name: studentId, in: path, required: true, schema: { type: string, format: uuid } }
+    LessonId: { name: lessonId, in: path, required: true, schema: { type: string, format: uuid } }
+    AssignmentId: { name: assignmentId, in: path, required: true, schema: { type: string, format: uuid } }
+    ReceiptId: { name: receiptId, in: path, required: true, schema: { type: string, format: uuid } }
+    FileId: { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Health:
+      description: ok
+      content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } }
+    Error:
+      description: Единый формат ошибки
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: validation_error }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    RegisterRequest:
+      type: object
+      required: [email, password, role, display_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role: { type: string, enum: [teacher, student] }
+        display_name: { type: string }
+        timezone: { type: string, nullable: true }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer }
+    Me:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string }
+        roles: { type: array, items: { type: string } }
+        display_name: { type: string }
+    CreateStudentRequest:
+      type: object
+      required: [display_name]
+      properties:
+        email: { type: string, format: email, nullable: true }
+        display_name: { type: string }
+        subject: { type: string }
+        goal: { type: string }
+        hourly_rate: { type: number }
+    StudentLink:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        display_name: { type: string }
+        subject: { type: string }
+        goal: { type: string }
+        hourly_rate: { type: number }
+        status: { type: string, enum: [invited, active, archived] }
+    Balance:
+      type: object
+      properties:
+        student_id: { type: string, format: uuid }
+        currency: { type: string, example: RUB }
+        balance: { type: number, description: "положительный = долг ученика" }
+    Transaction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [charge, payment, correction, refund] }
+        amount: { type: number }
+        currency: { type: string }
+        lesson_id: { type: string, format: uuid, nullable: true }
+        receipt_id: { type: string, format: uuid, nullable: true }
+        comment: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    CreateSlotRequest:
+      type: object
+      required: [starts_at, ends_at]
+      properties:
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+    Slot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        status: { type: string, enum: [open, booked] }
+    CreateLessonRequest:
+      type: object
+      required: [student_id, starts_at, ends_at]
+      properties:
+        student_id: { type: string, format: uuid }
+        slot_id: { type: string, format: uuid, nullable: true }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        topic: { type: string }
+        price: { type: number, description: "если не задано — берётся из hourly_rate связи" }
+    Lesson:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        status: { type: string, enum: [scheduled, completed, cancelled] }
+        topic: { type: string }
+        notes: { type: string, nullable: true }
+        price: { type: number }
+        completed_at: { type: string, format: date-time, nullable: true }
+    CreateAssignmentRequest:
+      type: object
+      required: [student_id, title]
+      properties:
+        student_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        due_at: { type: string, format: date-time, nullable: true }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    Assignment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        due_at: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [assigned, submitted, reviewed, needs_fix, done, expired] }
+        created_at: { type: string, format: date-time }
+    AssignmentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Assignment"
+        - type: object
+          properties:
+            submissions: { type: array, items: { $ref: "#/components/schemas/Submission" } }
+            comments: { type: array, items: { $ref: "#/components/schemas/Comment" } }
+            file_ids: { type: array, items: { type: string, format: uuid } }
+    SubmitRequest:
+      type: object
+      properties:
+        text_answer: { type: string }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    Submission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        assignment_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        text_answer: { type: string }
+        status: { type: string, enum: [submitted, reviewed, needs_fix, accepted] }
+        submitted_at: { type: string, format: date-time }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    ReviewRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed, needs_fix, accepted] }
+        comment: { type: string }
+    CommentRequest:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string }
+    Comment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        assignment_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid }
+        text: { type: string }
+        created_at: { type: string, format: date-time }
+    CreateReceiptRequest:
+      type: object
+      required: [file_id, amount]
+      properties:
+        file_id: { type: string, format: uuid }
+        amount: { type: number }
+        currency: { type: string, default: RUB }
+        comment: { type: string }
+    Receipt:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        file_id: { type: string, format: uuid }
+        amount: { type: number }
+        currency: { type: string }
+        status: { type: string, enum: [pending_review, confirmed, rejected] }
+        submitted_at: { type: string, format: date-time }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+    RejectRequest:
+      type: object
+      properties:
+        comment: { type: string }
+    FileMeta:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        owner_user_id: { type: string, format: uuid }
+        purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+        original_name: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer }
+        created_at: { type: string, format: date-time }

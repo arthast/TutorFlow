@@ -1,0 +1,47 @@
+# === Секреты и локальная конфигурация ===
+.env
+*.env
+!.env.example
+
+# === Локальные файлы агентов (не коммитим) ===
+# В git коммитятся: исходники, docs/ (PLAN, контракты), AGENTS.md, README.md, .env.example.
+# Локальны только личное назначение агента, заметки и секреты.
+AGENTS.local.md
+*.local.md
+local/
+**/local/
+
+# === Локальное файловое хранилище file-service (MVP volume) ===
+storage/
+data/files/
+
+# === Сборка C++ / CMake / userver ===
+build/
+**/build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+compile_commands.json
+
+# === Менеджеры зависимостей ===
+conan/
+.conan/
+conandata.yml.lock
+vcpkg_installed/
+_deps/
+
+# === IDE / редакторы ===
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === ОС ===
+.DS_Store
+Thumbs.db

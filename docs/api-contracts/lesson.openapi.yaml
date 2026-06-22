@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: TutorFlow lesson-service (internal)
+  version: 0.1.0
+  description: >
+    Расписание (слоты) + занятия. Перед созданием занятия — identity check-access.
+    При complete сам создаёт charge в finance (идемпотентно по lesson_id), НЕ gateway.
+    Owner: Agent B. Не выставляется наружу. Вызовы от gateway с X-User-Id / X-User-Roles.
+servers:
+  - url: http://lesson-service:8082
+    description: docker network
+
+paths:
+  /health:
+    get: { summary: Health, responses: { "200": { $ref: "#/components/responses/Health" } } }
+
+  /internal/availability:
+    post:
+      summary: Создать слот доступности (teacher)
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateSlotRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Slot" } } } }
+    get:
+      summary: Список слотов
+      parameters: [ { $ref: "#/components/parameters/XUserId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Slot" } } } } }
+
+  /internal/lessons:
+    post:
+      summary: Создать занятие. Проверяет связь через identity check-access. Снимок price.
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateLessonRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    get:
+      summary: Список занятий (фильтр по роли/пользователю)
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Lesson" } } } } }
+
+  /internal/lessons/{lessonId}:
+    get:
+      summary: Занятие
+      parameters: [ { name: lessonId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /internal/lessons/{lessonId}/complete:
+    post:
+      summary: >
+        Завершить занятие (teacher). Идемпотентно: повторный вызов не создаёт второй
+        charge. После перевода в completed вызывает finance POST /internal/charges
+        с lesson_id (finance гарантирует unique(lesson_id)).
+      parameters: [ { name: lessonId, in: path, required: true, schema: { type: string, format: uuid } }, { $ref: "#/components/parameters/XUserId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+
+  /internal/lessons/{lessonId}/cancel:
+    post:
+      summary: Отменить занятие (teacher)
+      parameters: [ { name: lessonId, in: path, required: true, schema: { type: string, format: uuid } }, { $ref: "#/components/parameters/XUserId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+
+components:
+  parameters:
+    XUserId: { name: X-User-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    XUserRoles: { name: X-User-Roles, in: header, required: true, schema: { type: string } }
+  responses:
+    Health:
+      description: ok
+      content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } }
+    Error:
+      description: единый формат ошибки
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: object, properties: { code: { type: string }, message: { type: string }, details: { type: object, additionalProperties: true } } }
+    CreateSlotRequest:
+      type: object
+      required: [starts_at, ends_at]
+      properties:
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+    Slot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        status: { type: string, enum: [open, booked] }
+        created_at: { type: string, format: date-time }
+    CreateLessonRequest:
+      type: object
+      required: [student_id, starts_at, ends_at]
+      properties:
+        student_id: { type: string, format: uuid }
+        slot_id: { type: string, format: uuid, nullable: true }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        topic: { type: string }
+        notes: { type: string }
+        price: { type: number, nullable: true, description: "если не задано — из hourly_rate связи (identity)" }
+    Lesson:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        slot_id: { type: string, format: uuid, nullable: true }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        status: { type: string, enum: [scheduled, completed, cancelled] }
+        topic: { type: string }
+        notes: { type: string, nullable: true }
+        price: { type: number }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }

@@ -1,0 +1,167 @@
+openapi: 3.0.3
+info:
+  title: TutorFlow identity-service (internal)
+  version: 0.1.0
+  description: >
+    Auth + профили + связь teacher-student. НЕ выставляется наружу — только
+    в docker-сети. Вызовы приходят от gateway с заголовками X-User-Id / X-User-Roles
+    (кроме register/login/validate-token). Owner: Agent A.
+servers:
+  - url: http://identity-service:8081
+    description: docker network
+
+paths:
+  /health:
+    get:
+      summary: Health
+      responses: { "200": { $ref: "#/components/responses/Health" } }
+
+  /internal/auth/register:
+    post:
+      summary: Регистрация, создаёт user + profile, возвращает токен
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RegisterRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
+        "409": { $ref: "#/components/responses/Error" }
+  /internal/auth/login:
+    post:
+      summary: Логин, проверка password_hash, выдача JWT
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /internal/auth/validate-token:
+    get:
+      summary: Опционально. Валидация JWT (gateway обычно валидирует сам локально).
+      parameters: [ { name: token, in: query, required: true, schema: { type: string } } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TokenClaims" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+
+  /internal/users/{userId}:
+    get:
+      summary: Пользователь по id
+      parameters: [ { name: userId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /internal/relations/check-access:
+    post:
+      summary: КАНОНИЧЕСКАЯ проверка связи teacher-student (используют все сервисы)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CheckAccessRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/CheckAccessResponse" } } } }
+
+  /internal/students:
+    post:
+      summary: Создать ученика и связь (вызывает teacher через gateway)
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateStudentRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /internal/students/{studentId}:
+    get:
+      summary: Карточка ученика (со связью)
+      parameters: [ { name: studentId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /internal/teachers/{teacherId}/students:
+    get:
+      summary: Ученики преподавателя
+      parameters: [ { name: teacherId, in: path, required: true, schema: { type: string, format: uuid } } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudentLink" } } } } }
+
+components:
+  parameters:
+    XUserId: { name: X-User-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    XUserRoles: { name: X-User-Roles, in: header, required: true, schema: { type: string, example: teacher } }
+  responses:
+    Health:
+      description: ok
+      content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } }
+    Error:
+      description: единый формат ошибки
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    RegisterRequest:
+      type: object
+      required: [email, password, role, display_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+        role: { type: string, enum: [teacher, student] }
+        display_name: { type: string }
+        timezone: { type: string, nullable: true }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer }
+        user_id: { type: string, format: uuid }
+        roles: { type: array, items: { type: string } }
+    TokenClaims:
+      type: object
+      properties:
+        sub: { type: string, format: uuid }
+        roles: { type: array, items: { type: string } }
+        exp: { type: integer }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { type: string, enum: [teacher, student] }
+        display_name: { type: string }
+        created_at: { type: string, format: date-time }
+    CheckAccessRequest:
+      type: object
+      required: [teacher_id, student_id]
+      properties:
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+    CheckAccessResponse:
+      type: object
+      properties:
+        allowed: { type: boolean }
+        status: { type: string, enum: [invited, active, archived], nullable: true }
+    CreateStudentRequest:
+      type: object
+      required: [display_name]
+      properties:
+        email: { type: string, format: email, nullable: true }
+        display_name: { type: string }
+        subject: { type: string }
+        goal: { type: string }
+        hourly_rate: { type: number }
+    StudentLink:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        display_name: { type: string }
+        subject: { type: string }
+        goal: { type: string }
+        hourly_rate: { type: number }
+        status: { type: string, enum: [invited, active, archived] }
+        created_at: { type: string, format: date-time }

@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: TutorFlow assignment-service (internal)
+  version: 0.1.0
+  description: >
+    ДЗ, решения, комментарии. Перед созданием ДЗ — identity check-access.
+    Файлы кладутся в file-service, здесь хранится только file_id. Комментарии —
+    здесь же (НЕ chat-service). Owner: Agent B. Вызовы от gateway с X-User-Id / X-User-Roles.
+servers:
+  - url: http://assignment-service:8083
+    description: docker network
+
+paths:
+  /health:
+    get: { summary: Health, responses: { "200": { $ref: "#/components/responses/Health" } } }
+
+  /internal/assignments:
+    post:
+      summary: Создать ДЗ (teacher). check-access перед созданием.
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateAssignmentRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Assignment" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    get:
+      summary: Список ДЗ (teacher — свои, student — свои)
+      parameters: [ { $ref: "#/components/parameters/XUserId" }, { $ref: "#/components/parameters/XUserRoles" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Assignment" } } } } }
+
+  /internal/assignments/{assignmentId}:
+    get:
+      summary: ДЗ с решениями, комментариями и file_ids
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/AssignmentDetail" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /internal/assignments/{assignmentId}/submit:
+    post:
+      summary: Отправить решение (student). Меняет статус ДЗ -> submitted.
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" }, { $ref: "#/components/parameters/XUserId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SubmitRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Submission" } } } }
+
+  /internal/assignments/{assignmentId}/review:
+    post:
+      summary: Проверить решение (teacher). Меняет статусы submission и ДЗ.
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" }, { $ref: "#/components/parameters/XUserId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ReviewRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Submission" } } } }
+
+  /internal/assignments/{assignmentId}/comments:
+    post:
+      summary: Добавить комментарий
+      parameters: [ { $ref: "#/components/parameters/AssignmentId" }, { $ref: "#/components/parameters/XUserId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CommentRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Comment" } } } }
+
+components:
+  parameters:
+    XUserId: { name: X-User-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    XUserRoles: { name: X-User-Roles, in: header, required: true, schema: { type: string } }
+    AssignmentId: { name: assignmentId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Health:
+      description: ok
+      content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } }
+    Error:
+      description: единый формат ошибки
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: object, properties: { code: { type: string }, message: { type: string }, details: { type: object, additionalProperties: true } } }
+    CreateAssignmentRequest:
+      type: object
+      required: [student_id, title]
+      properties:
+        student_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        due_at: { type: string, format: date-time, nullable: true }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    Assignment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        due_at: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [assigned, submitted, reviewed, needs_fix, done, expired] }
+        created_at: { type: string, format: date-time }
+    AssignmentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Assignment"
+        - type: object
+          properties:
+            file_ids: { type: array, items: { type: string, format: uuid } }
+            submissions: { type: array, items: { $ref: "#/components/schemas/Submission" } }
+            comments: { type: array, items: { $ref: "#/components/schemas/Comment" } }
+    SubmitRequest:
+      type: object
+      properties:
+        text_answer: { type: string }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    Submission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        assignment_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        text_answer: { type: string }
+        status: { type: string, enum: [submitted, reviewed, needs_fix, accepted] }
+        submitted_at: { type: string, format: date-time }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+    ReviewRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed, needs_fix, accepted] }
+        comment: { type: string }
+    CommentRequest:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string }
+    Comment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        assignment_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid }
+        text: { type: string }
+        created_at: { type: string, format: date-time }
