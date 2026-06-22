@@ -42,6 +42,10 @@ components_manager:
             path: /auth/login
             method: POST
             task_processor: main-task-processor
+        gateway-auth-change-password-handler:
+            path: /auth/change-password
+            method: POST
+            task_processor: main-task-processor
         gateway-me-handler:
             path: /me
             method: GET

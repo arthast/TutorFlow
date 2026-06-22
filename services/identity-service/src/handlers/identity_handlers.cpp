@@ -155,7 +155,8 @@ std::string CreateStudentHandler::HandleRequestThrow(
         tutorflow::common::RequireTeacher(auth);
         const auto body = ParseJsonBody(request);
         CreateStudentRequest req{
-            .email        = OptionalString(body, "email"),
+            .email        = RequireString(body, "email"),
+            .password     = RequireString(body, "password"),
             .display_name = RequireString(body, "display_name"),
             .subject      = OptionalString(body, "subject"),
             .goal         = OptionalString(body, "goal"),

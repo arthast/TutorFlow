@@ -41,6 +41,10 @@ components_manager:
             path: /internal/auth/login
             method: POST
             task_processor: main-task-processor
+        identity-change-password-handler:
+            path: /internal/auth/change-password
+            method: POST
+            task_processor: main-task-processor
         identity-get-user-handler:
             path: /internal/users/{userId}
             method: GET

@@ -1,13 +1,13 @@
 # TutorFlow — Roadmap (общий, для любого агента)
 
-> Очередь оставшихся задач. Привязки «сервис → агент» нет: исполнителя на каждую
-> задачу выбирает человек, включая нужного агента (Claude или Codex) поочерёдно.
+> Очередь работ. Привязки «сервис → агент» нет: исполнителя на каждую задачу
+> выбирает человек, включая нужного агента (Claude или Codex) поочерёдно.
 > Координатор — Claude (контракты, PLAN, ревью, интеграция). Источники правды:
 > `docs/PLAN.md`, `docs/api-contracts/*.openapi.yaml`, общие правила — `AGENTS.md`.
 >
-> Как пользоваться: человек выдаёт активному агенту **одну** задачу из списка.
-> Агент делает ровно её, не выходя за рамки, и обновляет соответствующую заметку
-> `docs/agent-<…>.md`. Контракты молча не менять — эскалировать координатору.
+> Стадия проекта: **не «архитектура на бумаге», а стабилизация MVP.** Новые
+> сервисы сейчас НЕ добавляем. Цель этапа — довести 6 готовых сервисов до
+> демонстрируемого продукта: сквозной сценарий + тесты + простой UI + деплой.
 
 Обновлено: 2026-06-22.
 
@@ -20,91 +20,210 @@
 | `libs/common` | каркас готов (errors, auth_context, http_client, jwt) |
 | identity-service | реализован, в `main` |
 | file-service | реализован, в `main` |
-| lesson-service | internal endpoints в `main` |
-| assignment-service | internal endpoints в `main` |
-| finance-service | internal endpoints в `main` |
-| **api-gateway** | **только скелет (`/health`), реальной логики нет — следующая задача** |
+| lesson-service | реализован, в `main` |
+| assignment-service | реализован, в `main` |
+| finance-service | реализован, в `main` |
+| api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование), в `main` |
+
+Ядро из 6 сервисов собрано и согласовано. Дальше — закрыть gaps до полного
+сценария, тесты, фронт, деплой.
 
 ---
 
-## Задача 1 (следующая) — api-gateway
+## Текущее межсервисное взаимодействие (зафиксировано по коду)
 
-**Цель:** единственная внешняя точка входа. Валидирует JWT, срезает и заново ставит
-`X-User-*`, маршрутизирует во внутренние сервисы. **Без бизнес-логики.**
+Транспорт: синхронный REST/HTTP + JSON (`libs/common/http_client_base` поверх
+userver http-client, base-url из env `<SVC>_SERVICE_URL`). Пробрасываются
+`X-User-Id`, `X-User-Roles`, `X-Request-Id`. Чужую БД никто не читает. Kafka нет.
 
-Контракт — источник правды: `docs/api-contracts/gateway.openapi.yaml`.
-Порт `8080`, наружу публикуется только он (см. PLAN §4). Скелет уже есть в
-`services/api-gateway/` (`main.cpp`, `configs/static_config.yaml`, `Dockerfile`,
-`CMakeLists.txt`).
+**Что реально вызывается сейчас:**
+```text
+gateway    → identity, lesson, assignment, finance, file   (проксирование + auth)
+lesson     → identity   (check-access перед созданием занятия)
+lesson     → finance    (POST /internal/charges при complete, идемпотентно)
+assignment → identity   (check-access перед созданием ДЗ)
+finance    → identity   (check-access)
+file       → identity   (check-access на скачивание)
+identity   → никого     (лист графа)
+```
 
-### Что сделать
-1. **Auth-проброс (без JWT):**
-   - `POST /auth/register` → identity `POST /internal/auth/register`.
-   - `POST /auth/login` → identity `POST /internal/auth/login`.
-   - Эти ручки `security: []` — токен не требуется, тело прокидывается как есть.
-2. **Локальная валидация JWT** на всех остальных ручках через
-   `libs/common/.../jwt.hpp` `Verify` (секрет `JWT_SECRET`). Нет/битый/просроченный
-   токен → `401` в envelope-формате.
-3. **Заголовки `X-User-*`:** перед проксированием **удалить любые входящие**
-   `X-User-*` от клиента и выставить заново из проверенного JWT:
-   `X-User-Id: <sub>`, `X-User-Roles: <roles CSV>` (в MVP — одна роль).
-4. **Маршрутизация** (gateway path → internal service, base-url из конфига):
-   - `/me` → identity (`GET /internal/users/{X-User-Id}`);
-   - `/students*` → identity (create/list/get связи teacher-student);
-   - `/students/{id}/balance`, `/students/{id}/transactions` → finance;
-   - `/availability`, `/lessons*` → lesson;
-   - `/assignments*` → assignment;
-   - `/payments/receipts*` → finance;
-   - `/files*` → file (multipart прокидывать как есть, не буферизуя сверх нужного).
-5. **Единый envelope ошибок** (PLAN §6): ошибки самого gateway (401/недоступность
-   внутреннего сервиса → 502/503) — в том же формате; ответы внутренних сервисов
-   (включая их ошибки) прокидывать как есть.
-6. **Никакой оркестрации.** Загрузка чека = клиент сам грузит в `/files`, затем шлёт
-   `file_id` в `/payments/receipts`. charge инициирует lesson-service, не gateway.
+**Разрешено, но пока НЕ подключено** (завести client-интерфейс при реальной
+надобности, не раньше): `assignment → file`, `finance → file`. Связь
+`finance → lesson` намеренно отсутствует — стрелка развёрнута: lesson сам пушит
+`charge` в finance. (NB: в PLAN §10 граф описан как «разрешённый» — при правке
+доков, Этап 1.3, привести §10 к этому разделению «реально / разрешено».)
 
-### Definition of Done
-- `docker compose up --build` поднимает gateway + зависимые сервисы.
-- `GET http://localhost:8080/health → {"status":"ok"}`.
-- register → login → получить токен → дёрнуть `/me` с `Authorization: Bearer` —
-  возвращает пользователя; без токена — `401`.
-- Клиентские `X-User-*` игнорируются (подделать роль через заголовок нельзя).
-- Порты внутренних сервисов наружу не опубликованы (только 8080).
-- Заметка реализации: `docs/agent-api-gateway.md` (эндпоинты, имена компонентов,
-  ограничения), по образцу `docs/agent-a-identity-service.md`.
+**Будущее (после MVP, не сейчас):** побочные действия вынести в события
+(`lesson_completed`, `assignment_created`, `submission_uploaded`,
+`assignment_reviewed`, `payment_receipt_uploaded`, `payment_confirmed`) через
+Kafka/outbox; слушатели — notification/report. Синхронными остаются только
+вызовы, где нужен немедленный ответ (проверка прав, получение файла/метаданных).
 
 ---
 
-## Задача 2 — подключить `hourly_rate` в lesson-service (контракт уже обновлён)
+## Этап 1 — Stabilize MVP (приоритет)
 
-identity отдаёт `check-access → {allowed, status, hourly_rate}` (контракт уже в `main`).
-В lesson-service: добавить `std::optional<double> hourly_rate` в `AccessCheckResult`,
-парсить из ответа; при `CreateLessonRequest.price == null` снимать `lessons.price`
-из `hourly_rate`; убрать временный fallback `422 business_rule` (оставить `422`
-только когда и `price`, и `hourly_rate` пусты). Убрать раздел «Known Contract Gap»
-из `docs/agent-b-lesson-service.md`.
+Цель: полный сценарий из PLAN §2 реально проходит через gateway.
 
-## Задача 3 — общие handler-хелперы в `libs/common` (по желанию, аккуратно)
+### 1.1 Temp-password flow для ученика  ✅ СДЕЛАНО (ревью пройдено, ждёт мерджа)
+Реализовано в identity + gateway: `POST /students` требует email+temp password,
+связь создаётся `active`; добавлен `POST /auth/change-password`. См.
+`docs/agent-identity-temp-password.md`.
+Остался мелкий edge-case → задача **1.6**.
 
-Вынести в `libs/common/.../handler_helpers.hpp` повторяющиеся хелперы
-(`HandleEnvelope`, `ParseJsonBody`, `RequireString`, `OptionalString/Double`,
-`JsonResponse`, `ErrorResponse`) и заменить локальные копии в handler-ах сервисов.
-Это изменение публичной сигнатуры `libs/common` → согласовать с координатором,
-делать одним проходом, затем ребейз веток остальных задач.
+Исходный контекст и flow (без invite-токенов):
+```text
+преподаватель и ученик связываются в другой соцсети (вне системы)
+ученик присылает преподавателю свою почту
+преподаватель создаёт аккаунт: реальный email + временный пароль
+ученик логинится по email + временный пароль
+ученик меняет пароль
+```
+Эндпоинты (public, через gateway):
+```text
+POST /students            (есть) — теперь требует email + password (временный)
+POST /auth/login          (есть) — ученик входит по email + temp password
+POST /auth/change-password (новый, нужен Bearer) — body { current_password, new_password }
+```
+Внутри identity: `CreateStudent` сохраняет реальный email + хеш временного пароля
+(PBKDF2 как в register), связь создаётся в статусе `active`; новый internal
+`POST /internal/auth/change-password` (по X-User-Id) меняет `password_hash`.
+Новой таблицы/миграции не требуется. **Контракт меняется** (identity + gateway
+OpenAPI) → согласовано. DoD: ученик логинится по temp-паролю, меняет пароль,
+выполняет submit/upload под собой.
 
-## Задача 4 — сквозной smoke happy-path (после api-gateway)
+### 1.2 Проверить hourly_rate в lesson-service
+identity отдаёт `check-access → {allowed, status, hourly_rate}` (в `main`).
+Убедиться, что lesson при `CreateLessonRequest.price == null` снимает
+`lessons.price` из `hourly_rate`; временный fallback `422 business_rule`
+оставить только когда и price, и hourly_rate пусты. Снять раздел «Known Contract
+Gap» из `docs/agent-b-lesson-service.md`, если ещё не снят.
 
-Прогнать через живой gateway полный сценарий PLAN §2:
-register/login → создать ученика → слот → занятие → complete (charge один раз,
-идемпотентно) → баланс → загрузка чека (баланс НЕ меняется) → подтверждение
-(payment, баланс меняется) → ДЗ → submit → review. Зафиксировать команды в
-`scripts/` (smoke-скрипт) и/или в заметке. Полноценный userver testsuite — позже.
+### 1.3 Привести docs к реальным контрактам
+- identity: проверка связи — `/internal/relations/check-access` (не
+  `/teacher-student-links/check`).
+- file-service: поле `purpose` (не `resource_type`/`resource_id`); `resource_id`
+  принимается, но не хранится — отразить в доке/контракте.
+- PLAN §10: развести «реально вызывается» и «разрешено» (см. раздел выше).
+
+### 1.4 CORS в api-gateway (до фронта)
+Без CORS браузер не сможет ходить в gateway. Добавить:
+```text
+Access-Control-Allow-Origin      (из env, напр. http://localhost:5173)
+Access-Control-Allow-Methods
+Access-Control-Allow-Headers      (Authorization, Content-Type, X-Request-Id)
+обработка OPTIONS preflight
+```
+Origin брать из env (dev: `http://localhost:5173`, prod: домен). **Не `*`** при
+авторизации. Бизнес-логику в gateway не добавлять — только заголовки/preflight.
+
+### 1.5 Сквозной smoke-тест `scripts/smoke_mvp.py`
+Python (удобнее с JSON/токенами/файлами). Гоняет весь сценарий через gateway:
+```text
+1 register teacher              6 teacher creates lesson        11 finance creates charge
+2 login teacher                 7 teacher creates assignment    12 student uploads receipt
+3 create student (email+temp)   8 student submits solution      13 teacher confirms receipt
+4 student login(temp)+change pw 9 teacher reviews assignment    14 finance creates payment
+5 student re-login (new pw)     10 teacher completes lesson      15 balance is updated
+```
+DoD: скрипт проходит 15/15 на чистой `docker compose up`.
+
+### 1.6 Дубль email при создании ученика → 409 (мелкая доработка)
+Сейчас `POST /students` с уже существующим email упирается в `users.email UNIQUE`
+и, вероятно, возвращает 500. Поймать `unique_violation` в identity-репозитории и
+отдавать `409 conflict` в едином envelope (код `email_taken`). Добавить `409` в
+`identity`/`gateway` OpenAPI для `/students` (правка контракта — через
+координатора). Только identity + gateway.
+
+**Результат Этапа 1:** полный сценарий проходит через gateway end-to-end.
+
+---
+
+## Этап 2 — Tests
+
+Сначала один e2e (Этап 1.5), потом негативные/бизнес-проверки. Не писать 100
+unit-тестов раньше времени — для микросервисного MVP важнее, что сценарий проходит.
+
+Негативные проверки (минимум):
+```text
+1 нельзя подделать X-User-Id / X-User-Roles извне (gateway срезает)
+2 ученик не видит чужие ДЗ
+3 преподаватель не работает с чужим учеником (check-access)
+4 повторный complete не создаёт второй charge (идемпотентность)
+5 загрузка чека не меняет баланс
+6 баланс меняется только после confirm receipt
+7 rejected receipt не создаёт payment
+```
+Структура:
+```text
+tests/
+  smoke/        smoke_mvp.py
+  integration/  test_auth.py  test_lessons.py  test_assignments.py  test_finance.py
+```
+
+---
+
+## Этап 3 — Simple frontend
+
+Цель — показать сценарий, не идеальный UI. Стек: **React + TypeScript + Vite**,
+обычные формы без дизайн-системы.
+```text
+frontend/   (React + TS + Vite)
+```
+Минимум экранов/функций:
+```text
+login / register
+Teacher dashboard:  список учеников, создать ученика, создать занятие,
+                    создать ДЗ, посмотреть решения, проверить, завершить занятие,
+                    посмотреть чеки, подтвердить чек
+Student dashboard:  список занятий, список ДЗ, сдать решение, загрузить чек, баланс
+```
+Зависит от: 1.4 (CORS). Все запросы — только в gateway (:8080).
+
+---
+
+## Этап 4 — Deploy
+
+После smoke-теста и CORS. Наружу доступны только `frontend` и `api-gateway`;
+внутренние сервисы и postgres — нет.
+```text
+Caddy :80/:443 → frontend (static) + api-gateway → internal services → PostgreSQL
+```
+Артефакты:
+```text
+docker-compose.prod.yml
+Caddyfile
+.env.prod.example
+volumes:  pgdata, filestorage
+healthchecks для сервисов
+README_DEPLOY.md
+```
+Порядок: собрать образы → `docker compose up` на сервере → Caddy → env secrets →
+поднять БД и сервисы → прогнать `smoke_mvp.py` против prod/staging URL.
+
+---
+
+## Этап 5 — Future services (только после деплоя)
+
+Не превращать систему в граф «каждый зовёт каждого». Порядок добавления:
+```text
+1 Kafka / outbox (вынести события из синхронных вызовов)
+2 notification-service   (первый: хорошо ложится на события, продуктово полезен,
+                          показывает Kafka/outbox, проще чата)
+3 report-service         (read-модели для dashboard из событий)
+4 chat-service
+5 Redis                  (чат, кэш, online-state)
+6 MinIO/S3               (вместо локального file storage)
+```
+identity позже можно разделить на `auth-service` + `user-service`. Прямой вызов
+`lesson → finance` при желании заменить на `lesson → Kafka → finance`.
 
 ---
 
 ## Правила назначения задач
-- В один момент активен **один** агент с **одной** задачей (см. PLAN §13).
-- Человек называет агенту задачу из этого списка (по номеру/названию).
-- Зависимости: Задача 2 требует identity в `main` (уже выполнено). Задача 4
-  требует готового api-gateway (Задача 1). Задача 3 — независима, но трогает общий
-  `libs/common`, поэтому только по согласованию с координатором.
-- Менять контракты — только через координатора (Claude) с подтверждением человека.
+- В один момент активен **один** агент с **одной** задачей (PLAN §13).
+- Человек называет агенту задачу по номеру (напр. «Этап 1.1»).
+- Зависимости: 1.5 требует 1.1; Этап 3 требует 1.4; Этап 4 требует Этапа 2 (smoke).
+- Менять контракты (api-contracts) и public-сигнатуры `libs/common` — только через
+  координатора (Claude) с подтверждением человека. Задачи 1.1 и 1.4 затрагивают
+  контракты gateway/identity — согласовать ДО реализации.

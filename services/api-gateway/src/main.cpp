@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::GatewaySettings>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()
           .Append<tutorflow::gateway::AuthLoginHandler>()
+          .Append<tutorflow::gateway::AuthChangePasswordHandler>()
           .Append<tutorflow::gateway::MeHandler>()
           .Append<tutorflow::gateway::StudentsHandler>()
           .Append<tutorflow::gateway::StudentHandler>()

@@ -172,6 +172,42 @@ WHERE u.email = $1
     return std::make_pair(std::move(user), std::move(hash));
 }
 
+std::optional<std::pair<User, std::string>>
+IdentityRepository::FindUserWithHashById(const std::string& id) const {
+    const auto result = pg_->Execute(
+        kSlave,
+        R"(
+SELECT
+    u.id::text,
+    u.email,
+    u.role,
+    COALESCE(tp.display_name, sp.display_name, '') AS display_name,
+    to_char(u.created_at AT TIME ZONE 'UTC',
+            'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+    u.password_hash
+FROM users u
+LEFT JOIN teacher_profiles tp ON tp.user_id = u.id
+LEFT JOIN student_profiles sp ON sp.user_id = u.id
+WHERE u.id = $1::uuid
+)",
+        id);
+    if (result.IsEmpty()) return std::nullopt;
+    auto user = RowToUser(result[0]);
+    std::string hash = result[0]["password_hash"].As<std::string>();
+    return std::make_pair(std::move(user), std::move(hash));
+}
+
+void IdentityRepository::UpdatePasswordHash(
+    const std::string& user_id, const std::string& password_hash) const {
+    const auto result = pg_->Execute(
+        kMaster,
+        "UPDATE users SET password_hash = $2 WHERE id = $1::uuid",
+        user_id, password_hash);
+    if (result.RowsAffected() == 0) {
+        throw tutorflow::common::ServiceError::NotFound("user not found");
+    }
+}
+
 std::optional<User> IdentityRepository::FindUserById(
     const std::string& id) const {
     const auto result = pg_->Execute(
@@ -208,30 +244,23 @@ LEFT JOIN teacher_student_links tsl
 }
 
 StudentLink IdentityRepository::CreateStudentWithLink(
-    const std::string& teacher_id, const CreateStudentRequest& req) const {
-    // email is NOT NULL UNIQUE — use gen_random_uuid() placeholder when absent.
-    const std::string email_param = req.email.value_or("");
-
+    const std::string& teacher_id, const CreateStudentRequest& req,
+    const std::string& password_hash) const {
     const auto result = pg_->Execute(
         kMaster,
         R"(
 WITH new_user AS (
     INSERT INTO users (email, password_hash, role)
-    VALUES (
-        COALESCE(NULLIF($1, ''),
-                 'noemail+' || gen_random_uuid()::text || '@placeholder.internal'),
-        '',
-        'student'
-    )
+    VALUES ($1, $2, 'student')
     RETURNING id
 ), _profile AS (
     INSERT INTO student_profiles (user_id, display_name)
-    SELECT id, $2 FROM new_user
+    SELECT id, $3 FROM new_user
     RETURNING user_id, display_name
 ), new_link AS (
     INSERT INTO teacher_student_links
-        (teacher_id, student_id, subject, goal, hourly_rate)
-    SELECT $3::uuid, nu.id, NULLIF($4, ''), NULLIF($5, ''), $6
+        (teacher_id, student_id, subject, goal, hourly_rate, status)
+    SELECT $4::uuid, nu.id, NULLIF($5, ''), NULLIF($6, ''), $7, 'active'
     FROM new_user nu
     RETURNING
         id::text,
@@ -257,7 +286,8 @@ SELECT
 FROM new_link nl
 JOIN _profile p ON p.user_id = nl.student_id::uuid
 )",
-        email_param,
+        req.email,
+        password_hash,
         req.display_name,
         teacher_id,
         req.subject.value_or(""),

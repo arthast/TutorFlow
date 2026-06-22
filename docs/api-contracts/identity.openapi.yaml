@@ -30,6 +30,15 @@ paths:
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
+  /internal/auth/change-password:
+    post:
+      summary: Сменить пароль текущего пользователя (нужен X-User-Id от gateway)
+      parameters: [ { $ref: "#/components/parameters/XUserId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChangePasswordRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "400": { $ref: "#/components/responses/Error" }
   /internal/auth/validate-token:
     get:
       summary: Опционально. Валидация JWT (gateway обычно валидирует сам локально).
@@ -111,6 +120,12 @@ components:
       properties:
         email: { type: string, format: email }
         password: { type: string }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string, minLength: 8 }
     TokenResponse:
       type: object
       properties:
@@ -147,9 +162,10 @@ components:
         hourly_rate: { type: number, nullable: true }
     CreateStudentRequest:
       type: object
-      required: [display_name]
+      required: [display_name, email, password]
       properties:
-        email: { type: string, format: email, nullable: true }
+        email: { type: string, format: email, description: "реальная почта ученика (передана вне системы)" }
+        password: { type: string, minLength: 8, description: "временный пароль, ученик сменит после первого входа" }
         display_name: { type: string }
         subject: { type: string }
         goal: { type: string }

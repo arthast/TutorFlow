@@ -10,6 +10,7 @@
 #include <userver/server/http/http_request.hpp>
 #include <userver/server/http/http_status.hpp>
 
+#include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
 
 #include "domain/identity_service.hpp"
@@ -92,6 +93,14 @@ LoginRequest ParseLoginRequest(const http::HttpRequest& req) {
     };
 }
 
+ChangePasswordRequest ParseChangePasswordRequest(const http::HttpRequest& req) {
+    const auto body = ParseJsonBody(req);
+    return ChangePasswordRequest{
+        .current_password = RequireString(body, "current_password"),
+        .new_password     = RequireString(body, "new_password"),
+    };
+}
+
 }  // namespace
 
 RegisterHandler::RegisterHandler(
@@ -120,6 +129,25 @@ std::string LoginHandler::HandleRequestThrow(
     return HandleEnvelope(request, [&] {
         return JsonResponse(request,
                             ToJson(service_.Login(ParseLoginRequest(request))));
+    });
+}
+
+ChangePasswordHandler::ChangePasswordHandler(
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context)
+    : HttpHandlerBase(config, context),
+      service_(context.FindComponent<IdentityService>()) {}
+
+std::string ChangePasswordHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+    return HandleEnvelope(request, [&] {
+        const auto auth = tutorflow::common::ParseAuthContext(request);
+        service_.ChangePassword(auth.user_id,
+                                ParseChangePasswordRequest(request));
+        json::ValueBuilder body;
+        body["status"] = "ok";
+        return JsonResponse(request, body.ExtractValue());
     });
 }
 

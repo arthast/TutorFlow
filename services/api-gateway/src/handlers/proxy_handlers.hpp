@@ -56,6 +56,8 @@ TUTORFLOW_GATEWAY_DECLARE_HANDLER(AuthRegisterHandler,
                                   "gateway-auth-register-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(AuthLoginHandler,
                                   "gateway-auth-login-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(AuthChangePasswordHandler,
+                                  "gateway-auth-change-password-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(MeHandler, "gateway-me-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(StudentsHandler,
                                   "gateway-students-handler");

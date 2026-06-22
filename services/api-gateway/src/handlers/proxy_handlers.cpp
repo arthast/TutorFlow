@@ -235,6 +235,17 @@ std::string AuthLoginHandler::HandleRequestThrow(
   });
 }
 
+TUTORFLOW_GATEWAY_DEFINE_CTOR(AuthChangePasswordHandler)
+std::string AuthChangePasswordHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return ProxyToUpstream(request, UpstreamService::kIdentity,
+                           "/internal/auth/change-password", auth);
+  });
+}
+
 TUTORFLOW_GATEWAY_DEFINE_CTOR(MeHandler)
 std::string MeHandler::HandleRequestThrow(
     const http::HttpRequest& request,

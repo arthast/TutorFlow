@@ -49,6 +49,19 @@ paths:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TokenResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
 
+  /auth/change-password:
+    post:
+      summary: Сменить пароль текущего пользователя (нужен Bearer-токен)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+
   /me:
     get:
       summary: Текущий пользователь
@@ -288,13 +301,20 @@ components:
         display_name: { type: string }
     CreateStudentRequest:
       type: object
-      required: [display_name]
+      required: [display_name, email, password]
       properties:
-        email: { type: string, format: email, nullable: true }
+        email: { type: string, format: email, description: "реальная почта ученика" }
+        password: { type: string, minLength: 8, description: "временный пароль (ученик сменит после входа)" }
         display_name: { type: string }
         subject: { type: string }
         goal: { type: string }
         hourly_rate: { type: number }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string, minLength: 8 }
     StudentLink:
       type: object
       properties:
