@@ -114,12 +114,12 @@ CreateChargeRequest ParseCreateChargeRequest(const http::HttpRequest &request) {
   };
 }
 
-CreateReceiptRequest
-ParseCreateReceiptRequest(const http::HttpRequest &request) {
+CreateReceiptRequest ParseCreateReceiptRequest(
+    const http::HttpRequest &request, const std::string &student_id) {
   const auto body = ParseJsonBody(request);
   return CreateReceiptRequest{
       .teacher_id = RequireString(body, "teacher_id"),
-      .student_id = RequireString(body, "student_id"),
+      .student_id = student_id,
       .file_id = RequireString(body, "file_id"),
       .amount = RequireDouble(body, "amount"),
       .currency = OptionalCurrency(body),
@@ -222,7 +222,8 @@ std::string CreateReceiptHandler::HandleRequestThrow(
     const auto auth = tutorflow::common::ParseAuthContext(request);
     return JsonResponse(request,
                         ToJson(service_.CreateReceipt(
-                            auth, ParseCreateReceiptRequest(request))),
+                            auth,
+                            ParseCreateReceiptRequest(request, auth.user_id))),
                         http::HttpStatus::kCreated);
   });
 }

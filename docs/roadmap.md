@@ -106,7 +106,7 @@ Gap» из `docs/agent-b-lesson-service.md`, если ещё не снят.
   принимается, но не хранится — отразить в доке/контракте.
 - PLAN §10: развести «реально вызывается» и «разрешено» (см. раздел выше).
 
-### 1.4 CORS в api-gateway (до фронта)
+### 1.4 CORS в api-gateway (до фронта)  ✅ СДЕЛАНО
 Без CORS браузер не сможет ходить в gateway. Добавить:
 ```text
 Access-Control-Allow-Origin      (из env, напр. http://localhost:5173)
@@ -117,7 +117,7 @@ Access-Control-Allow-Headers      (Authorization, Content-Type, X-Request-Id)
 Origin брать из env (dev: `http://localhost:5173`, prod: домен). **Не `*`** при
 авторизации. Бизнес-логику в gateway не добавлять — только заголовки/preflight.
 
-### 1.5 Сквозной smoke-тест `scripts/smoke_mvp.py`
+### 1.5 Сквозной smoke-тест `scripts/smoke_mvp.py`  ✅ СДЕЛАНО (SMOKE OK)
 Python (удобнее с JSON/токенами/файлами). Гоняет весь сценарий через gateway:
 ```text
 1 register teacher              6 teacher creates lesson        11 finance creates charge
@@ -135,7 +135,20 @@ DoD: скрипт проходит 15/15 на чистой `docker compose up`.
 `identity`/`gateway` OpenAPI для `/students` (правка контракта — через
 координатора). Только identity + gateway.
 
-**Результат Этапа 1:** полный сценарий проходит через gateway end-to-end.
+### 1.7 Receipt: student_id из X-User-Id (фикс разрыва на шаге 12 smoke)  ✅ СДЕЛАНО
+Найдено в 1.5: finance `POST /internal/payment-receipts` требовал `teacher_id` и
+`student_id` в теле, а публичный gateway-контракт их не содержал → 400.
+Согласованное решение (контракты уже обновлены координатором):
+- `student_id` берётся из `X-User-Id` (аутентифицированный ученик), НЕ из тела;
+- `teacher_id` остаётся в теле (у ученика может быть несколько преподавателей).
+Сделать в finance-service: при создании чека читать `student_id` из `X-User-Id`,
+`teacher_id` — из тела; перестать требовать `student_id` в теле. Обновить
+`scripts/smoke_mvp.py` (шаг 12 шлёт `teacher_id`). Только finance-service (+ smoke).
+
+**Результат Этапа 1:** ✅ ДОСТИГНУТ — полный 15-шаговый сценарий проходит через
+gateway end-to-end (`scripts/smoke_mvp.py` → SMOKE OK). Остаются мелкие
+доработки 1.2 (проверить hourly_rate), 1.3 (выровнять доки), 1.6 (дубль email →
+409) — не блокируют e2e, можно делать попутно.
 
 ---
 

@@ -120,11 +120,11 @@ components:
         currency: { type: string, example: RUB }
         balance: { type: number, description: "balance = sum(charge) - sum(payment) + sum(correction) - sum(refund); >0 = долг ученика" }
     CreateReceiptRequest:
+      # student_id берётся из X-User-Id (аутентифицированный ученик), НЕ из тела.
       type: object
-      required: [teacher_id, student_id, file_id, amount]
+      required: [teacher_id, file_id, amount]
       properties:
         teacher_id: { type: string, format: uuid }
-        student_id: { type: string, format: uuid }
         file_id: { type: string, format: uuid }
         amount: { type: number }
         currency: { type: string, default: RUB }

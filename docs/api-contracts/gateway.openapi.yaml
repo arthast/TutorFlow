@@ -443,9 +443,11 @@ components:
         text: { type: string }
         created_at: { type: string, format: date-time }
     CreateReceiptRequest:
+      # student_id не передаётся клиентом — берётся из аутентификации (X-User-Id).
       type: object
-      required: [file_id, amount]
+      required: [teacher_id, file_id, amount]
       properties:
+        teacher_id: { type: string, format: uuid, description: "кому из преподавателей платит ученик" }
         file_id: { type: string, format: uuid }
         amount: { type: number }
         currency: { type: string, default: RUB }
