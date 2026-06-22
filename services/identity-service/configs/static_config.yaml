@@ -1,6 +1,4 @@
-# identity-service — статический конфиг (foundation-скелет).
-# Доменные компоненты (postgres-database, handlers, http-client) добавляет
-# владелец сервиса при реализации.
+# identity-service — полный статический конфиг.
 components_manager:
     task_processors:
         main-task-processor:
@@ -21,5 +19,45 @@ components_manager:
                     overflow_behavior: discard
         health-handler:
             path: /health
+            method: GET
+            task_processor: main-task-processor
+        http-client: {}
+        http-client-core:
+            fs-task-processor: fs-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        identity-db:
+            dbconnection#env: IDENTITY_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        identity-repository: {}
+        identity-domain-service:
+            jwt-secret#env: JWT_SECRET
+            jwt-expires-in-seconds: 86400
+        identity-register-handler:
+            path: /internal/auth/register
+            method: POST
+            task_processor: main-task-processor
+        identity-login-handler:
+            path: /internal/auth/login
+            method: POST
+            task_processor: main-task-processor
+        identity-get-user-handler:
+            path: /internal/users/{userId}
+            method: GET
+            task_processor: main-task-processor
+        identity-check-access-handler:
+            path: /internal/relations/check-access
+            method: POST
+            task_processor: main-task-processor
+        identity-create-student-handler:
+            path: /internal/students
+            method: POST
+            task_processor: main-task-processor
+        identity-get-student-handler:
+            path: /internal/students/{studentId}
+            method: GET
+            task_processor: main-task-processor
+        identity-list-students-handler:
+            path: /internal/teachers/{teacherId}/students
             method: GET
             task_processor: main-task-processor
