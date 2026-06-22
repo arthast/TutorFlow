@@ -18,8 +18,8 @@ ready.
 
 - Added userver/PostgreSQL-backed lesson-service components.
 - Added local layers:
-  - `src/clients/` — `IdentityClient` and `FinanceClient` interfaces with stub
-    implementations.
+  - `src/clients/` — `IdentityClient` and `FinanceClient` interfaces;
+    identity is still stubbed, finance uses HTTP.
   - `src/domain/` — lesson domain service and local DTO/model JSON mapping.
   - `src/repositories/` — SQL for `availability_slots` and `lessons`.
   - `src/handlers/` — thin HTTP handlers with common error envelope.
@@ -48,8 +48,8 @@ ready.
   - rejects cancelled lessons;
   - returns already completed lessons unchanged;
   - calls `FinanceClient::CreateCharge` after completion.
-- The current `FinanceClient` is a stub that logs the charge request. The real
-  finance client must call `POST /internal/charges` once finance-service is ready.
+- `FinanceClient` calls finance-service `POST /internal/charges` through
+  `FINANCE_SERVICE_URL`.
 - Cancelling a scheduled lesson reopens its slot when the lesson has a `slot_id`.
 - Responses and errors use JSON content type and common error envelope.
 
@@ -115,13 +115,29 @@ Also verified:
 - `GET /internal/lessons` returns `Content-Type: application/json; charset=utf-8`.
 - Missing `price` returns `422 business_rule` envelope.
 
+Finance integration smoke verified after wiring `HttpFinanceClient`:
+
+1. Create lesson with explicit `price`.
+2. Complete lesson.
+3. Repeat complete request.
+4. Read finance balance and transactions for the smoke student.
+
+Observed result: finance balance became `321.0`, and finance transactions
+contained exactly one `charge` for the completed lesson even after repeated
+complete.
+
+Latest integration smoke ids:
+
+- lesson: `67dbfeeb-045c-4114-ab9c-044ee4f2b339`
+- charge: `a0761125-e746-4ff8-8091-c181e0e51b4b`
+- teacher: `11111111-2222-4333-8444-555555555555`
+- student: `22222222-3333-4444-8555-666666666666`
+
 ## Next Steps
 
-- Add real `FinanceHttpClient` once finance-service `/internal/charges` exists.
 - Replace `StubIdentityClient` with an HTTP client once identity check-access is
   available.
 - Revisit the price contract gap with Lead before changing OpenAPI or identity
   response shape.
 - Add focused tests or script smoke once the repo has an agreed test harness.
-- Continue with finance-service next, because lesson `complete` depends on
-  charge idempotency by `unique(lesson_id)`.
+- Continue with assignment-service internal endpoints once this branch is merged.

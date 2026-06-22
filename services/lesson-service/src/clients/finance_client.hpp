@@ -4,9 +4,13 @@
 #include <string>
 #include <string_view>
 
+#include <userver/clients/http/client.hpp>
 #include <userver/components/component_context.hpp>
 #include <userver/components/component_fwd.hpp>
 #include <userver/components/loggable_component_base.hpp>
+#include <userver/yaml_config/schema.hpp>
+
+#include <tutorflow/common/http_client_base.hpp>
 
 namespace tutorflow::lesson {
 
@@ -26,16 +30,21 @@ public:
   virtual void CreateCharge(const ChargeRequest &request) const = 0;
 };
 
-class StubFinanceClient final
+class HttpFinanceClient final
     : public userver::components::LoggableComponentBase,
       public FinanceClient {
 public:
   static constexpr std::string_view kName = "finance-client";
 
-  StubFinanceClient(const userver::components::ComponentConfig &config,
+  HttpFinanceClient(const userver::components::ComponentConfig &config,
                     const userver::components::ComponentContext &context);
 
   void CreateCharge(const ChargeRequest &request) const override;
+
+  static userver::yaml_config::Schema GetStaticConfigSchema();
+
+private:
+  tutorflow::common::HttpClientBase transport_;
 };
 
 } // namespace tutorflow::lesson

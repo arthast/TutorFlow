@@ -1,3 +1,4 @@
+#include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/storages/postgres/component.hpp>
@@ -15,13 +16,14 @@
 int main(int argc, char *argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
+          .AppendComponentList(userver::clients::http::ComponentList())
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::components::Postgres>("lesson-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::lesson::LessonRepository>()
           .Append<tutorflow::lesson::StubIdentityClient>()
-          .Append<tutorflow::lesson::StubFinanceClient>()
+          .Append<tutorflow::lesson::HttpFinanceClient>()
           .Append<tutorflow::lesson::LessonService>()
           .Append<tutorflow::lesson::CreateAvailabilityHandler>()
           .Append<tutorflow::lesson::ListAvailabilityHandler>()

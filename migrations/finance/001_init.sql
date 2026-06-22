@@ -27,6 +27,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_charge_lesson
     ON financial_transactions (lesson_id)
     WHERE type = 'charge';
 
+-- Идемпотентность confirm receipt: один payment на чек.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_receipt
+    ON financial_transactions (receipt_id)
+    WHERE type = 'payment';
+
 CREATE INDEX IF NOT EXISTS idx_ft_student ON financial_transactions (student_id);
 CREATE INDEX IF NOT EXISTS idx_ft_teacher ON financial_transactions (teacher_id);
 
@@ -48,6 +53,7 @@ CREATE TABLE IF NOT EXISTS payment_receipts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_receipts_student ON payment_receipts (student_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_teacher ON payment_receipts (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_status  ON payment_receipts (status);
 
 COMMIT;
