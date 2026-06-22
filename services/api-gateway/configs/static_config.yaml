@@ -1,0 +1,24 @@
+# api-gateway — статический конфиг (foundation-скелет).
+# Единственный сервис, публикуемый наружу. Auth/роутинг добавляет владелец.
+components_manager:
+    task_processors:
+        main-task-processor:
+            worker_threads: 4
+        fs-task-processor:
+            worker_threads: 2
+    default_task_processor: main-task-processor
+    components:
+        server:
+            listener:
+                port: 8080
+                task_processor: main-task-processor
+        logging:
+            loggers:
+                default:
+                    file_path: '@stderr'
+                    level: info
+                    overflow_behavior: discard
+        health-handler:
+            path: /health
+            method: GET
+            task_processor: main-task-processor

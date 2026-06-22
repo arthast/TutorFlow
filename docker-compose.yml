@@ -1,0 +1,140 @@
+# TutorFlow — dev-стек (PLAN §4, §12).
+# Один контейнер postgres + 6 сервисов. Наружу публикуется ТОЛЬКО api-gateway.
+# Все внутренние сервисы доступны лишь по docker-сети (по имени сервиса).
+#
+#   cp .env.example .env   # заполнить секреты
+#   docker compose up --build
+#   ./scripts/migrate.sh all
+#   curl http://localhost:${GATEWAY_PORT:-8080}/health
+name: tutorflow
+
+x-userver-image: &userver-image ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-22.04-userver:latest}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # БД по умолчанию (per-service БД создаёт initdb-скрипт ниже).
+      POSTGRES_DB: ${POSTGRES_USER}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [tutorflow]
+    # Порт наружу НЕ публикуем — только docker-сеть.
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      LESSON_SERVICE_URL: http://lesson-service:8082
+      ASSIGNMENT_SERVICE_URL: http://assignment-service:8083
+      FINANCE_SERVICE_URL: http://finance-service:8084
+      FILE_SERVICE_URL: http://file-service:8085
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"   # ЕДИНСТВЕННЫЙ публичный порт
+    depends_on:
+      - identity-service
+      - lesson-service
+      - assignment-service
+      - finance-service
+      - file-service
+    networks: [tutorflow]
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      IDENTITY_DATABASE_URL: ${IDENTITY_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  lesson-service:
+    build:
+      context: .
+      dockerfile: services/lesson-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      LESSON_DATABASE_URL: ${LESSON_DATABASE_URL}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      FINANCE_SERVICE_URL: http://finance-service:8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  assignment-service:
+    build:
+      context: .
+      dockerfile: services/assignment-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      ASSIGNMENT_DATABASE_URL: ${ASSIGNMENT_DATABASE_URL}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      FILE_SERVICE_URL: http://file-service:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  finance-service:
+    build:
+      context: .
+      dockerfile: services/finance-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      FINANCE_DATABASE_URL: ${FINANCE_DATABASE_URL}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      FILE_SERVICE_URL: http://file-service:8085
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  file-service:
+    build:
+      context: .
+      dockerfile: services/file-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+    environment:
+      FILE_DATABASE_URL: ${FILE_DATABASE_URL}
+      IDENTITY_SERVICE_URL: http://identity-service:8081
+      FILE_STORAGE_DIR: ${FILE_STORAGE_DIR:-/data/files}
+      FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
+    volumes:
+      - filestorage:/data/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+networks:
+  tutorflow:
+    driver: bridge
+
+volumes:
+  pgdata:
+  filestorage:

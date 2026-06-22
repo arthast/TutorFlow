@@ -1,0 +1,25 @@
+# lesson-service — статический конфиг (foundation-скелет).
+# Доменные компоненты (postgres-database, handlers, http-client) добавляет
+# владелец сервиса при реализации.
+components_manager:
+    task_processors:
+        main-task-processor:
+            worker_threads: 4
+        fs-task-processor:
+            worker_threads: 2
+    default_task_processor: main-task-processor
+    components:
+        server:
+            listener:
+                port: 8082
+                task_processor: main-task-processor
+        logging:
+            loggers:
+                default:
+                    file_path: '@stderr'
+                    level: info
+                    overflow_behavior: discard
+        health-handler:
+            path: /health
+            method: GET
+            task_processor: main-task-processor

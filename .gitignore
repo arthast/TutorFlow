@@ -11,6 +11,10 @@ AGENTS.local.md
 local/
 **/local/
 
+# Локальные настройки агентских инструментов
+.claude/settings.local.json
+.codex/
+
 # === Локальное файловое хранилище file-service (MVP volume) ===
 storage/
 data/files/
