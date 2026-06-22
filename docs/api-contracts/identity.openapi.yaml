@@ -144,6 +144,7 @@ components:
       properties:
         allowed: { type: boolean }
         status: { type: string, enum: [invited, active, archived], nullable: true }
+        hourly_rate: { type: number, nullable: true }
     CreateStudentRequest:
       type: object
       required: [display_name]
