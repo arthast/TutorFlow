@@ -1,6 +1,4 @@
-# file-service — статический конфиг (foundation-скелет).
-# Доменные компоненты (postgres-database, handlers, http-client) добавляет
-# владелец сервиса при реализации.
+# file-service — полный статический конфиг.
 components_manager:
     task_processors:
         main-task-processor:
@@ -21,5 +19,32 @@ components_manager:
                     overflow_behavior: discard
         health-handler:
             path: /health
+            method: GET
+            task_processor: main-task-processor
+        http-client: {}
+        http-client-core:
+            fs-task-processor: fs-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        file-db:
+            dbconnection#env: FILE_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        file-repository: {}
+        identity-client:
+            base-url#env: IDENTITY_SERVICE_URL
+            timeout-ms: 5000
+        file-domain-service:
+            storage-dir#env: FILE_STORAGE_DIR
+            max-size-bytes: 10485760
+        file-upload-handler:
+            path: /internal/files
+            method: POST
+            task_processor: main-task-processor
+        file-get-meta-handler:
+            path: /internal/files/{fileId}
+            method: GET
+            task_processor: main-task-processor
+        file-download-handler:
+            path: /internal/files/{fileId}/download
             method: GET
             task_processor: main-task-processor
