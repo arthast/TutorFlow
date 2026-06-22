@@ -1,12 +1,14 @@
 #include <tutorflow/common/http_client_base.hpp>
 
+#include <tutorflow/common/auth_context.hpp>
+#include <tutorflow/common/error_codes.hpp>
 #include <tutorflow/common/errors.hpp>
 #include <tutorflow/common/request_context.hpp>
-#include <tutorflow/common/auth_context.hpp>
 
 #include <userver/clients/http/request.hpp>
 #include <userver/clients/http/response.hpp>
 #include <userver/formats/json/serialize.hpp>
+#include <userver/http/common_headers.hpp>
 
 namespace tutorflow::common {
 namespace {
@@ -30,13 +32,15 @@ std::string HttpClientBase::Url(std::string_view path) const {
 
 userver::clients::http::Headers HttpClientBase::BuildHeaders(
     const CallContext& ctx, bool json_body) const {
+  // HeaderMap::operator[] запрещает строковые литералы (нужен PredefinedHeader),
+  // но принимает std::string_view — наши kHeader* как раз string_view.
   userver::clients::http::Headers headers;
-  if (json_body) headers["Content-Type"] = "application/json";
-  if (!ctx.user_id.empty()) headers[std::string{kHeaderUserId}] = ctx.user_id;
-  if (!ctx.roles.empty()) headers[std::string{kHeaderUserRoles}] = ctx.roles;
-  if (!ctx.request_id.empty()) {
-    headers[std::string{kHeaderRequestId}] = ctx.request_id;
+  if (json_body) {
+    headers[userver::http::headers::kContentType] = "application/json";
   }
+  if (!ctx.user_id.empty()) headers[kHeaderUserId] = ctx.user_id;
+  if (!ctx.roles.empty()) headers[kHeaderUserRoles] = ctx.roles;
+  if (!ctx.request_id.empty()) headers[kHeaderRequestId] = ctx.request_id;
   return headers;
 }
 
