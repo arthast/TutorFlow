@@ -1,5 +1,4 @@
-# api-gateway — статический конфиг (foundation-скелет).
-# Единственный сервис, публикуемый наружу. Auth/роутинг добавляет владелец.
+# api-gateway — единственная публичная точка входа.
 components_manager:
     task_processors:
         main-task-processor:
@@ -20,5 +19,110 @@ components_manager:
                     overflow_behavior: discard
         health-handler:
             path: /health
+            method: GET
+            task_processor: main-task-processor
+        http-client: {}
+        http-client-core:
+            fs-task-processor: fs-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        gateway-settings:
+            jwt-secret#env: JWT_SECRET
+            identity-base-url#env: IDENTITY_SERVICE_URL
+            lesson-base-url#env: LESSON_SERVICE_URL
+            assignment-base-url#env: ASSIGNMENT_SERVICE_URL
+            finance-base-url#env: FINANCE_SERVICE_URL
+            file-base-url#env: FILE_SERVICE_URL
+            timeout-ms: 5000
+        gateway-auth-register-handler:
+            path: /auth/register
+            method: POST
+            task_processor: main-task-processor
+        gateway-auth-login-handler:
+            path: /auth/login
+            method: POST
+            task_processor: main-task-processor
+        gateway-me-handler:
+            path: /me
+            method: GET
+            task_processor: main-task-processor
+        gateway-students-handler:
+            path: /students
+            method: GET,POST
+            task_processor: main-task-processor
+        gateway-student-handler:
+            path: /students/{studentId}
+            method: GET
+            task_processor: main-task-processor
+        gateway-student-balance-handler:
+            path: /students/{studentId}/balance
+            method: GET
+            task_processor: main-task-processor
+        gateway-student-transactions-handler:
+            path: /students/{studentId}/transactions
+            method: GET
+            task_processor: main-task-processor
+        gateway-availability-handler:
+            path: /availability
+            method: GET,POST
+            task_processor: main-task-processor
+        gateway-lessons-handler:
+            path: /lessons
+            method: GET,POST
+            task_processor: main-task-processor
+        gateway-lesson-handler:
+            path: /lessons/{lessonId}
+            method: GET
+            task_processor: main-task-processor
+        gateway-lesson-complete-handler:
+            path: /lessons/{lessonId}/complete
+            method: POST
+            task_processor: main-task-processor
+        gateway-lesson-cancel-handler:
+            path: /lessons/{lessonId}/cancel
+            method: POST
+            task_processor: main-task-processor
+        gateway-assignments-handler:
+            path: /assignments
+            method: GET,POST
+            task_processor: main-task-processor
+        gateway-assignment-handler:
+            path: /assignments/{assignmentId}
+            method: GET
+            task_processor: main-task-processor
+        gateway-assignment-submit-handler:
+            path: /assignments/{assignmentId}/submit
+            method: POST
+            task_processor: main-task-processor
+        gateway-assignment-review-handler:
+            path: /assignments/{assignmentId}/review
+            method: POST
+            task_processor: main-task-processor
+        gateway-assignment-comments-handler:
+            path: /assignments/{assignmentId}/comments
+            method: POST
+            task_processor: main-task-processor
+        gateway-payment-receipts-handler:
+            path: /payments/receipts
+            method: POST
+            task_processor: main-task-processor
+        gateway-payment-receipt-confirm-handler:
+            path: /payments/receipts/{receiptId}/confirm
+            method: POST
+            task_processor: main-task-processor
+        gateway-payment-receipt-reject-handler:
+            path: /payments/receipts/{receiptId}/reject
+            method: POST
+            task_processor: main-task-processor
+        gateway-files-handler:
+            path: /files
+            method: POST
+            task_processor: main-task-processor
+        gateway-file-meta-handler:
+            path: /files/{fileId}
+            method: GET
+            task_processor: main-task-processor
+        gateway-file-download-handler:
+            path: /files/{fileId}/download
             method: GET
             task_processor: main-task-processor
