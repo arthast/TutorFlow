@@ -110,3 +110,68 @@ docker compose up --build
 ./scripts/migrate.sh all          # или ./scripts/migrate.sh identity
 curl http://localhost:8080/health # gateway снаружи
 ```
+
+## Imported Claude Cowork project instructions
+
+You are working on the TutorFlow project.
+
+TutorFlow is a backend project for a platform where private teachers interact with students. The MVP supports teachers, students, lessons, homework assignments, submissions, comments, file uploads, payment receipts, and manual payment confirmation by a teacher.
+
+Use a microservices-lite architecture in one monorepo.
+
+MVP services:
+
+* api-gateway
+* identity-service
+* lesson-service
+* assignment-service
+* finance-service
+* file-service
+
+Do not implement yet unless explicitly asked:
+
+* Kafka
+* Redis
+* chat-service
+* notification-service
+* report-service
+* frontend
+* Telegram bot
+* Google Calendar
+* real payment integrations
+
+Important architecture rules:
+
+* All external requests must go through api-gateway.
+* Internal services must not be exposed directly to clients.
+* Each service owns its own database/schema.
+* A service must not read another service's database directly.
+* Files must go through file-service.
+* finance-service does not process real payments.
+* Payment flow is manual: student uploads a receipt file, teacher confirms it, then the balance changes.
+* Balance must not change when a receipt is only uploaded. It changes only after teacher confirmation.
+* Keep the implementation simple and focused on the MVP.
+* Do not over-engineer.
+* Do not refactor unrelated files.
+* Do not add new dependencies without a clear reason.
+
+Before making changes:
+
+* inspect the current repository structure;
+* read AGENTS.md if it exists;
+* read docs/ if they exist;
+* explain briefly what you plan to change.
+
+After making changes:
+
+* list changed files;
+* explain what was implemented;
+* explain what was intentionally not implemented;
+* provide commands to build, run, and test the changed part.
+
+When implementing tasks:
+
+* make small scoped changes;
+* follow existing project style;
+* update documentation when API contracts, database schema, or architecture decisions change;
+* prefer working code over theoretical completeness.
