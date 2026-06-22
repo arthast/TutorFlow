@@ -19,7 +19,7 @@ components_manager:
                     overflow_behavior: discard
         health-handler:
             path: /health
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         http-client: {}
         http-client-core:
@@ -28,6 +28,7 @@ components_manager:
         testsuite-support: {}
         gateway-settings:
             jwt-secret#env: JWT_SECRET
+            cors-origin#env: GATEWAY_CORS_ORIGIN
             identity-base-url#env: IDENTITY_SERVICE_URL
             lesson-base-url#env: LESSON_SERVICE_URL
             assignment-base-url#env: ASSIGNMENT_SERVICE_URL
@@ -36,97 +37,97 @@ components_manager:
             timeout-ms: 5000
         gateway-auth-register-handler:
             path: /auth/register
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-auth-login-handler:
             path: /auth/login
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-auth-change-password-handler:
             path: /auth/change-password
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-me-handler:
             path: /me
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-students-handler:
             path: /students
-            method: GET,POST
+            method: GET,POST,OPTIONS
             task_processor: main-task-processor
         gateway-student-handler:
             path: /students/{studentId}
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-student-balance-handler:
             path: /students/{studentId}/balance
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-student-transactions-handler:
             path: /students/{studentId}/transactions
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-availability-handler:
             path: /availability
-            method: GET,POST
+            method: GET,POST,OPTIONS
             task_processor: main-task-processor
         gateway-lessons-handler:
             path: /lessons
-            method: GET,POST
+            method: GET,POST,OPTIONS
             task_processor: main-task-processor
         gateway-lesson-handler:
             path: /lessons/{lessonId}
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-lesson-complete-handler:
             path: /lessons/{lessonId}/complete
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-lesson-cancel-handler:
             path: /lessons/{lessonId}/cancel
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-assignments-handler:
             path: /assignments
-            method: GET,POST
+            method: GET,POST,OPTIONS
             task_processor: main-task-processor
         gateway-assignment-handler:
             path: /assignments/{assignmentId}
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-assignment-submit-handler:
             path: /assignments/{assignmentId}/submit
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-assignment-review-handler:
             path: /assignments/{assignmentId}/review
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-assignment-comments-handler:
             path: /assignments/{assignmentId}/comments
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-payment-receipts-handler:
             path: /payments/receipts
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-payment-receipt-confirm-handler:
             path: /payments/receipts/{receiptId}/confirm
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-payment-receipt-reject-handler:
             path: /payments/receipts/{receiptId}/reject
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-files-handler:
             path: /files
-            method: POST
+            method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-file-meta-handler:
             path: /files/{fileId}
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-file-download-handler:
             path: /files/{fileId}/download
-            method: GET
+            method: GET,OPTIONS
             task_processor: main-task-processor

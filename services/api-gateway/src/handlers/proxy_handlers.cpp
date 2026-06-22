@@ -22,6 +22,8 @@
 #include <tutorflow/common/jwt.hpp>
 #include <tutorflow/common/request_context.hpp>
 
+#include "cors.hpp"
+
 namespace tutorflow::gateway {
 namespace {
 
@@ -101,7 +103,8 @@ bool ShouldSkipInboundHeader(std::string_view name) {
 bool ShouldSkipOutboundHeader(std::string_view name) {
   return EqualsNoCase(name, "Content-Length") ||
          EqualsNoCase(name, "Connection") ||
-         EqualsNoCase(name, "Transfer-Encoding");
+         EqualsNoCase(name, "Transfer-Encoding") ||
+         StartsWithNoCase(name, "Access-Control-");
 }
 
 userver::clients::http::Headers BuildUpstreamHeaders(
@@ -202,15 +205,25 @@ std::string ProxyHandlerBase::ProxyToUpstream(
 std::string ProxyHandlerBase::HandleGatewayErrors(
     const http::HttpRequest& request,
     const std::function<std::string()>& func) const {
+  if (IsOptionsRequest(request)) {
+    return MakePreflightResponse(request, settings_);
+  }
+
   try {
-    return func();
+    auto body = func();
+    ApplyCorsHeaders(request, settings_);
+    return body;
   } catch (const ServiceError& e) {
+    ApplyCorsHeaders(request, settings_);
     return ErrorResponse(request, e);
   } catch (const userver::clients::http::TimeoutException&) {
+    ApplyCorsHeaders(request, settings_);
     return GatewayUnavailableResponse(request, "upstream service timeout");
   } catch (const userver::clients::http::BaseException&) {
+    ApplyCorsHeaders(request, settings_);
     return GatewayUnavailableResponse(request, "upstream service unavailable");
   } catch (const std::exception& e) {
+    ApplyCorsHeaders(request, settings_);
     return ErrorResponse(request, ServiceError::Internal(e.what()));
   }
 }
