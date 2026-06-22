@@ -1,6 +1,4 @@
-# finance-service — статический конфиг (foundation-скелет).
-# Доменные компоненты (postgres-database, handlers, http-client) добавляет
-# владелец сервиса при реализации.
+# finance-service — append-only журнал операций + чеки.
 components_manager:
     task_processors:
         main-task-processor:
@@ -22,4 +20,40 @@ components_manager:
         health-handler:
             path: /health
             method: GET
+            task_processor: main-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        finance-db:
+            dbconnection#env: FINANCE_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        finance-repository: {}
+        identity-client: {}
+        finance-domain-service: {}
+        finance-create-charge-handler:
+            path: /internal/charges
+            method: POST
+            task_processor: main-task-processor
+        finance-get-balance-handler:
+            path: /internal/students/{studentId}/balance
+            method: GET
+            task_processor: main-task-processor
+        finance-list-transactions-handler:
+            path: /internal/students/{studentId}/transactions
+            method: GET
+            task_processor: main-task-processor
+        finance-create-receipt-handler:
+            path: /internal/payment-receipts
+            method: POST
+            task_processor: main-task-processor
+        finance-list-receipts-handler:
+            path: /internal/payment-receipts
+            method: GET
+            task_processor: main-task-processor
+        finance-confirm-receipt-handler:
+            path: /internal/payment-receipts/{receiptId}/confirm
+            method: POST
+            task_processor: main-task-processor
+        finance-reject-receipt-handler:
+            path: /internal/payment-receipts/{receiptId}/reject
+            method: POST
             task_processor: main-task-processor
