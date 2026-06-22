@@ -1,6 +1,4 @@
-# assignment-service — статический конфиг (foundation-скелет).
-# Доменные компоненты (postgres-database, handlers, http-client) добавляет
-# владелец сервиса при реализации.
+# assignment-service — ДЗ, решения, комментарии.
 components_manager:
     task_processors:
         main-task-processor:
@@ -22,4 +20,36 @@ components_manager:
         health-handler:
             path: /health
             method: GET
+            task_processor: main-task-processor
+        dns-client: {}
+        testsuite-support: {}
+        assignment-db:
+            dbconnection#env: ASSIGNMENT_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        assignment-repository: {}
+        identity-client: {}
+        assignment-domain-service: {}
+        assignment-create-handler:
+            path: /internal/assignments
+            method: POST
+            task_processor: main-task-processor
+        assignment-list-handler:
+            path: /internal/assignments
+            method: GET
+            task_processor: main-task-processor
+        assignment-get-handler:
+            path: /internal/assignments/{assignmentId}
+            method: GET
+            task_processor: main-task-processor
+        assignment-submit-handler:
+            path: /internal/assignments/{assignmentId}/submit
+            method: POST
+            task_processor: main-task-processor
+        assignment-review-handler:
+            path: /internal/assignments/{assignmentId}/review
+            method: POST
+            task_processor: main-task-processor
+        assignment-comment-handler:
+            path: /internal/assignments/{assignmentId}/comments
+            method: POST
             task_processor: main-task-processor
