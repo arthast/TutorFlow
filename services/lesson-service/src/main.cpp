@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
           .Append<userver::components::Postgres>("lesson-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::lesson::LessonRepository>()
-          .Append<tutorflow::lesson::StubIdentityClient>()
+          .Append<tutorflow::lesson::HttpIdentityClient>()
           .Append<tutorflow::lesson::HttpFinanceClient>()
           .Append<tutorflow::lesson::LessonService>()
           .Append<tutorflow::lesson::CreateAvailabilityHandler>()

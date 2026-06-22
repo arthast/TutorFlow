@@ -1,5 +1,18 @@
 # assignment-service (owner: Agent B). ДЗ, решения, комментарии.
-add_executable(assignment-service src/main.cpp)
+add_executable(assignment-service
+    src/main.cpp
+    src/clients/identity_client.cpp
+    src/domain/assignment_service.cpp
+    src/domain/models.cpp
+    src/handlers/assignment_handlers.cpp
+    src/repositories/assignment_repository.cpp
+)
 
-# Реализуя репозитории, добавь userver::postgresql.
-target_link_libraries(assignment-service PRIVATE tutorflow_common userver::core)
+target_include_directories(assignment-service PRIVATE src)
+
+target_link_libraries(assignment-service
+    PRIVATE
+        tutorflow_common
+        userver::core
+        userver::postgresql
+)

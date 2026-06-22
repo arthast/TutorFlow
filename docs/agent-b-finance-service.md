@@ -9,7 +9,8 @@ Implemented branch: `feat/finance-internal`.
 Contract source: `docs/api-contracts/finance.openapi.yaml`.
 
 Do not touch: identity-service, file-service, api-gateway. Current external
-dependency is represented by a local identity client stub.
+dependency is represented by a local identity client that calls identity by
+OpenAPI contract.
 
 ## Implemented
 
@@ -23,7 +24,8 @@ dependency is represented by a local identity client stub.
   - `POST /internal/payment-receipts/{receiptId}/confirm`
   - `POST /internal/payment-receipts/{receiptId}/reject`
 - PostgreSQL repository, domain layer, thin HTTP handlers.
-- Identity access check is isolated behind `IdentityClient` and currently stubbed.
+- `IdentityClient` calls identity-service
+  `POST /internal/relations/check-access` through `IDENTITY_SERVICE_URL`.
 - Finance journal remains append-only for balance-changing operations:
   `charge`, `payment`, `correction`, `refund`.
 - Charge creation is idempotent by `unique(lesson_id)`.
@@ -82,14 +84,24 @@ Checked:
 - receipt listing by `status=confirmed` returns the confirmed receipt;
 - rejecting a confirmed receipt returns envelope error `409 conflict`.
 
+Identity client wiring verified after replacing the stub:
+
+```bash
+docker compose build lesson-service assignment-service finance-service
+docker compose up -d identity-service lesson-service assignment-service finance-service
+docker compose exec finance-service curl -s -i http://localhost:8084/health
+```
+
+Current integration limitation: this branch's identity-service still has only
+`/health`, so finance paths that require `POST /internal/relations/check-access`
+will receive an upstream 404 envelope until Agent A merges the identity endpoint.
+
 ## Current contract notes
 
 No finance contract changes were made.
 
 ## Next work
 
-1. Open PR and let Lead merge to `main`.
-2. Replace finance `IdentityClient` stub with real identity
-   `POST /internal/relations/check-access` when Agent A exposes it.
-3. Start assignment-service internal endpoints from
-   `docs/api-contracts/assignment.openapi.yaml`.
+1. Re-run finance receipt/list/confirm happy-path with real identity check-access
+   once Agent A merges the identity endpoint.
+2. Add focused tests or script smoke once the repo has an agreed test harness.

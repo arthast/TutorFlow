@@ -11,7 +11,7 @@
 
 #include <tutorflow/common/http_client_base.hpp>
 
-namespace tutorflow::lesson {
+namespace tutorflow::assignment {
 
 struct AccessCheckResult {
   bool allowed{};
@@ -44,4 +44,4 @@ private:
   tutorflow::common::HttpClientBase transport_;
 };
 
-} // namespace tutorflow::lesson
+} // namespace tutorflow::assignment
