@@ -65,10 +65,12 @@ docs/                  # PLAN, контракты, архитектура
 
 ## Работа двумя агентами
 
-Проект ведут два агента в отдельных git-worktree (см. [`docs/SETUP.md`](docs/SETUP.md)):
+Проект ведут два агента (Claude и Codex), которых человек включает **поочерёдно**
+(по одному за раз) в одной рабочей папке. Фиксированной привязки «сервис → агент»
+нет — задачу на сессию назначает человек, любой агент может работать над любым
+сервисом. Координатор — **Claude** (контракты, `docs/PLAN.md`, ревью, интеграция).
 
-- **Agent A (Lead):** identity-service, file-service, api-gateway.
-- **Agent B:** lesson-service, assignment-service, finance-service.
-
-Контракты и public-сигнатуры `libs/common` — заморожены, меняются только через
-Lead (PLAN §16, AGENTS «Изменение контрактов»).
+Очередь работ — [`docs/roadmap.md`](docs/roadmap.md). Модель координации —
+[`docs/PLAN.md`](docs/PLAN.md) §13–§14 и [`AGENTS.md`](AGENTS.md). Контракты и
+public-сигнатуры `libs/common` меняются только через координатора (PLAN §16,
+AGENTS «Изменение контрактов»).
