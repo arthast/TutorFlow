@@ -2,6 +2,7 @@
 
 #include <userver/components/component_context.hpp>
 #include <userver/storages/postgres/component.hpp>
+#include <userver/storages/postgres/exceptions.hpp>
 #include <userver/storages/postgres/result_set.hpp>
 
 #include <tutorflow/common/errors.hpp>
@@ -12,6 +13,9 @@ namespace pg = userver::storages::postgres;
 
 constexpr auto kMaster = pg::ClusterHostType::kMaster;
 constexpr auto kSlave  = pg::ClusterHostType::kSlave;
+
+constexpr std::string_view kUsersEmailKey = "users_email_key";
+constexpr std::string_view kEmailTaken = "email_taken";
 
 
 User RowToUser(const pg::Row& row) {
@@ -246,9 +250,10 @@ LEFT JOIN teacher_student_links tsl
 StudentLink IdentityRepository::CreateStudentWithLink(
     const std::string& teacher_id, const CreateStudentRequest& req,
     const std::string& password_hash) const {
-    const auto result = pg_->Execute(
-        kMaster,
-        R"(
+    try {
+        const auto result = pg_->Execute(
+            kMaster,
+            R"(
 WITH new_user AS (
     INSERT INTO users (email, password_hash, role)
     VALUES ($1, $2, 'student')
@@ -286,18 +291,28 @@ SELECT
 FROM new_link nl
 JOIN _profile p ON p.user_id = nl.student_id::uuid
 )",
-        req.email,
-        password_hash,
-        req.display_name,
-        teacher_id,
-        req.subject.value_or(""),
-        req.goal.value_or(""),
-        req.hourly_rate);
+            req.email,
+            password_hash,
+            req.display_name,
+            teacher_id,
+            req.subject.value_or(""),
+            req.goal.value_or(""),
+            req.hourly_rate);
 
-    if (result.IsEmpty()) {
-        throw tutorflow::common::ServiceError::Internal("failed to create student");
+        if (result.IsEmpty()) {
+            throw tutorflow::common::ServiceError::Internal(
+                "failed to create student");
+        }
+        return RowToStudentLink(result[0]);
+    } catch (const pg::UniqueViolation& e) {
+        if (e.GetConstraint() != kUsersEmailKey) {
+            throw;
+        }
+        throw tutorflow::common::ServiceError(
+            userver::server::http::HttpStatus::kConflict,
+            std::string{kEmailTaken},
+            "email is already taken");
     }
-    return RowToStudentLink(result[0]);
 }
 
 std::optional<StudentLink> IdentityRepository::FindStudentLink(
