@@ -12,10 +12,13 @@
 
 #include "domain/models.hpp"
 
+namespace tutorflow::clients {
+class IdentityClient;
+}
+
 namespace tutorflow::file {
 
 class FileRepository;
-class IdentityClient;
 
 class FileService final
     : public userver::components::LoggableComponentBase {
@@ -45,7 +48,7 @@ private:
     std::string StoragePath(const std::string& storage_key) const;
 
     FileRepository& repository_;
-    IdentityClient& identity_;
+    tutorflow::clients::IdentityClient& identity_;
     userver::engine::TaskProcessor& fs_tp_;
     std::string storage_dir_;
     int64_t max_size_bytes_{};

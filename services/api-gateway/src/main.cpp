@@ -4,9 +4,8 @@
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/utils/daemon_run.hpp>
 
-#include <tutorflow/common/health_handler.hpp>
-
 #include "gateway_settings.hpp"
+#include "handlers/health_handler.hpp"
 #include "handlers/proxy_handlers.hpp"
 
 int main(int argc, char* argv[]) {
@@ -15,10 +14,11 @@ int main(int argc, char* argv[]) {
           .AppendComponentList(userver::clients::http::ComponentList())
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
-          .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::gateway::GatewaySettings>()
+          .Append<tutorflow::gateway::HealthHandler>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()
           .Append<tutorflow::gateway::AuthLoginHandler>()
+          .Append<tutorflow::gateway::AuthChangePasswordHandler>()
           .Append<tutorflow::gateway::MeHandler>()
           .Append<tutorflow::gateway::StudentsHandler>()
           .Append<tutorflow::gateway::StudentHandler>()

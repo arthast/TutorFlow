@@ -22,6 +22,8 @@
 #include <tutorflow/common/jwt.hpp>
 #include <tutorflow/common/request_context.hpp>
 
+#include "cors.hpp"
+
 namespace tutorflow::gateway {
 namespace {
 
@@ -101,7 +103,8 @@ bool ShouldSkipInboundHeader(std::string_view name) {
 bool ShouldSkipOutboundHeader(std::string_view name) {
   return EqualsNoCase(name, "Content-Length") ||
          EqualsNoCase(name, "Connection") ||
-         EqualsNoCase(name, "Transfer-Encoding");
+         EqualsNoCase(name, "Transfer-Encoding") ||
+         StartsWithNoCase(name, "Access-Control-");
 }
 
 userver::clients::http::Headers BuildUpstreamHeaders(
@@ -202,15 +205,25 @@ std::string ProxyHandlerBase::ProxyToUpstream(
 std::string ProxyHandlerBase::HandleGatewayErrors(
     const http::HttpRequest& request,
     const std::function<std::string()>& func) const {
+  if (IsOptionsRequest(request)) {
+    return MakePreflightResponse(request, settings_);
+  }
+
   try {
-    return func();
+    auto body = func();
+    ApplyCorsHeaders(request, settings_);
+    return body;
   } catch (const ServiceError& e) {
+    ApplyCorsHeaders(request, settings_);
     return ErrorResponse(request, e);
   } catch (const userver::clients::http::TimeoutException&) {
+    ApplyCorsHeaders(request, settings_);
     return GatewayUnavailableResponse(request, "upstream service timeout");
   } catch (const userver::clients::http::BaseException&) {
+    ApplyCorsHeaders(request, settings_);
     return GatewayUnavailableResponse(request, "upstream service unavailable");
   } catch (const std::exception& e) {
+    ApplyCorsHeaders(request, settings_);
     return ErrorResponse(request, ServiceError::Internal(e.what()));
   }
 }
@@ -232,6 +245,17 @@ std::string AuthLoginHandler::HandleRequestThrow(
   return HandleGatewayErrors(request, [&] {
     return ProxyToUpstream(request, UpstreamService::kIdentity,
                            "/internal/auth/login", std::nullopt);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(AuthChangePasswordHandler)
+std::string AuthChangePasswordHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return ProxyToUpstream(request, UpstreamService::kIdentity,
+                           "/internal/auth/change-password", auth);
   });
 }
 
@@ -433,6 +457,8 @@ std::string PaymentReceiptsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
+    // GET (список чеков) и POST (загрузка чека) идут на один internal-путь;
+    // ProxyToUpstream маршрутизирует по HTTP-методу, query (?status=) прокидывает.
     return ProxyToUpstream(request, UpstreamService::kFinance,
                            "/internal/payment-receipts", auth);
   });

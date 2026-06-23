@@ -29,11 +29,13 @@ class GatewaySettings final
   static userver::yaml_config::Schema GetStaticConfigSchema();
 
   const std::string& JwtSecret() const noexcept { return jwt_secret_; }
+  const std::string& CorsOrigin() const noexcept { return cors_origin_; }
   std::chrono::milliseconds Timeout() const noexcept { return timeout_; }
   const std::string& BaseUrl(UpstreamService service) const;
 
  private:
   std::string jwt_secret_;
+  std::string cors_origin_;
   std::string identity_base_url_;
   std::string lesson_base_url_;
   std::string assignment_base_url_;

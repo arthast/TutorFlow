@@ -10,10 +10,9 @@
 #include <userver/formats/json/value.hpp>
 #include <userver/formats/json/value_builder.hpp>
 #include <userver/server/http/http_request.hpp>
-#include <userver/server/http/http_status.hpp>
 
 #include <tutorflow/common/auth_context.hpp>
-#include <tutorflow/common/errors.hpp>
+#include <tutorflow/common/handler_helpers.hpp>
 
 #include "domain/identity_service.hpp"
 #include "domain/models.hpp"
@@ -23,66 +22,13 @@ namespace {
 namespace http = userver::server::http;
 namespace json = userver::formats::json;
 namespace common_formats = userver::formats::common;
+using tutorflow::common::HandleEnvelope;
+using tutorflow::common::JsonResponse;
+using tutorflow::common::OptionalDouble;
+using tutorflow::common::OptionalString;
+using tutorflow::common::ParseJsonBody;
+using tutorflow::common::RequireString;
 using tutorflow::common::ServiceError;
-
-std::string JsonResponse(const http::HttpRequest& req, json::Value body,
-                         http::HttpStatus status = http::HttpStatus::kOk) {
-    req.GetHttpResponse().SetStatus(status);
-    req.GetHttpResponse().SetHeader(std::string{"Content-Type"},
-                                    std::string{"application/json; charset=utf-8"});
-    return json::ToString(body);
-}
-
-std::string ErrorResponse(const http::HttpRequest& req, const ServiceError& e) {
-    return JsonResponse(req, tutorflow::common::MakeErrorBody(e), e.Status());
-}
-
-template <typename Func>
-std::string HandleEnvelope(const http::HttpRequest& req, Func&& func) {
-    try {
-        return func();
-    } catch (const ServiceError& e) {
-        return ErrorResponse(req, e);
-    } catch (const std::exception& e) {
-        return ErrorResponse(req, ServiceError::Internal(e.what()));
-    }
-}
-
-json::Value ParseJsonBody(const http::HttpRequest& req) {
-    try {
-        return json::FromString(req.RequestBody());
-    } catch (const std::exception&) {
-        throw ServiceError::Validation("request body must be valid JSON");
-    }
-}
-
-std::string RequireString(const json::Value& body, std::string_view field) {
-    const std::string key{field};
-    if (!body.HasMember(key) || body[key].IsNull()) {
-        throw ServiceError::Validation("missing required field: " + key);
-    }
-    auto v = body[key].As<std::string>("");
-    if (v.empty()) {
-        throw ServiceError::Validation("field must not be empty: " + key);
-    }
-    return v;
-}
-
-std::optional<std::string> OptionalString(const json::Value& body,
-                                          std::string_view field) {
-    const std::string key{field};
-    if (!body.HasMember(key) || body[key].IsNull()) return std::nullopt;
-    auto v = body[key].As<std::string>("");
-    if (v.empty()) return std::nullopt;
-    return v;
-}
-
-std::optional<double> OptionalDouble(const json::Value& body,
-                                     std::string_view field) {
-    const std::string key{field};
-    if (!body.HasMember(key) || body[key].IsNull()) return std::nullopt;
-    return body[key].As<double>(0.0);
-}
 
 std::string RequiredPathArg(const http::HttpRequest& req, std::string_view name) {
     auto v = req.GetPathArg(std::string{name});
@@ -155,7 +101,8 @@ std::string CreateStudentHandler::HandleRequestThrow(
         tutorflow::common::RequireTeacher(auth);
         const auto body = ParseJsonBody(request);
         CreateStudentRequest req{
-            .email        = OptionalString(body, "email"),
+            .email        = RequireString(body, "email"),
+            .password     = RequireString(body, "password"),
             .display_name = RequireString(body, "display_name"),
             .subject      = OptionalString(body, "subject"),
             .goal         = OptionalString(body, "goal"),

@@ -3,13 +3,13 @@
 *.env
 !.env.example
 
-# === Локальные файлы агентов (не коммитим) ===
-# В git коммитятся: исходники, docs/ (PLAN, контракты), AGENTS.md, README.md, .env.example.
-# Локальны только личное назначение агента, заметки и секреты.
-AGENTS.local.md
+# === Локальные проектные инструкции и документация (не коммитим) ===
+# Docs, AGENTS and agent notes stay local for this checkout.
+AGENTS*.md
 *.local.md
 local/
 **/local/
+docs/
 
 # Локальные настройки агентских инструментов
 .claude/settings.local.json

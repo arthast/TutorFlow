@@ -6,9 +6,9 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <tutorflow/common/health_handler.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
 #include "clients/finance_client.hpp"
-#include "clients/identity_client.hpp"
 #include "domain/lesson_service.hpp"
 #include "handlers/lesson_handlers.hpp"
 #include "repositories/lesson_repository.hpp"
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
           .Append<userver::components::Postgres>("lesson-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::lesson::LessonRepository>()
-          .Append<tutorflow::lesson::HttpIdentityClient>()
+          .Append<tutorflow::clients::HttpIdentityClient>()
           .Append<tutorflow::lesson::HttpFinanceClient>()
           .Append<tutorflow::lesson::LessonService>()
           .Append<tutorflow::lesson::CreateAvailabilityHandler>()

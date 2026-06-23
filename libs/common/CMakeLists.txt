@@ -9,6 +9,7 @@ add_library(tutorflow_common STATIC
     src/auth_context.cpp
     src/request_context.cpp
     src/http_client_base.cpp
+    src/handler_helpers.cpp
     src/health_handler.cpp
     src/jwt.cpp
 )

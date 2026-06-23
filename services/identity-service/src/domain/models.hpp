@@ -55,8 +55,14 @@ struct LoginRequest {
     std::string password;
 };
 
+struct ChangePasswordRequest {
+    std::string current_password;
+    std::string new_password;
+};
+
 struct CreateStudentRequest {
-    std::optional<std::string> email;
+    std::string email;
+    std::string password;
     std::string display_name;
     std::optional<std::string> subject;
     std::optional<std::string> goal;

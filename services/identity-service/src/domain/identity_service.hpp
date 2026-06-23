@@ -26,6 +26,8 @@ public:
 
     TokenResponse Register(const RegisterRequest& req) const;
     TokenResponse Login(const LoginRequest& req) const;
+    void ChangePassword(const std::string& user_id,
+                        const ChangePasswordRequest& req) const;
 
     User GetUser(const std::string& user_id) const;
     CheckAccessResult CheckAccess(const std::string& teacher_id,

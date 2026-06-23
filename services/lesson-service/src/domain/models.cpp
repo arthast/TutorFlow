@@ -18,6 +18,15 @@ void SetNullable(ValueBuilder &json, std::string_view key,
   }
 }
 
+userver::formats::json::Value ToJsonStringArray(
+    const std::vector<std::string> &items) {
+  ValueBuilder array(common::Type::kArray);
+  for (const auto &item : items) {
+    array.PushBack(item);
+  }
+  return array.ExtractValue();
+}
+
 } // namespace
 
 userver::formats::json::Value ToJson(const Slot &slot) {
@@ -43,6 +52,7 @@ userver::formats::json::Value ToJson(const Lesson &lesson) {
   SetNullable(json, "topic", lesson.topic);
   SetNullable(json, "notes", lesson.notes);
   json["price"] = lesson.price;
+  json["file_ids"] = ToJsonStringArray(lesson.file_ids);
   json["created_at"] = lesson.created_at;
   SetNullable(json, "completed_at", lesson.completed_at);
   return json.ExtractValue();

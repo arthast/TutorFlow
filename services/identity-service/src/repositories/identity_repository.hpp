@@ -35,13 +35,21 @@ public:
     std::optional<std::pair<User, std::string>> FindUserWithHash(
         const std::string& email) const;
 
+    // Returns {User, password_hash} or nullopt if not found.
+    std::optional<std::pair<User, std::string>> FindUserWithHashById(
+        const std::string& id) const;
+
+    void UpdatePasswordHash(const std::string& user_id,
+                            const std::string& password_hash) const;
+
     std::optional<User> FindUserById(const std::string& id) const;
 
     CheckAccessResult CheckAccess(const std::string& teacher_id,
                                   const std::string& student_id) const;
 
     StudentLink CreateStudentWithLink(const std::string& teacher_id,
-                                     const CreateStudentRequest& req) const;
+                                     const CreateStudentRequest& req,
+                                     const std::string& password_hash) const;
 
     std::optional<StudentLink> FindStudentLink(
         const std::string& student_id) const;

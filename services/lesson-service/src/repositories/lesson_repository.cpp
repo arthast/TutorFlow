@@ -66,6 +66,7 @@ Lesson RowToLesson(const pg::Row &row) {
       EmptyToNull(row["topic"].As<std::string>()),
       EmptyToNull(row["notes"].As<std::string>()),
       row["price"].As<double>(),
+      {},
       row["created_at"].As<std::string>(),
       EmptyToNull(row["completed_at"].As<std::string>()),
   };
@@ -89,6 +90,45 @@ Lesson RequireSingleLesson(const pg::ResultSet &result,
         std::string{not_found_message});
   }
   return RowToLesson(result[0]);
+}
+
+std::vector<std::string>
+LoadLessonFileIds(const userver::storages::postgres::ClusterPtr &pg,
+                  const std::string &lesson_id) {
+  const auto result =
+      pg->Execute(kSlave,
+                  "SELECT file_id::text FROM lesson_files "
+                  "WHERE lesson_id = $1::uuid ORDER BY created_at, id",
+                  lesson_id);
+  std::vector<std::string> ids;
+  ids.reserve(result.Size());
+  for (const auto &row : result) {
+    ids.push_back(row["file_id"].As<std::string>());
+  }
+  return ids;
+}
+
+void AttachLessonFileIds(const userver::storages::postgres::ClusterPtr &pg,
+                         Lesson &lesson) {
+  lesson.file_ids = LoadLessonFileIds(pg, lesson.id);
+}
+
+void AttachLessonFileIds(const userver::storages::postgres::ClusterPtr &pg,
+                         std::vector<Lesson> &lessons) {
+  for (auto &lesson : lessons) {
+    AttachLessonFileIds(pg, lesson);
+  }
+}
+
+void InsertLessonFiles(const userver::storages::postgres::ClusterPtr &pg,
+                       const std::string &lesson_id,
+                       const std::vector<std::string> &file_ids) {
+  for (const auto &file_id : file_ids) {
+    pg->Execute(kMaster,
+                "INSERT INTO lesson_files (lesson_id, file_id) "
+                "VALUES ($1::uuid, $2::uuid) ON CONFLICT DO NOTHING",
+                lesson_id, file_id);
+  }
 }
 
 } // namespace
@@ -154,7 +194,10 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
       throw tutorflow::common::ServiceError::Conflict(
           "slot is not open or does not belong to teacher");
     }
-    return RowToLesson(result[0]);
+    auto lesson = RowToLesson(result[0]);
+    InsertLessonFiles(pg_, lesson.id, request.file_ids);
+    AttachLessonFileIds(pg_, lesson);
+    return lesson;
   }
 
   const auto result = pg_->Execute(
@@ -172,7 +215,10 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
     throw tutorflow::common::ServiceError::Validation(
         "starts_at must be earlier than ends_at");
   }
-  return RowToLesson(result[0]);
+  auto lesson = RowToLesson(result[0]);
+  InsertLessonFiles(pg_, lesson.id, request.file_ids);
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
 }
 
 std::vector<Lesson>
@@ -183,7 +229,9 @@ LessonRepository::ListLessonsForTeacher(const std::string &teacher_id) const {
                        " FROM lessons WHERE teacher_id = $1::uuid "
                        "ORDER BY starts_at, created_at",
                    teacher_id);
-  return RowsToVector<Lesson>(result, RowToLesson);
+  auto lessons = RowsToVector<Lesson>(result, RowToLesson);
+  AttachLessonFileIds(pg_, lessons);
+  return lessons;
 }
 
 std::vector<Lesson>
@@ -194,7 +242,9 @@ LessonRepository::ListLessonsForStudent(const std::string &student_id) const {
                        " FROM lessons WHERE student_id = $1::uuid "
                        "ORDER BY starts_at, created_at",
                    student_id);
-  return RowsToVector<Lesson>(result, RowToLesson);
+  auto lessons = RowsToVector<Lesson>(result, RowToLesson);
+  AttachLessonFileIds(pg_, lessons);
+  return lessons;
 }
 
 std::optional<Lesson>
@@ -205,7 +255,9 @@ LessonRepository::FindLesson(const std::string &lesson_id) const {
                                    lesson_id);
   if (result.IsEmpty())
     return std::nullopt;
-  return RowToLesson(result[0]);
+  auto lesson = RowToLesson(result[0]);
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
 }
 
 Lesson LessonRepository::CompleteLesson(const std::string &lesson_id,
@@ -232,7 +284,9 @@ Lesson LessonRepository::CompleteLesson(const std::string &lesson_id,
       "RETURNING " +
           std::string{kLessonFields},
       lesson_id, teacher_id);
-  return RequireSingleLesson(result, "lesson not found");
+  auto lesson = RequireSingleLesson(result, "lesson not found");
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
 }
 
 Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
@@ -266,7 +320,9 @@ Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
                        "slot_id IS NOT NULL)"
                        ") SELECT * FROM cancelled",
                    lesson_id, teacher_id);
-  return RequireSingleLesson(result, "lesson not found");
+  auto lesson = RequireSingleLesson(result, "lesson not found");
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
 }
 
 } // namespace tutorflow::lesson

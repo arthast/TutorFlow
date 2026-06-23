@@ -1,13 +1,10 @@
 #include "domain/lesson_service.hpp"
 
-#include <userver/formats/common/type.hpp>
-#include <userver/formats/json/value_builder.hpp>
-
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
 #include "clients/finance_client.hpp"
-#include "clients/identity_client.hpp"
 #include "repositories/lesson_repository.hpp"
 
 namespace tutorflow::lesson {
@@ -17,7 +14,7 @@ LessonService::LessonService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<LessonRepository>()),
-      identity_(context.FindComponent<HttpIdentityClient>()),
+      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()),
       finance_(context.FindComponent<HttpFinanceClient>()) {}
 
 Slot LessonService::CreateSlot(const tutorflow::common::AuthContext &auth,
@@ -39,20 +36,20 @@ Lesson LessonService::CreateLesson(const tutorflow::common::AuthContext &auth,
     throw tutorflow::common::ServiceError::Forbidden(
         "teacher-student relation is not active");
   }
-  if (!request.price.has_value()) {
-    userver::formats::json::ValueBuilder details(
-        userver::formats::common::Type::kObject);
-    details["contract_gap"] =
-        "identity check-access does not expose hourly_rate";
-    throw tutorflow::common::ServiceError::BusinessRule(
-        "price is required until identity exposes relation hourly_rate",
-        details.ExtractValue());
+
+  auto create_request = request;
+  if (!create_request.price.has_value()) {
+    create_request.price = access.hourly_rate;
   }
-  if (*request.price <= 0.0) {
+  if (!create_request.price.has_value()) {
+    throw tutorflow::common::ServiceError::BusinessRule(
+        "price is required when teacher-student relation has no hourly_rate");
+  }
+  if (*create_request.price <= 0.0) {
     throw tutorflow::common::ServiceError::Validation(
         "price must be greater than zero");
   }
-  return repository_.CreateLesson(auth.user_id, request);
+  return repository_.CreateLesson(auth.user_id, create_request);
 }
 
 std::vector<Lesson>

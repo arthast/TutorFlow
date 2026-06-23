@@ -1,7 +1,9 @@
 # api-gateway. Публичный API, auth, роутинг. Без БД.
 add_executable(api-gateway
   src/main.cpp
+  src/cors.cpp
   src/gateway_settings.cpp
+  src/handlers/health_handler.cpp
   src/handlers/proxy_handlers.cpp
 )
 

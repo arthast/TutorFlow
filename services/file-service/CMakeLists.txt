@@ -4,7 +4,6 @@ add_executable(file-service
     src/domain/models.cpp
     src/domain/file_service.cpp
     src/repositories/file_repository.cpp
-    src/clients/identity_client.cpp
     src/handlers/file_handlers.cpp
 )
 
@@ -13,6 +12,7 @@ target_include_directories(file-service PRIVATE src)
 target_link_libraries(file-service
     PRIVATE
         tutorflow_common
+        tutorflow_clients
         userver::core
         userver::postgresql
 )

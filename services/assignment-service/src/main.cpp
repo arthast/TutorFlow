@@ -6,8 +6,8 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <tutorflow/common/health_handler.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
-#include "clients/identity_client.hpp"
 #include "domain/assignment_service.hpp"
 #include "handlers/assignment_handlers.hpp"
 #include "repositories/assignment_repository.hpp"
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::components::Postgres>("assignment-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::assignment::AssignmentRepository>()
-          .Append<tutorflow::assignment::HttpIdentityClient>()
+          .Append<tutorflow::clients::HttpIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
           .Append<tutorflow::assignment::CreateAssignmentHandler>()
           .Append<tutorflow::assignment::ListAssignmentsHandler>()

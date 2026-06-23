@@ -28,8 +28,11 @@ public:
 
   Receipt CreateReceipt(const CreateReceiptRequest &request) const;
   std::vector<Receipt>
-  ListReceipts(const std::string &teacher_id,
-               const std::optional<std::string> &status) const;
+  ListReceiptsForTeacher(const std::string &teacher_id,
+                         const std::optional<std::string> &status) const;
+  std::vector<Receipt>
+  ListReceiptsForStudent(const std::string &student_id,
+                         const std::optional<std::string> &status) const;
   std::optional<Receipt> FindReceipt(const std::string &receipt_id) const;
   Receipt ConfirmReceipt(const std::string &receipt_id,
                          const std::string &teacher_id) const;

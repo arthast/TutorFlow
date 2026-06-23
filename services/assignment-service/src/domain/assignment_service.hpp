@@ -13,10 +13,13 @@ namespace tutorflow::common {
 struct AuthContext;
 }
 
+namespace tutorflow::clients {
+class IdentityClient;
+}
+
 namespace tutorflow::assignment {
 
 class AssignmentRepository;
-class IdentityClient;
 
 class AssignmentService final
     : public userver::components::LoggableComponentBase {
@@ -30,7 +33,8 @@ public:
                               const CreateAssignmentRequest &request) const;
   std::vector<Assignment>
   ListAssignments(const tutorflow::common::AuthContext &auth) const;
-  AssignmentDetail GetAssignment(const std::string &assignment_id) const;
+  AssignmentDetail GetAssignment(const tutorflow::common::AuthContext &auth,
+                                 const std::string &assignment_id) const;
   Submission SubmitAssignment(const tutorflow::common::AuthContext &auth,
                               const std::string &assignment_id,
                               const SubmitRequest &request) const;
@@ -43,7 +47,7 @@ public:
 
 private:
   AssignmentRepository &repository_;
-  IdentityClient &identity_;
+  tutorflow::clients::IdentityClient &identity_;
 };
 
 } // namespace tutorflow::assignment

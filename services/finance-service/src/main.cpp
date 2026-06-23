@@ -6,8 +6,8 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <tutorflow/common/health_handler.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
-#include "clients/identity_client.hpp"
 #include "domain/finance_service.hpp"
 #include "handlers/finance_handlers.hpp"
 #include "repositories/finance_repository.hpp"
@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
           .Append<userver::components::Postgres>("finance-db")
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::finance::FinanceRepository>()
-          .Append<tutorflow::finance::HttpIdentityClient>()
+          .Append<tutorflow::clients::HttpIdentityClient>()
           .Append<tutorflow::finance::FinanceService>()
           .Append<tutorflow::finance::CreateChargeHandler>()
           .Append<tutorflow::finance::GetBalanceHandler>()

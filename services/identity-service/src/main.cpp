@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
             .Append<tutorflow::identity::IdentityService>()
             .Append<tutorflow::identity::RegisterHandler>()
             .Append<tutorflow::identity::LoginHandler>()
+            .Append<tutorflow::identity::ChangePasswordHandler>()
             .Append<tutorflow::identity::GetUserHandler>()
             .Append<tutorflow::identity::CheckAccessHandler>()
             .Append<tutorflow::identity::CreateStudentHandler>()

@@ -161,6 +161,26 @@ TokenResponse IdentityService::Login(const LoginRequest& req) const {
     return IssueToken(found->first);
 }
 
+void IdentityService::ChangePassword(
+    const std::string& user_id, const ChangePasswordRequest& req) const {
+    if (req.current_password.empty() || req.new_password.empty()) {
+        throw tutorflow::common::ServiceError::Validation(
+            "current_password and new_password are required");
+    }
+    if (req.new_password.size() < 8) {
+        throw tutorflow::common::ServiceError::Validation(
+            "new_password must be at least 8 characters");
+    }
+    auto found = repository_.FindUserWithHashById(user_id);
+    if (!found) {
+        throw tutorflow::common::ServiceError::Unauthorized("invalid credentials");
+    }
+    if (!VerifyPassword(req.current_password, found->second)) {
+        throw tutorflow::common::ServiceError::Unauthorized("invalid credentials");
+    }
+    repository_.UpdatePasswordHash(user_id, HashPassword(req.new_password));
+}
+
 User IdentityService::GetUser(const std::string& user_id) const {
     auto found = repository_.FindUserById(user_id);
     if (!found) {
@@ -176,10 +196,16 @@ CheckAccessResult IdentityService::CheckAccess(
 
 StudentLink IdentityService::CreateStudent(
     const std::string& teacher_id, const CreateStudentRequest& req) const {
-    if (req.display_name.empty()) {
-        throw tutorflow::common::ServiceError::Validation("display_name is required");
+    if (req.email.empty() || req.password.empty() || req.display_name.empty()) {
+        throw tutorflow::common::ServiceError::Validation(
+            "email, password and display_name are required");
     }
-    return repository_.CreateStudentWithLink(teacher_id, req);
+    if (req.password.size() < 8) {
+        throw tutorflow::common::ServiceError::Validation(
+            "password must be at least 8 characters");
+    }
+    return repository_.CreateStudentWithLink(teacher_id, req,
+                                             HashPassword(req.password));
 }
 
 StudentLink IdentityService::GetStudentLink(

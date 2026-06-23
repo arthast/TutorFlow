@@ -19,6 +19,7 @@ GatewaySettings::GatewaySettings(
     const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       jwt_secret_(config["jwt-secret"].As<std::string>()),
+      cors_origin_(config["cors-origin"].As<std::string>("http://localhost:5173")),
       identity_base_url_(
           TrimTrailingSlash(config["identity-base-url"].As<std::string>())),
       lesson_base_url_(
@@ -41,6 +42,10 @@ properties:
     jwt-secret:
         type: string
         description: JWT verification secret shared with identity-service
+    cors-origin:
+        type: string
+        description: Browser origin allowed by api-gateway CORS
+        defaultDescription: http://localhost:5173
     identity-base-url:
         type: string
         description: identity-service base URL
