@@ -30,6 +30,26 @@ using tutorflow::common::ParseJsonBody;
 using tutorflow::common::RequireString;
 using tutorflow::common::ServiceError;
 
+std::vector<std::string> OptionalStringArray(const json::Value &body,
+                                             std::string_view field) {
+  const std::string key{field};
+  if (!body.HasMember(key) || body[key].IsNull()) {
+    return {};
+  }
+  if (!body[key].IsArray()) {
+    throw ServiceError::Validation("field must be an array: " + key);
+  }
+  std::vector<std::string> values;
+  for (const auto &item : body[key]) {
+    auto value = item.As<std::string>("");
+    if (value.empty()) {
+      throw ServiceError::Validation("array item must not be empty: " + key);
+    }
+    values.push_back(std::move(value));
+  }
+  return values;
+}
+
 CreateSlotRequest ParseCreateSlotRequest(const http::HttpRequest &request) {
   const auto body = ParseJsonBody(request);
   return CreateSlotRequest{
@@ -48,6 +68,7 @@ CreateLessonRequest ParseCreateLessonRequest(const http::HttpRequest &request) {
       .topic = OptionalString(body, "topic"),
       .notes = OptionalString(body, "notes"),
       .price = OptionalDouble(body, "price"),
+      .file_ids = OptionalStringArray(body, "file_ids"),
   };
 }
 

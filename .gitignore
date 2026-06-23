@@ -7,9 +7,12 @@
 # В git коммитятся: исходники, docs/ (PLAN, контракты), AGENTS.md, README.md, .env.example.
 # Локальны только личное назначение агента, заметки и секреты.
 AGENTS.local.md
+AGENTS.local*.md
 *.local.md
 local/
 **/local/
+docs/agent-*.md
+docs/lead-to-agent-*.md
 
 # Локальные настройки агентских инструментов
 .claude/settings.local.json

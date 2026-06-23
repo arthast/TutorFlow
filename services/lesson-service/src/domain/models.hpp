@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <userver/formats/json/value.hpp>
 
@@ -27,6 +28,7 @@ struct Lesson {
   std::optional<std::string> topic;
   std::optional<std::string> notes;
   double price{};
+  std::vector<std::string> file_ids;
   std::string created_at;
   std::optional<std::string> completed_at;
 };
@@ -44,6 +46,7 @@ struct CreateLessonRequest {
   std::optional<std::string> topic;
   std::optional<std::string> notes;
   std::optional<double> price;
+  std::vector<std::string> file_ids;
 };
 
 userver::formats::json::Value ToJson(const Slot &slot);
