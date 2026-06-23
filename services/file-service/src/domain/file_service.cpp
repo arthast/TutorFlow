@@ -11,8 +11,8 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <tutorflow/common/errors.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
-#include "clients/identity_client.hpp"
 #include "repositories/file_repository.hpp"
 
 namespace tutorflow::file {
@@ -21,7 +21,7 @@ FileService::FileService(const userver::components::ComponentConfig& config,
                          const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<FileRepository>()),
-      identity_(context.FindComponent<HttpIdentityClient>()),
+      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()),
       fs_tp_(context.GetTaskProcessor("fs-task-processor")),
       storage_dir_(config["storage-dir"].As<std::string>()),
       max_size_bytes_(config["max-size-bytes"].As<int64_t>(10 * 1024 * 1024)) {}
@@ -100,9 +100,9 @@ std::pair<FileMeta, std::string> FileService::Download(
                 "access denied: not the file owner");
         }
         // Teacher path: verify teacher-student link via identity
-        const bool allowed =
+        const auto access =
             identity_.CheckAccess(requester_id, meta.owner_user_id);
-        if (!allowed) {
+        if (!access.allowed) {
             throw tutorflow::common::ServiceError::Forbidden(
                 "access denied: no active teacher-student relation");
         }

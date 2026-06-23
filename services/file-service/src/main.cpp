@@ -6,8 +6,8 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include <tutorflow/common/health_handler.hpp>
+#include <tutorflow/clients/identity_client.hpp>
 
-#include "clients/identity_client.hpp"
 #include "domain/file_service.hpp"
 #include "handlers/file_handlers.hpp"
 #include "repositories/file_repository.hpp"
@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
             .Append<userver::components::Postgres>("file-db")
             .Append<tutorflow::common::HealthHandler>()
             .Append<tutorflow::file::FileRepository>()
-            .Append<tutorflow::file::HttpIdentityClient>()
+            .Append<tutorflow::clients::HttpIdentityClient>()
             .Append<tutorflow::file::FileService>()
             .Append<tutorflow::file::UploadHandler>()
             .Append<tutorflow::file::GetMetaHandler>()

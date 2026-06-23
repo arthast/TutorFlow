@@ -9,10 +9,10 @@
 #include <userver/formats/json/serialize.hpp>
 #include <userver/formats/json/value.hpp>
 #include <userver/server/http/http_request.hpp>
-#include <userver/server/http/http_status.hpp>
 
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
+#include <tutorflow/common/handler_helpers.hpp>
 
 #include "domain/file_service.hpp"
 #include "domain/models.hpp"
@@ -20,35 +20,9 @@
 namespace tutorflow::file {
 namespace {
 namespace http = userver::server::http;
-namespace json = userver::formats::json;
+using tutorflow::common::HandleEnvelope;
+using tutorflow::common::JsonResponse;
 using tutorflow::common::ServiceError;
-
-// ---------------------------------------------------------------------------
-// HTTP helpers (same pattern as other services)
-// ---------------------------------------------------------------------------
-
-std::string JsonResponse(const http::HttpRequest& req, json::Value body,
-                         http::HttpStatus status = http::HttpStatus::kOk) {
-    req.GetHttpResponse().SetStatus(status);
-    req.GetHttpResponse().SetHeader(std::string{"Content-Type"},
-                                    std::string{"application/json; charset=utf-8"});
-    return json::ToString(body);
-}
-
-std::string ErrorResponse(const http::HttpRequest& req, const ServiceError& e) {
-    return JsonResponse(req, tutorflow::common::MakeErrorBody(e), e.Status());
-}
-
-template <typename Func>
-std::string HandleEnvelope(const http::HttpRequest& req, Func&& func) {
-    try {
-        return func();
-    } catch (const ServiceError& e) {
-        return ErrorResponse(req, e);
-    } catch (const std::exception& e) {
-        return ErrorResponse(req, ServiceError::Internal(e.what()));
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Multipart/form-data parser

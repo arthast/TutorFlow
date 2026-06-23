@@ -1,4 +1,4 @@
-#include "clients/identity_client.hpp"
+#include <tutorflow/clients/identity_client.hpp>
 
 #include <chrono>
 
@@ -8,15 +8,15 @@
 #include <userver/formats/json/value_builder.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
-namespace tutorflow::lesson {
+namespace tutorflow::clients {
 namespace {
-namespace json = userver::formats::json;
 namespace common_formats = userver::formats::common;
-} // namespace
+namespace json = userver::formats::json;
+}  // namespace
 
 HttpIdentityClient::HttpIdentityClient(
-    const userver::components::ComponentConfig &config,
-    const userver::components::ComponentContext &context)
+    const userver::components::ComponentConfig& config,
+    const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       transport_(
           context.FindComponent<userver::components::HttpClient>()
@@ -56,4 +56,4 @@ properties:
 )");
 }
 
-} // namespace tutorflow::lesson
+}  // namespace tutorflow::clients

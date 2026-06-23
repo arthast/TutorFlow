@@ -13,10 +13,13 @@ namespace tutorflow::common {
 struct AuthContext;
 }
 
+namespace tutorflow::clients {
+class IdentityClient;
+}
+
 namespace tutorflow::lesson {
 
 class FinanceClient;
-class IdentityClient;
 class LessonRepository;
 
 class LessonService final : public userver::components::LoggableComponentBase {
@@ -42,7 +45,7 @@ public:
 
 private:
   LessonRepository &repository_;
-  IdentityClient &identity_;
+  tutorflow::clients::IdentityClient &identity_;
   FinanceClient &finance_;
 };
 

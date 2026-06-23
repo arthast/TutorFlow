@@ -10,10 +10,9 @@
 #include <userver/formats/json/value.hpp>
 #include <userver/formats/json/value_builder.hpp>
 #include <userver/server/http/http_request.hpp>
-#include <userver/server/http/http_status.hpp>
 
 #include <tutorflow/common/auth_context.hpp>
-#include <tutorflow/common/errors.hpp>
+#include <tutorflow/common/handler_helpers.hpp>
 
 #include "domain/assignment_service.hpp"
 #include "domain/models.hpp"
@@ -23,66 +22,12 @@ namespace {
 namespace http = userver::server::http;
 namespace json = userver::formats::json;
 namespace common_formats = userver::formats::common;
+using tutorflow::common::HandleEnvelope;
+using tutorflow::common::JsonResponse;
+using tutorflow::common::OptionalString;
+using tutorflow::common::ParseJsonBody;
+using tutorflow::common::RequireString;
 using tutorflow::common::ServiceError;
-
-std::string JsonResponse(const http::HttpRequest &request, json::Value body,
-                         http::HttpStatus status = http::HttpStatus::kOk) {
-  request.GetHttpResponse().SetStatus(status);
-  request.GetHttpResponse().SetHeader(
-      std::string{"Content-Type"},
-      std::string{"application/json; charset=utf-8"});
-  return json::ToString(body);
-}
-
-std::string ErrorResponse(const http::HttpRequest &request,
-                          const ServiceError &error) {
-  return JsonResponse(request, tutorflow::common::MakeErrorBody(error),
-                      error.Status());
-}
-
-template <typename Func>
-std::string HandleEnvelope(const http::HttpRequest &request, Func &&func) {
-  try {
-    return func();
-  } catch (const ServiceError &error) {
-    return ErrorResponse(request, error);
-  } catch (const std::exception &error) {
-    return ErrorResponse(request, ServiceError::Internal(error.what()));
-  }
-}
-
-json::Value ParseJsonBody(const http::HttpRequest &request) {
-  try {
-    return json::FromString(request.RequestBody());
-  } catch (const std::exception &) {
-    throw ServiceError::Validation("request body must be valid JSON");
-  }
-}
-
-std::string RequireString(const json::Value &body, std::string_view field) {
-  const std::string key{field};
-  if (!body.HasMember(key) || body[key].IsNull()) {
-    throw ServiceError::Validation("missing required field: " + key);
-  }
-  auto value = body[key].As<std::string>("");
-  if (value.empty()) {
-    throw ServiceError::Validation("field must not be empty: " + key);
-  }
-  return value;
-}
-
-std::optional<std::string> OptionalString(const json::Value &body,
-                                          std::string_view field) {
-  const std::string key{field};
-  if (!body.HasMember(key) || body[key].IsNull()) {
-    return std::nullopt;
-  }
-  auto value = body[key].As<std::string>("");
-  if (value.empty()) {
-    return std::nullopt;
-  }
-  return value;
-}
 
 std::vector<std::string> OptionalStringArray(const json::Value &body,
                                              std::string_view field) {
