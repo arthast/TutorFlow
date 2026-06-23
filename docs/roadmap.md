@@ -180,6 +180,32 @@ tests/
 
 ---
 
+## Рефактор R1 — вынос общего в libs (перед 2.5)
+
+Чистый механический рефактор, без изменения поведения и контрактов. Одной
+сфокусированной задачей в одну сессию (трогает libs + сервисы).
+
+**A. handler-хелперы → `libs/common/handler_helpers.hpp`** (чистая инфра):
+`JsonResponse`, `ErrorResponse`, `HandleEnvelope`, `ParseJsonBody`, `RequireString`,
+`OptionalString`, `RequireDouble`, `OptionalDouble` — сейчас продублированы в
+анонимных namespace каждого сервиса. Вынести в общий заголовок, убрать локальные
+копии. Сервисы: identity, lesson, assignment, finance, file. **gateway — НЕ в этот
+заход** (у него response-обёртки завязаны на CORS; адаптируем отдельно при желании).
+
+**B. `IdentityClient` → новый `libs/clients`** (нельзя в common — несёт
+identity-DTO, правило §7): `tutorflow::clients::{AccessCheckResult, IdentityClient,
+HttpIdentityClient}`. `AccessCheckResult{allowed, status, hourly_rate?}`. Компонент
+оставить под именем `identity-client` (env `IDENTITY_SERVICE_URL`) → `static_config`
+сервисов не меняется. lesson/assignment/finance/file удаляют локальные
+`clients/identity_client.*` и используют общий; file переключается с `-> bool` на
+`.allowed`.
+
+DoD: все 6 сервисов собираются (`docker compose build`); `smoke_mvp.py` → SMOKE OK;
+тесты Stage 2 зелёные; локальных копий identity_client/handler-хелперов в 5
+сервисах не осталось; поведение и контракты не изменились.
+
+---
+
 ## Этап 2.5 — Demo-ready backend
 
 Фокус: не расширять архитектуру, а сделать текущие 6 сервисов проверяемым и

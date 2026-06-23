@@ -329,7 +329,25 @@ def main() -> int:
                       "review assignment")
         require_equal(step, reviewed.get("status"), "accepted", "review status")
 
-        step = "10 teacher completes lesson"
+        step = "10 teacher comments assignment"
+        comment = require_dict(
+            step,
+            post_json(
+                step,
+                f"/assignments/{assignment_id}/comments",
+                {"text": "Smoke follow-up comment"},
+                [201],
+                teacher_token,
+            ),
+        )
+        require_equal(step, comment.get("assignment_id"), assignment_id,
+                      "comment assignment")
+        require_equal(step, comment.get("author_id"), teacher_id,
+                      "comment author")
+        require_equal(step, comment.get("text"), "Smoke follow-up comment",
+                      "comment text")
+
+        step = "11 teacher completes lesson"
         completed_lesson = require_dict(
             step,
             post_json(step, f"/lessons/{lesson_id}/complete", {}, [200], teacher_token),
@@ -337,7 +355,7 @@ def main() -> int:
         require_equal(step, completed_lesson.get("status"), "completed",
                       "lesson complete status")
 
-        step = "11 finance creates charge"
+        step = "12 finance creates charge"
         transactions = transactions_for(step, teacher_token, student_id)
         charges = [
             tx for tx in transactions
@@ -361,7 +379,7 @@ def main() -> int:
         require_money(step, repeat_balance.get("balance"), lesson_price,
                       "idempotent complete balance")
 
-        step = "12 student uploads receipt"
+        step = "13 student uploads receipt"
         content_type, multipart_body = make_multipart(
             {"purpose": "payment_receipt"},
             "file",
