@@ -24,6 +24,12 @@ struct TokenResponse {
     std::vector<std::string> roles;
 };
 
+struct TokenClaims {
+    std::string sub;
+    std::vector<std::string> roles;
+    int64_t exp{};
+};
+
 struct CheckAccessResult {
     bool allowed{};
     std::string status;

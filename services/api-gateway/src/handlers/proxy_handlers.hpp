@@ -13,6 +13,8 @@
 
 namespace tutorflow::gateway {
 
+class GrpcIdentityClient;
+
 struct AuthInfo {
   std::string user_id;
   std::string roles_csv;
@@ -36,9 +38,12 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
       const userver::server::http::HttpRequest& request,
       const std::function<std::string()>& func) const;
 
+  GrpcIdentityClient& Identity() const noexcept { return identity_client_; }
+
  private:
   const GatewaySettings& settings_;
   userver::clients::http::Client& http_client_;
+  GrpcIdentityClient& identity_client_;
 };
 
 #define TUTORFLOW_GATEWAY_DECLARE_HANDLER(ClassName, NameValue)              \

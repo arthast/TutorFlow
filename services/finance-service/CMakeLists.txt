@@ -12,7 +12,8 @@ target_include_directories(finance-service PRIVATE src)
 target_link_libraries(finance-service
     PRIVATE
         tutorflow_common
-        tutorflow_clients
+        tutorflow_grpc_clients
         userver::core
+        userver::grpc
         userver::postgresql
 )

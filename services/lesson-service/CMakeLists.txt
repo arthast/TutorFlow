@@ -13,7 +13,8 @@ target_include_directories(lesson-service PRIVATE src)
 target_link_libraries(lesson-service
     PRIVATE
         tutorflow_common
-        tutorflow_clients
+        tutorflow_grpc_clients
         userver::core
+        userver::grpc
         userver::postgresql
 )

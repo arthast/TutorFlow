@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package tutorflow.assignment.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service AssignmentService {
+  rpc CreateAssignment(CreateAssignmentRequest) returns (Assignment);
+  rpc ListAssignments(ListAssignmentsRequest) returns (ListAssignmentsResponse);
+  rpc GetAssignment(GetAssignmentRequest) returns (AssignmentDetail);
+  rpc SubmitAssignment(SubmitAssignmentRequest) returns (Submission);
+  rpc ReviewAssignment(ReviewAssignmentRequest) returns (Submission);
+  rpc AddComment(AddCommentRequest) returns (Comment);
+}
+
+message CreateAssignmentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+  string title = 3;
+  optional string description = 4;
+  optional string due_at = 5;
+  repeated string file_ids = 6;
+}
+
+message Assignment {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  string title = 4;
+  optional string description = 5;
+  optional string due_at = 6;
+  string status = 7;
+  string created_at = 8;
+}
+
+message ListAssignmentsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  tutorflow.common.v1.PageRequest page = 2;
+}
+
+message ListAssignmentsResponse {
+  repeated Assignment assignments = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message GetAssignmentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string assignment_id = 2;
+}
+
+message AssignmentDetail {
+  Assignment assignment = 1;
+  repeated string file_ids = 2;
+  repeated Submission submissions = 3;
+  repeated Comment comments = 4;
+}
+
+message SubmitAssignmentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string assignment_id = 2;
+  optional string text_answer = 3;
+  repeated string file_ids = 4;
+}
+
+message Submission {
+  string id = 1;
+  string assignment_id = 2;
+  string student_id = 3;
+  optional string text_answer = 4;
+  string status = 5;
+  string submitted_at = 6;
+  repeated string file_ids = 7;
+}
+
+message ReviewAssignmentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string assignment_id = 2;
+  string status = 3;
+  optional string comment = 4;
+}
+
+message AddCommentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string assignment_id = 2;
+  string text = 3;
+}
+
+message Comment {
+  string id = 1;
+  string assignment_id = 2;
+  string author_id = 3;
+  string text = 4;
+  string created_at = 5;
+}

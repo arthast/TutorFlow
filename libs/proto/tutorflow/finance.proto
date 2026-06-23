@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package tutorflow.finance.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service FinanceService {
+  rpc CreateCharge(CreateChargeRequest) returns (Transaction);
+  rpc GetBalance(GetBalanceRequest) returns (Balance);
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  rpc CreatePaymentReceipt(CreateReceiptRequest) returns (Receipt);
+  rpc ListPaymentReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
+  rpc ConfirmPaymentReceipt(ConfirmReceiptRequest) returns (Receipt);
+  rpc RejectPaymentReceipt(RejectReceiptRequest) returns (Receipt);
+}
+
+message CreateChargeRequest {
+  string teacher_id = 1;
+  string student_id = 2;
+  string lesson_id = 3;
+  double amount = 4;
+  string currency = 5;
+  optional string comment = 6;
+}
+
+message Transaction {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  string type = 4;
+  double amount = 5;
+  string currency = 6;
+  optional string lesson_id = 7;
+  optional string receipt_id = 8;
+  optional string comment = 9;
+  string created_at = 10;
+}
+
+message GetBalanceRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+}
+
+message Balance {
+  string student_id = 1;
+  string currency = 2;
+  double balance = 3;
+}
+
+message ListTransactionsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+  tutorflow.common.v1.PageRequest page = 3;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message CreateReceiptRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string teacher_id = 2;
+  string file_id = 3;
+  double amount = 4;
+  string currency = 5;
+  optional string comment = 6;
+}
+
+message Receipt {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  string file_id = 4;
+  double amount = 5;
+  string currency = 6;
+  string status = 7;
+  string submitted_at = 8;
+  optional string reviewed_at = 9;
+  optional string reviewed_by = 10;
+  optional string comment = 11;
+}
+
+message ListReceiptsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  optional string status = 2;
+  tutorflow.common.v1.PageRequest page = 3;
+}
+
+message ListReceiptsResponse {
+  repeated Receipt receipts = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message ConfirmReceiptRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string receipt_id = 2;
+}
+
+message RejectReceiptRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string receipt_id = 2;
+  optional string comment = 3;
+}

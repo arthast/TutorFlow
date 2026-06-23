@@ -2,7 +2,7 @@
 
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
-#include <tutorflow/clients/identity_client.hpp>
+#include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "repositories/finance_repository.hpp"
 
@@ -40,7 +40,7 @@ FinanceService::FinanceService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<FinanceRepository>()),
-      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()) {}
+      identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()) {}
 
 CreateChargeResult
 FinanceService::CreateCharge(const CreateChargeRequest &request) const {

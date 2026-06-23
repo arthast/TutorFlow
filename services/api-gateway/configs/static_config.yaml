@@ -24,8 +24,16 @@ components_manager:
         http-client: {}
         http-client-core:
             fs-task-processor: fs-task-processor
+        grpc-client-common:
+            blocking-task-processor: fs-task-processor
+        grpc-client-middlewares-pipeline: {}
+        grpc-client-logging: {}
+        grpc-client-factory: {}
         dns-client: {}
         testsuite-support: {}
+        gateway-identity-grpc-client:
+            endpoint: dns:///identity-service:9081
+            timeout-ms: 5000
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN

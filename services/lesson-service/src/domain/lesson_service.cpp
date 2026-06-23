@@ -2,7 +2,7 @@
 
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
-#include <tutorflow/clients/identity_client.hpp>
+#include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "clients/finance_client.hpp"
 #include "repositories/lesson_repository.hpp"
@@ -14,7 +14,7 @@ LessonService::LessonService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<LessonRepository>()),
-      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()),
+      identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()),
       finance_(context.FindComponent<HttpFinanceClient>()) {}
 
 Slot LessonService::CreateSlot(const tutorflow::common::AuthContext &auth,
