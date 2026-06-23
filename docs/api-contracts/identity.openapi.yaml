@@ -70,6 +70,7 @@ paths:
       responses:
         "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
         "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }   # email уже занят (code: email_taken)
   /internal/students/{studentId}:
     get:
       summary: Карточка ученика (со связью)

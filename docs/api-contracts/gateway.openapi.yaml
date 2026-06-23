@@ -81,6 +81,7 @@ paths:
       responses:
         "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/StudentLink" } } } }
         "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
     get:
       summary: Список учеников преподавателя (teacher)
       responses:
@@ -207,11 +208,12 @@ paths:
         "409": { $ref: "#/components/responses/Error" }
   /payments/receipts/{receiptId}/reject:
     post:
-      summary: Отклонить чек (teacher)
+      summary: Отклонить чек (teacher). Идемпотентно; reject уже confirmed чека → 409.
       parameters: [ { $ref: "#/components/parameters/ReceiptId" } ]
       requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/RejectRequest" } } } }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+        "409": { $ref: "#/components/responses/Error" }
 
   # ---------- Files ----------
   /files:

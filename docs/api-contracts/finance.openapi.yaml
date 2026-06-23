@@ -58,8 +58,10 @@ paths:
   /internal/payment-receipts/{receiptId}/confirm:
     post:
       summary: >
-        Подтвердить чек (teacher). ИДЕМПОТЕНТНО: повторное подтверждение не создаёт
-        второй payment. Создаёт операцию type=payment, amount=receipt.amount. Баланс меняется.
+        Подтвердить чек (teacher). ИДЕМПОТЕНТНО: повтор confirm для уже confirmed
+        чека → 200 с текущим состоянием, второй payment НЕ создаётся, баланс
+        меняется один раз. Confirm уже rejected чека → 409 (смена финального
+        решения). Создаёт операцию type=payment, amount=receipt.amount.
       parameters: [ { $ref: "#/components/parameters/ReceiptId" }, { $ref: "#/components/parameters/XUserId" } ]
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
@@ -67,11 +69,14 @@ paths:
 
   /internal/payment-receipts/{receiptId}/reject:
     post:
-      summary: Отклонить чек (teacher). Баланс не меняется.
+      summary: >
+        Отклонить чек (teacher). Баланс не меняется. ИДЕМПОТЕНТНО: повтор reject
+        для уже rejected чека → 200. Reject уже confirmed чека → 409.
       parameters: [ { $ref: "#/components/parameters/ReceiptId" }, { $ref: "#/components/parameters/XUserId" } ]
       requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/RejectRequest" } } } }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
+        "409": { $ref: "#/components/responses/Error" }
 
 components:
   parameters:

@@ -92,14 +92,16 @@ POST /auth/change-password (новый, нужен Bearer) — body { current_pa
 OpenAPI) → согласовано. DoD: ученик логинится по temp-паролю, меняет пароль,
 выполняет submit/upload под собой.
 
-### 1.2 Проверить hourly_rate в lesson-service
+### 1.2 Проверить hourly_rate в lesson-service  ✅ СДЕЛАНО
 identity отдаёт `check-access → {allowed, status, hourly_rate}` (в `main`).
 Убедиться, что lesson при `CreateLessonRequest.price == null` снимает
 `lessons.price` из `hourly_rate`; временный fallback `422 business_rule`
 оставить только когда и price, и hourly_rate пусты. Снять раздел «Known Contract
 Gap» из `docs/agent-b-lesson-service.md`, если ещё не снят.
 
-### 1.3 Привести docs к реальным контрактам
+### 1.3 Привести docs к реальным контрактам  ✅ СДЕЛАНО
+(check-access и `purpose` уже консистентны; PLAN §10 разведён на «реально/разрешено».)
+
 - identity: проверка связи — `/internal/relations/check-access` (не
   `/teacher-student-links/check`).
 - file-service: поле `purpose` (не `resource_type`/`resource_id`); `resource_id`
@@ -128,12 +130,11 @@ Python (удобнее с JSON/токенами/файлами). Гоняет в
 ```
 DoD: скрипт проходит 15/15 на чистой `docker compose up`.
 
-### 1.6 Дубль email при создании ученика → 409 (мелкая доработка)
-Сейчас `POST /students` с уже существующим email упирается в `users.email UNIQUE`
-и, вероятно, возвращает 500. Поймать `unique_violation` в identity-репозитории и
-отдавать `409 conflict` в едином envelope (код `email_taken`). Добавить `409` в
-`identity`/`gateway` OpenAPI для `/students` (правка контракта — через
-координатора). Только identity + gateway.
+### 1.6 Дубль email при создании ученика → 409 (мелкая доработка)  ✅ СДЕЛАНО
+Контракты УЖЕ обновлены координатором (`409` добавлен в `/students` в identity +
+gateway OpenAPI). Осталась реализация в identity: поймать `unique_violation` в
+репозитории и вернуть `409` в едином envelope (код `email_taken`). Только
+identity-service.
 
 ### 1.7 Receipt: student_id из X-User-Id (фикс разрыва на шаге 12 smoke)  ✅ СДЕЛАНО
 Найдено в 1.5: finance `POST /internal/payment-receipts` требовал `teacher_id` и
@@ -145,14 +146,17 @@ DoD: скрипт проходит 15/15 на чистой `docker compose up`.
 `teacher_id` — из тела; перестать требовать `student_id` в теле. Обновить
 `scripts/smoke_mvp.py` (шаг 12 шлёт `teacher_id`). Только finance-service (+ smoke).
 
-**Результат Этапа 1:** ✅ ДОСТИГНУТ — полный 15-шаговый сценарий проходит через
-gateway end-to-end (`scripts/smoke_mvp.py` → SMOKE OK). Остаются мелкие
-доработки 1.2 (проверить hourly_rate), 1.3 (выровнять доки), 1.6 (дубль email →
-409) — не блокируют e2e, можно делать попутно.
+**Результат Этапа 1:** ✅ ПОЛНОСТЬЮ ЗАКРЫТ — e2e зелёный (`scripts/smoke_mvp.py`
+→ SMOKE OK), все доработки 1.2–1.7 сделаны. Доп. бонус: assignment `GetAssignment`
+теперь проверяет участника (`EnsureParticipant`) — закрыт кейс «чужой ДЗ по id».
 
 ---
 
-## Этап 2 — Tests
+## Этап 2 — Tests  ✅ СДЕЛАНО (ждёт код-ревью координатора)
+
+Реализованы: health, негативный auth (+защита от подделки X-User-*), контроль
+доступа (чужой ученик/чужие ДЗ), идемпотентность charge и правила баланса/чеков.
+Гайд: `docs/testing-guide-stage2.md`.
 
 Сначала один e2e (Этап 1.5), потом негативные/бизнес-проверки. Не писать 100
 unit-тестов раньше времени — для микросервисного MVP важнее, что сценарий проходит.
@@ -176,56 +180,105 @@ tests/
 
 ---
 
-## Этап 3 — Simple frontend
+## Этап 2.5 — Demo-ready backend
 
-Цель — показать сценарий, не идеальный UI. Стек: **React + TypeScript + Vite**,
-обычные формы без дизайн-системы.
+Фокус: не расширять архитектуру, а сделать текущие 6 сервисов проверяемым и
+демонстрируемым продуктом. Делается после закрытия 1.2/1.6.
+
+### 2.5.1 Top-up тестов (недостающие edge-cases поверх Этапа 2)
+Добавить именно недостающее, не пачку ради объёма:
+- **finance — state-machine чека** (поведение зафиксировано в контракте, см. ниже):
+  - double confirm уже `confirmed` → `200` с текущим состоянием, второй `payment`
+    НЕ создаётся, баланс меняется один раз (истинная идемпотентность);
+  - confirm уже `rejected` чека → `409`; reject уже `confirmed` чека → `409`.
+- **assignment**: `student` не может `review`; `student` не может создать
+  assignment; `teacher` не может `review` чужую assignment. (Комментарии НЕ
+  ограничиваем — по бизнес-логике комментировать могут и teacher, и student.)
+- **lesson**: `student` не может создать lesson; `student` не может `complete`;
+  `teacher` не может `complete` чужой lesson.
+- **gateway**: клиент шлёт `X-User-Id` другого пользователя → gateway игнорирует
+  и подставляет id из JWT (явный security-кейс).
+
+### 2.5.2 Comment-шаг в smoke_mvp.py
+Добавить `POST /assignments/{id}/comments` после review — чтобы smoke покрывал
+весь сценарий из описания MVP (review + leave comment).
+
+### 2.5.3 README quickstart
+README = инструкция «как с нуля запустить и увидеть, что работает». Структура:
+```text
+# TutorFlow
+## Что это
+## Что реализовано в MVP
+## Архитектура
+## Сервисы
+## Как запустить        (docker compose up --build)
+## Переменные окружения
+## Миграции             (./scripts/migrate.sh all)
+## Smoke test           (python3 scripts/smoke_mvp.py → SMOKE OK = MVP flow работает)
+## Demo flow
+## API contract         (docs/api-contracts/gateway.openapi.yaml)
+## Что не входит в MVP
+## Roadmap
+```
+
+### 2.5.4 Сверить gateway OpenAPI с реализацией
+OpenAPI уже есть — НЕ создаём заново, а проверяем соответствие:
+все актуальные эндпоинты присутствуют; нет несуществующих; error envelope описан
+как `{error:{code,message,details}}`; bearer-auth описан; роли указаны в
+description. Swagger UI сейчас НЕ делаем (косметика).
+
+> Контрактная фиксация (сделано координатором): в `finance`/`gateway` OpenAPI у
+> `confirm`/`reject` добавлен `409`; идемпотентный повтор того же действия → `200`
+> с текущим состоянием; смена финального решения (confirm↔reject) → `409`.
+
+---
+
+## Этап 3 — Frontend MVP (ролевые дашборды)
+
+Цель — ролевой demo-UI под готовый backend, не идеальный продукт. Стек:
+**React + TypeScript + Vite**, обычные формы. Все запросы — ТОЛЬКО в gateway
+(:8080). Зависит от 1.4 (CORS, готово).
 ```text
 frontend/   (React + TS + Vite)
 ```
-Минимум экранов/функций:
-```text
-login / register
-Teacher dashboard:  список учеников, создать ученика, создать занятие,
-                    создать ДЗ, посмотреть решения, проверить, завершить занятие,
-                    посмотреть чеки, подтвердить чек
-Student dashboard:  список занятий, список ДЗ, сдать решение, загрузить чек, баланс
-```
-Зависит от: 1.4 (CORS). Все запросы — только в gateway (:8080).
+Teacher dashboard: login/register, students list, create student, lessons list,
+create lesson, complete lesson, assignments list, create assignment, review
+submission, receipts list, confirm/reject receipt, student balance.
+Student dashboard: login/register, my lessons, my assignments, submit assignment,
+upload receipt, my balance.
 
 ---
 
-## Этап 4 — Deploy
+## Этап 4 — Frontend polishing
 
-После smoke-теста и CORS. Наружу доступны только `frontend` и `api-gateway`;
-внутренние сервисы и postgres — нет.
+Аккуратные формы; обработка ошибок из envelope (`error.code`/`message`); loading
+states; простые role-guards в UI; demo seed / demo credentials для показа.
+
+---
+
+## Этап 4.5 — Deploy (опц., когда нужно показать вживую)
+
+Наружу только `frontend` и `api-gateway`; внутренние сервисы и postgres — нет.
 ```text
 Caddy :80/:443 → frontend (static) + api-gateway → internal services → PostgreSQL
 ```
-Артефакты:
-```text
-docker-compose.prod.yml
-Caddyfile
-.env.prod.example
-volumes:  pgdata, filestorage
-healthchecks для сервисов
-README_DEPLOY.md
-```
-Порядок: собрать образы → `docker compose up` на сервере → Caddy → env secrets →
-поднять БД и сервисы → прогнать `smoke_mvp.py` против prod/staging URL.
+Артефакты: `docker-compose.prod.yml`, `Caddyfile`, `.env.prod.example`,
+volumes (pgdata, filestorage), healthchecks, `README_DEPLOY.md`. Порядок: собрать
+образы → up на сервере → Caddy → env secrets → прогнать `smoke_mvp.py` против
+prod/staging URL.
 
 ---
 
-## Этап 5 — Future services (только после деплоя)
+## Этап 5 — Расширение архитектуры (только после demo-ready)
 
-Не превращать систему в граф «каждый зовёт каждого». Порядок добавления:
+Не превращать систему в граф «каждый зовёт каждого». Порядок:
 ```text
-1 Kafka / outbox (вынести события из синхронных вызовов)
-2 notification-service   (первый: хорошо ложится на события, продуктово полезен,
-                          показывает Kafka/outbox, проще чата)
+1 notification-service   (первый: ложится на события; на старте можно без Kafka —
+                          синхронные заглушки/таблица уведомлений)
+2 Kafka / outbox         (когда события реально нужны нескольким сервисам)
 3 report-service         (read-модели для dashboard из событий)
 4 chat-service
-5 Redis                  (чат, кэш, online-state)
+5 Redis / WebSocket      (чат, кэш, online-state)
 6 MinIO/S3               (вместо локального file storage)
 ```
 identity позже можно разделить на `auth-service` + `user-service`. Прямой вызов
@@ -233,10 +286,18 @@ identity позже можно разделить на `auth-service` + `user-se
 
 ---
 
+## Backlog (не в критическом пути MVP)
+- **file-service: хранить опциональный `resource_id`** в метаданных файла для
+  аудита и кросс-ресурсного поиска. Сейчас связь уже держится на стороне
+  потребителей (`assignment_files.file_id`, `submission_files.file_id`,
+  `payment_receipts.file_id`), поэтому не блокирует MVP.
+  Приоритет: low до фронта, medium до chat/report.
+
+---
+
 ## Правила назначения задач
 - В один момент активен **один** агент с **одной** задачей (PLAN §13).
-- Человек называет агенту задачу по номеру (напр. «Этап 1.1»).
-- Зависимости: 1.5 требует 1.1; Этап 3 требует 1.4; Этап 4 требует Этапа 2 (smoke).
+- Человек называет агенту задачу по номеру (напр. «Этап 2.5.1»).
+- Зависимости: Этап 2.5 — после 1.2/1.6; Этап 3 — после 2.5 (и 1.4, готово).
 - Менять контракты (api-contracts) и public-сигнатуры `libs/common` — только через
-  координатора (Claude) с подтверждением человека. Задачи 1.1 и 1.4 затрагивают
-  контракты gateway/identity — согласовать ДО реализации.
+  координатора (Claude) с подтверждением человека.
