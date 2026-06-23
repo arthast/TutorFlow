@@ -121,8 +121,10 @@ std::string GetBalanceHandler::HandleRequestThrow(
     const http::HttpRequest &request,
     userver::server::request::RequestContext &) const {
   return HandleEnvelope(request, [&] {
-    return JsonResponse(request, ToJson(service_.GetBalance(
-                                     RequiredPathArg(request, "studentId"))));
+    const auto auth = tutorflow::common::ParseAuthContext(request);
+    return JsonResponse(
+        request, ToJson(service_.GetBalance(
+                     auth, RequiredPathArg(request, "studentId"))));
   });
 }
 
@@ -136,8 +138,10 @@ std::string ListTransactionsHandler::HandleRequestThrow(
     const http::HttpRequest &request,
     userver::server::request::RequestContext &) const {
   return HandleEnvelope(request, [&] {
-    return JsonResponse(request, ToJsonArray(service_.ListTransactions(
-                                     RequiredPathArg(request, "studentId"))));
+    const auto auth = tutorflow::common::ParseAuthContext(request);
+    return JsonResponse(
+        request, ToJsonArray(service_.ListTransactions(
+                     auth, RequiredPathArg(request, "studentId"))));
   });
 }
 

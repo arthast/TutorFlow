@@ -23,6 +23,12 @@ def create_receipt(student, amount=400):
     return receipt
 
 
+def list_receipts(token, path="/payments/receipts"):
+    status, body = api.get(path, token=token)
+    assert status == 200, body
+    return body
+
+
 def test_complete_is_idempotent_for_charge(teacher, student, lesson):
     status, body = complete_lesson(teacher, lesson)
     assert status == 200, body
@@ -46,6 +52,15 @@ def test_receipt_balance_rules(teacher, student, lesson):
 
     receipt = create_receipt(student)
     assert money(api.balance(student)) == 1000.0
+    assert receipt["id"] in {
+        item["id"]
+        for item in list_receipts(
+            teacher["token"], "/payments/receipts?status=pending_review"
+        )
+    }
+    assert receipt["id"] in {
+        item["id"] for item in list_receipts(student["token"])
+    }
 
     status, confirmed = api.post(
         f"/payments/receipts/{receipt['id']}/confirm",

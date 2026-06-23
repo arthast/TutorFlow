@@ -181,7 +181,7 @@ FinanceRepository::CreateReceipt(const CreateReceiptRequest &request) const {
   return RequireSingleReceipt(result);
 }
 
-std::vector<Receipt> FinanceRepository::ListReceipts(
+std::vector<Receipt> FinanceRepository::ListReceiptsForTeacher(
     const std::string &teacher_id,
     const std::optional<std::string> &status) const {
   const auto result = pg_->Execute(
@@ -191,6 +191,19 @@ std::vector<Receipt> FinanceRepository::ListReceipts(
           "WHERE teacher_id = $1::uuid AND ($2 = '' OR status = $2) "
           "ORDER BY submitted_at DESC, id DESC",
       teacher_id, status.value_or(""));
+  return RowsToVector<Receipt>(result, RowToReceipt);
+}
+
+std::vector<Receipt> FinanceRepository::ListReceiptsForStudent(
+    const std::string &student_id,
+    const std::optional<std::string> &status) const {
+  const auto result = pg_->Execute(
+      kSlave,
+      "SELECT " + std::string{kReceiptFields} +
+          " FROM payment_receipts "
+          "WHERE student_id = $1::uuid AND ($2 = '' OR status = $2) "
+          "ORDER BY submitted_at DESC, id DESC",
+      student_id, status.value_or(""));
   return RowsToVector<Receipt>(result, RowToReceipt);
 }
 

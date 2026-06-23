@@ -259,6 +259,37 @@ description. Swagger UI сейчас НЕ делаем (косметика).
 
 ---
 
+### 2.5.5 gateway: публиковать GET /payments/receipts (пре-реквизит фронта)
+finance умеет отдавать список чеков (`GET /internal/payment-receipts`, скоуп по
+X-User-Id, фильтр `?status=`), но gateway его не публикует — наружу только POST.
+Без этого преподаватель в UI не увидит чеки на подтверждение. Контракт уже
+обновлён координатором (добавлен `GET /payments/receipts`). Сделать в gateway:
+разрешить `GET` на `/payments/receipts` и проксировать в finance
+`/internal/payment-receipts` (query `?status=` прокидывать). Только api-gateway.
+
+### 2.5.6 finance: контроль доступа на balance/transactions (IDOR-фикс)
+Сейчас `GET /internal/students/{id}/balance` и `.../transactions` в finance берут
+id из пути и НЕ проверяют зовущего — любой залогиненный может прочитать чужой
+баланс. Закрыть: разрешать только если зовущий — сам ученик
+(`X-User-Id == studentId`) ИЛИ его преподаватель (identity `check-access(teacher=
+caller, student=studentId).allowed`); иначе `403`. Только finance-service
+(в handler'ах balance/transactions распарсить auth и добавить проверку; для
+teacher-кейса использовать уже имеющийся identity-client). Контракт без изменений
+(добавляется лишь `403`). Нужно для безопасного показа долга ученику (фронт уже
+зовёт `GET /students/{me}/balance`).
+
+### 2.5.7 finance: student видит свои чеки в GET /internal/payment-receipts
+После 2.5.5 gateway публикует `GET /payments/receipts`, но finance `ListReceipts`
+фильтрует только по `teacher_id = X-User-Id` — ученик получает `200 []` вместо
+своих чеков (нужно фронту: «my receipts со статусами»). Закрыть в finance-service:
+скоупить список по роли зовущего — teacher видит чеки где `teacher_id = X-User-Id`,
+student видит чеки где `student_id = X-User-Id` (роль из `X-User-Roles`). Фильтр
+`?status=` сохранить. Только finance-service. Контракт менять не требуется (summary
+`/internal/payment-receipts` GET можно уточнить координатору, что список скоупится
+по роли). Зависит от 2.5.5 (готово).
+
+---
+
 ## Этап 3 — Frontend MVP (ролевые дашборды)
 
 Цель — ролевой demo-UI под готовый backend, не идеальный продукт. Стек:
@@ -271,7 +302,10 @@ Teacher dashboard: login/register, students list, create student, lessons list,
 create lesson, complete lesson, assignments list, create assignment, review
 submission, receipts list, confirm/reject receipt, student balance.
 Student dashboard: login/register, my lessons, my assignments, submit assignment,
-upload receipt, my balance.
+upload receipt (заявить сумму + файл), my receipts со статусами, change password.
+**У ученика НЕТ баланса** — проект не про пополняемый кошелёк: ученик заявляет
+оплату + чек, преподаватель подтверждает. Баланс/долг — учётная величина только
+на стороне преподавателя.
 
 ---
 

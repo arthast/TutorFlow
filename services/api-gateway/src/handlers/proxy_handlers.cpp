@@ -457,6 +457,8 @@ std::string PaymentReceiptsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
+    // GET (список чеков) и POST (загрузка чека) идут на один internal-путь;
+    // ProxyToUpstream маршрутизирует по HTTP-методу, query (?status=) прокидывает.
     return ProxyToUpstream(request, UpstreamService::kFinance,
                            "/internal/payment-receipts", auth);
   });

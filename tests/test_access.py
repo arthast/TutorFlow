@@ -94,6 +94,38 @@ def test_teacher_cannot_review_foreign_assignment(teacher):
     assert status == 403, body
 
 
+def test_finance_balance_transactions_access(teacher, student):
+    other_teacher = api.register_teacher()
+    other_student = api.create_student(other_teacher["token"])
+
+    for endpoint in ("balance", "transactions"):
+        # сам ученик читает свои данные
+        status, body = api.get(
+            f"/students/{student['user_id']}/{endpoint}", token=student["token"]
+        )
+        assert status == 200, body
+
+        # связанный преподаватель читает данные своего ученика
+        status, body = api.get(
+            f"/students/{student['user_id']}/{endpoint}", token=teacher["token"]
+        )
+        assert status == 200, body
+
+        # чужой ученик — запрещено
+        status, body = api.get(
+            f"/students/{student['user_id']}/{endpoint}",
+            token=other_student["token"],
+        )
+        assert status == 403, body
+
+        # чужой преподаватель — запрещено
+        status, body = api.get(
+            f"/students/{student['user_id']}/{endpoint}",
+            token=other_teacher["token"],
+        )
+        assert status == 403, body
+
+
 def test_lesson_role_edges(teacher, student, lesson):
     status, body = api.post("/lessons", token=student["token"], body={
         "student_id": student["user_id"],

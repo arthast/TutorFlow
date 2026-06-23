@@ -194,6 +194,12 @@ paths:
 
   # ---------- Payments ----------
   /payments/receipts:
+    get:
+      summary: Список чеков (teacher — на проверку; student — свои). Скоуп по X-User-Id.
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [pending_review, confirmed, rejected] } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Receipt" } } } } }
     post:
       summary: Загрузить чек оплаты (student). Баланс НЕ меняется до подтверждения.
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateReceiptRequest" } } } }

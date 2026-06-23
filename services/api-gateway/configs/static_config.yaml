@@ -109,7 +109,7 @@ components_manager:
             task_processor: main-task-processor
         gateway-payment-receipts-handler:
             path: /payments/receipts
-            method: POST,OPTIONS
+            method: GET,POST,OPTIONS
             task_processor: main-task-processor
         gateway-payment-receipt-confirm-handler:
             path: /payments/receipts/{receiptId}/confirm

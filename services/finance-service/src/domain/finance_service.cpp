@@ -49,12 +49,30 @@ FinanceService::CreateCharge(const CreateChargeRequest &request) const {
   return repository_.CreateCharge(request);
 }
 
-Balance FinanceService::GetBalance(const std::string &student_id) const {
+void FinanceService::EnsureStudentAccess(
+    const tutorflow::common::AuthContext &auth,
+    const std::string &student_id) const {
+  if (auth.user_id == student_id) {
+    return;  // сам ученик
+  }
+  // Иначе зовущий должен быть преподавателем этого ученика.
+  if (identity_.CheckAccess(auth.user_id, student_id).allowed) {
+    return;
+  }
+  throw tutorflow::common::ServiceError::Forbidden(
+      "not allowed to access this student's finance data");
+}
+
+Balance FinanceService::GetBalance(const tutorflow::common::AuthContext &auth,
+                                   const std::string &student_id) const {
+  EnsureStudentAccess(auth, student_id);
   return repository_.GetBalance(student_id);
 }
 
 std::vector<Transaction>
-FinanceService::ListTransactions(const std::string &student_id) const {
+FinanceService::ListTransactions(const tutorflow::common::AuthContext &auth,
+                                 const std::string &student_id) const {
+  EnsureStudentAccess(auth, student_id);
   return repository_.ListTransactions(student_id);
 }
 
@@ -82,7 +100,14 @@ std::vector<Receipt>
 FinanceService::ListReceipts(const tutorflow::common::AuthContext &auth,
                              const std::optional<std::string> &status) const {
   ValidateStatusFilter(status);
-  return repository_.ListReceipts(auth.user_id, status);
+  if (auth.IsTeacher()) {
+    return repository_.ListReceiptsForTeacher(auth.user_id, status);
+  }
+  if (auth.IsStudent()) {
+    return repository_.ListReceiptsForStudent(auth.user_id, status);
+  }
+  throw tutorflow::common::ServiceError::Forbidden(
+      "teacher or student role required");
 }
 
 Receipt
