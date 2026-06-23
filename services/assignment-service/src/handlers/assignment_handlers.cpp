@@ -202,8 +202,10 @@ std::string GetAssignmentHandler::HandleRequestThrow(
     const http::HttpRequest &request,
     userver::server::request::RequestContext &) const {
   return HandleEnvelope(request, [&] {
+    const auto auth = tutorflow::common::ParseAuthContext(request);
     return JsonResponse(
         request, ToJson(service_.GetAssignment(
+                     auth,
                      RequiredPathArg(request, "assignmentId"))));
   });
 }

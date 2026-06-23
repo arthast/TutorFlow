@@ -30,7 +30,8 @@ public:
                               const CreateAssignmentRequest &request) const;
   std::vector<Assignment>
   ListAssignments(const tutorflow::common::AuthContext &auth) const;
-  AssignmentDetail GetAssignment(const std::string &assignment_id) const;
+  AssignmentDetail GetAssignment(const tutorflow::common::AuthContext &auth,
+                                 const std::string &assignment_id) const;
   Submission SubmitAssignment(const tutorflow::common::AuthContext &auth,
                               const std::string &assignment_id,
                               const SubmitRequest &request) const;

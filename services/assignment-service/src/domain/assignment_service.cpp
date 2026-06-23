@@ -67,8 +67,11 @@ std::vector<Assignment> AssignmentService::ListAssignments(
 }
 
 AssignmentDetail
-AssignmentService::GetAssignment(const std::string &assignment_id) const {
-  return repository_.GetAssignmentDetail(assignment_id);
+AssignmentService::GetAssignment(const tutorflow::common::AuthContext &auth,
+                                 const std::string &assignment_id) const {
+  auto detail = repository_.GetAssignmentDetail(assignment_id);
+  EnsureParticipant(detail.assignment, auth.user_id);
+  return detail;
 }
 
 Submission AssignmentService::SubmitAssignment(
