@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -16,6 +17,7 @@ namespace tutorflow::lesson {
 struct AccessCheckResult {
   bool allowed{};
   std::string status;
+  std::optional<double> hourly_rate;
 };
 
 class IdentityClient {

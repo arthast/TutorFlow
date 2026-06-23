@@ -36,6 +36,7 @@ HttpIdentityClient::CheckAccess(std::string_view teacher_id,
   return AccessCheckResult{
       .allowed = response["allowed"].As<bool>(false),
       .status = response["status"].As<std::string>(""),
+      .hourly_rate = response["hourly_rate"].As<std::optional<double>>(),
   };
 }
 

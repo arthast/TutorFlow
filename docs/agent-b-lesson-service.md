@@ -42,6 +42,9 @@ behind local client interfaces and call owning services by OpenAPI contract.
   `IdentityClient::CheckAccess`.
 - `IdentityClient` calls identity-service
   `POST /internal/relations/check-access` through `IDENTITY_SERVICE_URL`.
+- If `CreateLessonRequest.price` is missing, lesson-service uses `hourly_rate`
+  from identity `check-access`. It returns `422 business_rule` only when both
+  request `price` and relation `hourly_rate` are missing.
 - `POST /internal/lessons/{lessonId}/complete`:
   - allows only the owning teacher;
   - rejects cancelled lessons;
@@ -51,42 +54,6 @@ behind local client interfaces and call owning services by OpenAPI contract.
   `FINANCE_SERVICE_URL`.
 - Cancelling a scheduled lesson reopens its slot when the lesson has a `slot_id`.
 - Responses and errors use JSON content type and common error envelope.
-
-## Known Contract Gap
-
-`CreateLessonRequest.price` is nullable in `lesson.openapi.yaml` and says that
-missing price should come from identity `hourly_rate`.
-
-Current identity contract for `POST /internal/relations/check-access` returns only:
-
-```json
-{ "allowed": true, "status": "active" }
-```
-
-It does not expose `hourly_rate`, while `migrations/lesson/001_init.sql` has
-`lessons.price NUMERIC(12, 2) NOT NULL`.
-
-Current runtime decision: if `price` is missing, lesson-service returns:
-
-```http
-422 Unprocessable Entity
-```
-
-```json
-{
-  "error": {
-    "code": "business_rule",
-    "message": "price is required until identity exposes relation hourly_rate",
-    "details": {
-      "contract_gap": "identity check-access does not expose hourly_rate"
-    }
-  }
-}
-```
-
-Proposed Lead decision for later: either extend `CheckAccessResponse` with
-`hourly_rate` or add a separate internal identity endpoint to fetch the
-teacher-student relation snapshot.
 
 ## Verified
 
@@ -112,7 +79,8 @@ not change lesson state.
 Also verified:
 
 - `GET /internal/lessons` returns `Content-Type: application/json; charset=utf-8`.
-- Missing `price` returns `422 business_rule` envelope.
+- Missing `price` uses identity relation `hourly_rate`; if the relation has no
+  rate, lesson-service returns `422 business_rule` envelope.
 
 Finance integration smoke verified after wiring `HttpFinanceClient`:
 
@@ -140,15 +108,15 @@ docker compose up -d identity-service lesson-service assignment-service finance-
 docker compose exec lesson-service curl -s -i http://localhost:8082/health
 ```
 
-Current integration limitation: this branch's identity-service still has only
-`/health`, so requests that require `POST /internal/relations/check-access`
-reach identity but receive an upstream 404 envelope until Agent A merges the
-identity endpoint.
+Stage 1.2 update:
 
-## Next Steps
-
-- Re-run lesson create/complete happy-path with real identity check-access once
-  Agent A merges the identity endpoint.
-- Revisit the price contract gap with Lead before changing OpenAPI or identity
-  response shape.
-- Add focused tests or script smoke once the repo has an agreed test harness.
+- `IdentityClient::CheckAccess` parses nullable `hourly_rate`.
+- Creating a lesson without explicit `price` uses `hourly_rate` from
+  check-access.
+- Completing such a lesson creates a finance charge for that derived price.
+- Verified through gateway: creating a lesson without `price` for a relation with
+  `hourly_rate = 777.0` returned `201` with `lessons.price = 777.0`; completing
+  it created a finance `charge` for `777.0`.
+- Verified through gateway: creating a lesson without `price` for a relation
+  without `hourly_rate` returned `422 business_rule`.
+- `python3 scripts/smoke_mvp.py` returned `SMOKE OK`.
