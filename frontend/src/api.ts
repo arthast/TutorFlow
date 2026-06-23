@@ -147,6 +147,7 @@ export interface Submission {
   text_answer?: string;
   status: string;
   submitted_at?: string;
+  file_ids?: string[];
 }
 export interface Comment {
   id: string;
@@ -158,6 +159,7 @@ export interface Comment {
 export interface AssignmentDetail extends Assignment {
   submissions?: Submission[];
   comments?: Comment[];
+  file_ids?: string[];
 }
 export interface Receipt {
   id: string;

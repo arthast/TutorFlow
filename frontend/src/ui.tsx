@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { api, openFile, type FileMeta } from "./api";
 import { useAuth } from "./auth";
 
 export function TopBar() {
@@ -51,6 +52,30 @@ export function StatusPill({ status }: { status: string }) {
 export function ErrorMsg({ error }: { error: string | null }) {
   if (!error) return null;
   return <div className="error">{error}</div>;
+}
+
+// Список файлов по file_ids: имя (если доступно) + скачать/открыть.
+export function FileChips({ fileIds, label }: { fileIds?: string[]; label?: string }) {
+  if (!fileIds || fileIds.length === 0) return null;
+  return (
+    <div style={{ margin: "6px 0" }}>
+      {label && <p className="section-title">{label}</p>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {fileIds.map((id) => <FileChip key={id} id={id} />)}
+      </div>
+    </div>
+  );
+}
+
+function FileChip({ id }: { id: string }) {
+  const meta = useAsync<FileMeta>(() => api.get(`/files/${id}`), [id]);
+  const [err, setErr] = useState<string | null>(null);
+  const name = meta.data?.original_name || "файл";
+  return (
+    <button className="small" title={err ?? "Скачать"} onClick={() => openFile(id).catch((e) => setErr((e as Error).message))}>
+      {name}
+    </button>
+  );
 }
 
 // Загрузка данных с состоянием + ручной reload.

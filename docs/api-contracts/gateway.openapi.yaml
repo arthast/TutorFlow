@@ -375,6 +375,7 @@ components:
         ends_at: { type: string, format: date-time }
         topic: { type: string }
         price: { type: number, description: "если не задано — берётся из hourly_rate связи" }
+        file_ids: { type: array, items: { type: string, format: uuid }, description: "материалы урока (lesson_material)" }
     Lesson:
       type: object
       properties:
@@ -387,6 +388,7 @@ components:
         topic: { type: string }
         notes: { type: string, nullable: true }
         price: { type: number }
+        file_ids: { type: array, items: { type: string, format: uuid } }
         completed_at: { type: string, format: date-time, nullable: true }
     CreateAssignmentRequest:
       type: object

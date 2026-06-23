@@ -111,6 +111,7 @@ components:
         topic: { type: string }
         notes: { type: string }
         price: { type: number, nullable: true, description: "если не задано — из hourly_rate связи (identity)" }
+        file_ids: { type: array, items: { type: string, format: uuid }, description: "материалы урока (lesson_material), загруженные через file-service" }
     Lesson:
       type: object
       properties:
@@ -124,5 +125,6 @@ components:
         topic: { type: string }
         notes: { type: string, nullable: true }
         price: { type: number }
+        file_ids: { type: array, items: { type: string, format: uuid } }
         created_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time, nullable: true }

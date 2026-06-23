@@ -95,14 +95,15 @@ std::pair<FileMeta, std::string> FileService::Download(
 
     const bool is_owner = (meta.owner_user_id == requester_id);
     if (!is_owner) {
-        if (!requester_is_teacher) {
-            throw tutorflow::common::ServiceError::Forbidden(
-                "access denied: not the file owner");
-        }
-        // Teacher path: verify teacher-student link via identity
-        const auto access =
-            identity_.CheckAccess(requester_id, meta.owner_user_id);
-        if (!access.allowed) {
+        // Доступ симметричен: либо зовущий — преподаватель владельца-ученика,
+        // либо зовущий — ученик владельца-преподавателя (вложение ДЗ, материалы
+        // урока). В обоих случаях связь подтверждает identity check-access
+        // (teacher, student).
+        const bool allowed =
+            requester_is_teacher
+                ? identity_.CheckAccess(requester_id, meta.owner_user_id).allowed
+                : identity_.CheckAccess(meta.owner_user_id, requester_id).allowed;
+        if (!allowed) {
             throw tutorflow::common::ServiceError::Forbidden(
                 "access denied: no active teacher-student relation");
         }

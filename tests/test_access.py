@@ -126,6 +126,40 @@ def test_finance_balance_transactions_access(teacher, student):
         assert status == 403, body
 
 
+def test_file_symmetric_download_access(teacher, student):
+    other_teacher = api.register_teacher()
+    other_student = api.create_student(other_teacher["token"])
+
+    # teacher uploads a lesson material (file owned by the teacher)
+    status, meta = api.post(
+        "/files",
+        token=teacher["token"],
+        multipart=("file", "material.txt", b"lesson material", "lesson_material"),
+    )
+    assert status == 201, meta
+    file_id = meta["id"]
+
+    # owner (teacher) downloads own file
+    status, _ = api.get(f"/files/{file_id}/download", token=teacher["token"])
+    assert status == 200
+
+    # linked student downloads the teacher's file
+    status, _ = api.get(f"/files/{file_id}/download", token=student["token"])
+    assert status == 200
+
+    # foreign student cannot download
+    status, body = api.get(
+        f"/files/{file_id}/download", token=other_student["token"]
+    )
+    assert status == 403, body
+
+    # foreign teacher cannot download
+    status, body = api.get(
+        f"/files/{file_id}/download", token=other_teacher["token"]
+    )
+    assert status == 403, body
+
+
 def test_lesson_role_edges(teacher, student, lesson):
     status, body = api.post("/lessons", token=student["token"], body={
         "student_id": student["user_id"],

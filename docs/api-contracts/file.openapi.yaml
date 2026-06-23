@@ -29,7 +29,7 @@ paths:
               required: [file, purpose]
               properties:
                 file: { type: string, format: binary }
-                purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+                purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt, lesson_material] }
                 resource_id: { type: string, format: uuid, nullable: true }
       responses:
         "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/FileMeta" } } } }
@@ -86,7 +86,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         owner_user_id: { type: string, format: uuid }
-        purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+        purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt, lesson_material] }
         original_name: { type: string }
         content_type: { type: string }
         size_bytes: { type: integer }

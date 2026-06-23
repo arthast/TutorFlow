@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import {
   api,
+  openFile,
   type Assignment,
   type AssignmentDetail,
   type Balance,
@@ -9,7 +10,7 @@ import {
   type Receipt,
 } from "../api";
 import { useAuth } from "../auth";
-import { Card, ErrorMsg, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
@@ -108,7 +109,7 @@ function AssignmentsCard({ assignments }: { assignments: Async<Assignment[]> }) 
 function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
   const detail = useAsync<AssignmentDetail>(() => api.get(`/assignments/${id}`), [id]);
   const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -118,9 +119,9 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
     setBusy(true);
     try {
       const fileIds: string[] = [];
-      if (file) {
+      for (const f of files) {
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", f);
         form.append("purpose", "submission_file");
         const meta = await api.upload<FileMeta>("/files", form);
         fileIds.push(meta.id);
@@ -129,7 +130,7 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
         text_answer: text || undefined,
         file_ids: fileIds.length ? fileIds : undefined,
       });
-      setText(""); setFile(null);
+      setText(""); setFiles([]);
       detail.reload();
       onChange();
     } catch (err) {
@@ -144,12 +145,17 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
     <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
       <ErrorMsg error={error} />
       {d?.description && <p className="muted">{d.description}</p>}
+      <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
+      {(d?.submissions ?? []).map((s) => <FileChips key={s.id} fileIds={s.file_ids} label="Мои файлы решения" />)}
       {(d?.comments ?? []).map((c) => (
         <div className="row" key={c.id}><span className="muted">Комментарий: {c.text}</span></div>
       ))}
       <form onSubmit={submit}>
         <div className="field"><textarea placeholder="Текст решения" value={text} onChange={(e) => setText(e.target.value)} /></div>
-        <div className="field"><input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></div>
+        <div className="field">
+          <label>Файлы решения (можно несколько)</label>
+          <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+        </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Отправка…" : "Отправить решение"}</button>
       </form>
     </div>
@@ -216,12 +222,17 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
 }
 
 function ReceiptsListCard({ receipts }: { receipts: Async<Receipt[]> }) {
+  const [error, setError] = useState<string | null>(null);
   return (
     <Card title="Мои чеки">
+      <ErrorMsg error={error} />
       {(receipts.data ?? []).map((r) => (
         <div className="row" key={r.id}>
           <span>{Math.round(r.amount)} ₽ · {fmtDate(r.submitted_at)}</span>
-          <StatusPill status={r.status} />
+          <span className="btn-group" style={{ alignItems: "center" }}>
+            <button className="small" onClick={() => openFile(r.file_id).catch((e) => setError((e as Error).message))}>Файл</button>
+            <StatusPill status={r.status} />
+          </span>
         </div>
       ))}
       {receipts.data?.length === 0 && <p className="hint">Чеков пока нет.</p>}

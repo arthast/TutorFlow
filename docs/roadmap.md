@@ -309,6 +309,47 @@ upload receipt (заявить сумму + файл), my receipts со стат
 
 ---
 
+## Этап 3.6 — Файлы: вложения ДЗ, чеки, материалы урока
+
+### 3.6.0 file-service: симметричный доступ student↔teacher  [backend]
+Сейчас `Download` пускает только владельца и преподавателя-владельца-ученика
+(`check-access(requester_teacher, owner_student)`). Значит ученик НЕ может скачать
+файл, загруженный преподавателем (вложение ДЗ, материалы урока) → 403. Добавить
+обратную ветку: если зовущий НЕ владелец и НЕ teacher, проверить
+`check-access(owner, requester)` — т.е. владелец-преподаватель связан с
+учеником-зовущим. Иначе 403. Только file-service. Контракт без изменений.
+Нужно для ученической стороны 3.6.1 и для 3.6.3.
+
+### 3.6.1 Вложения ДЗ и решений во фронте  ✅ ФРОНТ ГОТОВ (backend готов; ученическое скачивание teacher-файлов — после 3.6.0)
+Бэкенд уже хранит и отдаёт `file_ids` (assignment_files/submission_files, в
+контракте и в AssignmentDetail/Submission). Нужно только в UI:
+- teacher при создании ДЗ прикрепляет файл(ы): для каждого `POST /files`
+  (purpose=assignment_attachment) → собрать `file_ids` → `POST /assignments {file_ids}`;
+- в детали ДЗ показывать вложения (file_ids) с именами (`GET /files/{id}` →
+  original_name) и кнопкой открыть/скачать (`openFile`) — видно и teacher, и student
+  (закрывает «преподаватель не может посмотреть файл ДЗ» и доступ ученика к ним);
+- student при сдаче может прикрепить НЕСКОЛЬКО файлов (сейчас один — расширить);
+- teacher видит и открывает файлы решения ученика (submission.file_ids).
+
+### 3.6.2 Просмотр своих чеков и их файлов учеником  ✅ ФРОНТ ГОТОВ
+В «Мои чеки» (уже есть список со статусами) добавить кнопку открыть свой файл
+чека (`openFile`, ученик — владелец файла). История чеков уже отображается.
+
+### 3.6.3 Материалы урока (lesson materials)  [backend + frontend]
+Сейчас у занятия нет файлов вообще — нужна новая фича.
+- Backend (lesson-service): миграция `lesson_files(lesson_id, file_id, created_at)`;
+  загрузка/выдача `file_ids`. Контракт (через координатора): добавить `file_ids` в
+  `CreateLessonRequest` и в `Lesson` (или отдельный `GET /lessons/{id}` с file_ids).
+- Frontend: teacher грузит материалы к занятию (purpose=lesson_material — добавить
+  в whitelist file-service `purpose`); teacher и student видят/скачивают материалы.
+- Примечание: добавить `lesson_material` в enum `purpose` file-service (контракт file).
+
+### Backlog (не в MVP)
+- **Загрузка папок** — file-service хранит плоские файлы; папки потребуют zip-архива
+  или path-метаданных. Множественные файлы поддержаны (несколько `POST /files`).
+
+---
+
 ## Этап 4 — Frontend polishing
 
 Аккуратные формы; обработка ошибок из envelope (`error.code`/`message`); loading

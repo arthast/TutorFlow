@@ -5,11 +5,24 @@ import {
   type Assignment,
   type AssignmentDetail,
   type Balance,
+  type FileMeta,
   type Lesson,
   type Receipt,
   type StudentLink,
 } from "../api";
-import { Card, ErrorMsg, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+
+async function uploadAll(files: File[], purpose: string): Promise<string[]> {
+  const ids: string[] = [];
+  for (const f of files) {
+    const form = new FormData();
+    form.append("file", f);
+    form.append("purpose", purpose);
+    const meta = await api.upload<FileMeta>("/files", form);
+    ids.push(meta.id);
+  }
+  return ids;
+}
 
 export default function Teacher() {
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
@@ -193,18 +206,29 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
   const [studentId, setStudentId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function create(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setBusy(true);
     try {
-      await api.post("/assignments", { student_id: studentId, title, description: description || undefined });
-      setTitle(""); setDescription("");
+      const fileIds = await uploadAll(files, "assignment_attachment");
+      await api.post("/assignments", {
+        student_id: studentId,
+        title,
+        description: description || undefined,
+        file_ids: fileIds.length ? fileIds : undefined,
+      });
+      setTitle(""); setDescription(""); setFiles([]);
       assignments.reload();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -234,7 +258,11 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
         </div>
         <div className="field"><input placeholder="название" value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
         <div className="field"><textarea placeholder="описание" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-        <button className="primary" type="submit">Создать ДЗ</button>
+        <div className="field">
+          <label>Файлы к ДЗ (можно несколько)</label>
+          <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+        </div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать ДЗ"}</button>
       </form>
     </Card>
   );
@@ -275,11 +303,15 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
     <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
       <ErrorMsg error={error} />
       {d?.description && <p className="muted">{d.description}</p>}
+      <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
       <p className="section-title">Решения</p>
       {(d?.submissions ?? []).map((s) => (
-        <div className="row" key={s.id}>
-          <span className="muted">{s.text_answer || "(файл)"}</span>
-          <StatusPill status={s.status} />
+        <div key={s.id} style={{ padding: "6px 0", borderTop: "0.5px solid var(--border)" }}>
+          <div className="row" style={{ border: "none", padding: 0 }}>
+            <span className="muted">{s.text_answer || "(без текста)"}</span>
+            <StatusPill status={s.status} />
+          </div>
+          <FileChips fileIds={s.file_ids} />
         </div>
       ))}
       {d && (d.submissions ?? []).length === 0 && <p className="hint">Решений ещё нет.</p>}

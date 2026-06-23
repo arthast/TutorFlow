@@ -190,7 +190,8 @@ ParsedUpload ParseUploadRequest(const http::HttpRequest& req) {
         throw ServiceError::Validation("missing required field: purpose");
     }
     static constexpr std::string_view kValidPurposes[] = {
-        "assignment_attachment", "submission_file", "payment_receipt"};
+        "assignment_attachment", "submission_file", "payment_receipt",
+        "lesson_material"};
     bool valid_purpose = false;
     for (auto p : kValidPurposes) {
         if (result.purpose == p) { valid_purpose = true; break; }
