@@ -425,24 +425,24 @@ publisher `lesson-outbox-publisher` (PeriodicTask, at-least-once); consumer
 smoke/`test_finance` на poll-with-timeout. Реплей/повтор второй charge не создаёт.
 См. `docs/agent-outbox-lesson-completed.md`.
 
-### Этап 5F — event foundation hardening + новые доменные события  ⬜ ОСТАЁТСЯ
+### Этап 5F — event foundation hardening + новые доменные события  ✅ СДЕЛАНО (5F-0/1/2)
 Цель: превратить Kafka-flow из разового `lesson.completed` в переиспользуемый
 event-driven каркас. Не добавлять события ради событий: у каждого события должен
 быть ожидаемый потребитель (notification/report/audit/read-model).
 
-**5F-0. Hardening событийной базы**
+**5F-0. Hardening событийной базы — ✅ СДЕЛАНО**
 - Зафиксировать naming convention: `<domain>.<past_tense>` (`assignment.created`,
   `payment.confirmed`, `balance.changed`).
 - Расширить `docs/event-contracts/`: versioned JSON-контракты для новых событий.
-- Вынести общий outbox-код в libs, если дублирование станет реальным.
-- Добавить consumer idempotency/inbox (`processed_events(event_id primary key,
-  event_type, processed_at)`) для новых consumers.
+- Вынесен общий outbox publisher в `libs/events`.
+- Добавлен consumer idempotency/inbox (`processed_events(event_id primary key,
+  event_type, processed_at)`) для finance consumer `lesson.completed`.
 - Зафиксировать retry/DLQ convention: retry только безопасных обработчиков,
   DLQ topic naming, structured logs, request/trace id в event envelope.
-- Минимально наблюдать consumer lag/errors через логи/метрики, без тяжёлой
-  observability-платформы.
+- Минимальное наблюдение сейчас через structured logs; полноценный DLQ/lag
+  monitoring остаётся в production hardening (5K).
 
-**5F-1. `assignment-service -> Kafka`**
+**5F-1. `assignment-service -> Kafka` — ✅ СДЕЛАНО**
 Через outbox публиковать:
 ```text
 assignment.created       -> notification-service, report-service
@@ -453,7 +453,7 @@ assignment.reviewed      -> notification-service, report-service
 `assignment.deadline_expired`. Эти события не должны менять бизнес-поведение
 assignment-service; это факты после успешной команды.
 
-**5F-2. `finance-service -> Kafka`**
+**5F-2. `finance-service -> Kafka` — ✅ СДЕЛАНО**
 Через outbox публиковать:
 ```text
 payment_receipt.uploaded -> notification-service, report-service

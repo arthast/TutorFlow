@@ -6,10 +6,11 @@
 #include <userver/kafka/producer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
 
-namespace tutorflow::lesson {
+namespace tutorflow::finance {
 namespace {
-constexpr std::string_view kProducerName = "lesson-service";
-constexpr std::string_view kTaskName = "lesson-outbox-publisher";
+
+constexpr std::string_view kProducerName = "finance-service";
+constexpr std::string_view kTaskName = "finance-outbox-publisher";
 
 }  // namespace
 
@@ -18,14 +19,12 @@ OutboxPublisher::OutboxPublisher(
     const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       publisher_(
-          context.FindComponent<userver::components::Postgres>("lesson-db")
+          context.FindComponent<userver::components::Postgres>("finance-db")
               .GetCluster(),
           context.FindComponent<userver::kafka::ProducerComponent>()
               .GetProducer(),
           std::string{kTaskName}, std::string{kProducerName}) {}
 
-void OutboxPublisher::OnAllComponentsLoaded() {
-  publisher_.Start();
-}
+void OutboxPublisher::OnAllComponentsLoaded() { publisher_.Start(); }
 
-}  // namespace tutorflow::lesson
+}  // namespace tutorflow::finance

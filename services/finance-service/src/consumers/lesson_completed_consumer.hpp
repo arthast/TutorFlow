@@ -17,6 +17,7 @@
 namespace tutorflow::finance {
 
 class FinanceService;
+class FinanceRepository;
 
 class LessonCompletedConsumer final
     : public userver::components::LoggableComponentBase {
@@ -33,6 +34,7 @@ private:
                          std::string_view key, const std::string& topic) const;
 
   const FinanceService& service_;
+  const FinanceRepository& repository_;
   // EventConsumer owns the ConsumerScope — keep it last.
   tutorflow::events::EventConsumer consumer_;
 };

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "submission.uploaded.v1",
+  "description": "Ученик отправил решение домашнего задания. Consumer'ы notification/report уведомляют преподавателя и обновляют прогресс.",
+  "topic": "tutorflow.submission.uploaded",
+  "key": "assignment_id",
+  "producer": "assignment-service",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "submission.uploaded" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "assignment-service" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["submission_id", "assignment_id", "teacher_id", "student_id", "status", "submitted_at"],
+      "properties": {
+        "submission_id": { "type": "string", "format": "uuid" },
+        "assignment_id": { "type": "string", "format": "uuid" },
+        "teacher_id": { "type": "string", "format": "uuid" },
+        "student_id": { "type": "string", "format": "uuid" },
+        "status": { "const": "submitted" },
+        "submitted_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

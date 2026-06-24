@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "balance.changed.v1",
+  "description": "Баланс ученика изменился из-за finance transaction. Это read-model/audit событие; источник истины остаётся finance ledger.",
+  "topic": "tutorflow.balance.changed",
+  "key": "student_id",
+  "producer": "finance-service",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "balance.changed" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "finance-service" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["student_id", "teacher_id", "delta", "currency", "reason", "source_transaction_id", "changed_at"],
+      "properties": {
+        "student_id": { "type": "string", "format": "uuid" },
+        "teacher_id": { "type": "string", "format": "uuid" },
+        "delta": { "type": "number" },
+        "currency": { "type": "string", "examples": ["RUB"] },
+        "reason": { "enum": ["charge.created", "payment.confirmed", "correction.created", "refund.created"] },
+        "source_transaction_id": { "type": "string", "format": "uuid" },
+        "changed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

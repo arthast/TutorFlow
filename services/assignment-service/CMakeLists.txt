@@ -3,6 +3,7 @@ add_executable(assignment-service
     src/main.cpp
     src/domain/assignment_service.cpp
     src/grpc/assignment_grpc_service.cpp
+    src/outbox/outbox_publisher.cpp
     src/repositories/assignment_repository.cpp
 )
 
@@ -12,7 +13,9 @@ target_link_libraries(assignment-service
     PRIVATE
         tutorflow_common
         tutorflow_grpc_clients
+        tutorflow_events
         userver::core
         userver::grpc
+        userver::kafka
         userver::postgresql
 )

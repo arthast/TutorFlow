@@ -455,16 +455,16 @@ lesson.completed            ✅ ВНЕДРЕНО (outbox lesson -> Kafka -> fina
 lesson.scheduled            ⬜ 5F-3
 lesson.cancelled            ⬜ 5F-3
 lesson.rescheduled          ⬜ 5F-3
-assignment.created          ⬜ 5F-1
-submission.uploaded         ⬜ 5F-1
-assignment.reviewed         ⬜ 5F-1
+assignment.created          ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
+submission.uploaded         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
+assignment.reviewed         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
 assignment.needs_fix        ⬜ later
 assignment.done             ⬜ later
-payment_receipt.uploaded    ⬜ 5F-2
-payment.confirmed           ⬜ 5F-2
-payment.rejected            ⬜ 5F-2
-charge.created              ⬜ 5F-2
-balance.changed             ⬜ 5F-2
+payment_receipt.uploaded    ✅ ВНЕДРЕНО (outbox finance -> Kafka)
+payment.confirmed           ✅ ВНЕДРЕНО (outbox finance -> Kafka)
+payment.rejected            ✅ ВНЕДРЕНО (outbox finance -> Kafka)
+charge.created              ✅ ВНЕДРЕНО (outbox finance -> Kafka)
+balance.changed             ✅ ВНЕДРЕНО (outbox finance -> Kafka)
 message.sent                ⬜ 5J
 message.read                ⬜ 5J
 user.registered             ⬜ later
@@ -475,9 +475,9 @@ file.uploaded               ⬜ optional later
 
 Целевой порядок развития:
 ```text
-5F-0 event foundation hardening: naming, contracts, inbox/processed_events, retry/DLQ
-5F-1 assignment.* events
-5F-2 finance.* events
+5F-0 event foundation hardening: naming, contracts, shared outbox, inbox/processed_events ✅
+5F-1 assignment.* events ✅
+5F-2 finance.* events ✅
 5F-3 дополнительные lesson.* events
 5G notification-service: Kafka consumers -> notifications_db -> gRPC list/mark-read
 5H report-service: Kafka read-models -> dashboard summaries по gRPC

@@ -185,11 +185,29 @@ Assignment AssignmentRepository::CreateAssignment(
     const CreateAssignmentRequest &request) const {
   const auto result = pg_->Execute(
       kMaster,
-      "INSERT INTO assignments "
-      "  (teacher_id, student_id, title, description, due_at) "
-      "VALUES ($1::uuid, $2::uuid, $3, $4, NULLIF($5, '')::timestamptz) "
-      "RETURNING " +
-          std::string{kAssignmentFields},
+      "WITH inserted AS ("
+      "  INSERT INTO assignments "
+      "    (teacher_id, student_id, title, description, due_at) "
+      "  VALUES ($1::uuid, $2::uuid, $3, $4, NULLIF($5, '')::timestamptz) "
+      "  RETURNING *"
+      "), outbox AS ("
+      "  INSERT INTO outbox_events "
+      "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+      "  SELECT 'assignment', id, 'assignment.created', 1, "
+      "         jsonb_build_object("
+      "           'assignment_id', id::text, "
+      "           'teacher_id', teacher_id::text, "
+      "           'student_id', student_id::text, "
+      "           'title', title, "
+      "           'due_at', CASE WHEN due_at IS NULL THEN NULL ELSE "
+      "             to_char(due_at AT TIME ZONE 'UTC', "
+      "                     'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') END, "
+      "           'created_at', to_char(created_at AT TIME ZONE 'UTC', "
+      "                                'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+      "  FROM inserted"
+      ") SELECT " +
+          std::string{kAssignmentFields} +
+      " FROM inserted",
       teacher_id, request.student_id, request.title, request.description,
       request.due_at.value_or(""));
   auto assignment = RequireSingleAssignment(result);
@@ -279,12 +297,27 @@ Submission AssignmentRepository::CreateSubmission(
       "WITH inserted AS ("
       "  INSERT INTO submissions (assignment_id, student_id, text_answer) "
       "  VALUES ($1::uuid, $2::uuid, $3) "
-      "  RETURNING " +
-          std::string{kSubmissionFields} +
+      "  RETURNING *"
           "), assignment_update AS ("
           "  UPDATE assignments SET status = 'submitted' "
-          "  WHERE id = $1::uuid RETURNING id"
-          ") SELECT * FROM inserted",
+          "  WHERE id = $1::uuid RETURNING id, teacher_id, student_id, status"
+          "), outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'assignment', inserted.assignment_id, "
+          "         'submission.uploaded', 1, "
+          "         jsonb_build_object("
+          "           'submission_id', inserted.id::text, "
+          "           'assignment_id', inserted.assignment_id::text, "
+          "           'teacher_id', assignment_update.teacher_id::text, "
+          "           'student_id', inserted.student_id::text, "
+          "           'status', inserted.status, "
+          "           'submitted_at', to_char(inserted.submitted_at AT TIME ZONE 'UTC', "
+          "                                 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+          "  FROM inserted JOIN assignment_update ON true"
+          ") SELECT " +
+          std::string{kSubmissionFields} +
+          " FROM inserted",
       assignment_id, student_id, request.text_answer);
   auto submission = RequireSingleSubmission(result);
   InsertSubmissionFiles(pg_, submission.id, request.file_ids);
@@ -307,12 +340,28 @@ Submission AssignmentRepository::ReviewLatestSubmission(
           "), updated_assignment AS ("
           "  UPDATE assignments SET status = $3 "
           "  WHERE id = $1::uuid AND EXISTS (SELECT 1 FROM updated_submission) "
-          "  RETURNING id"
+          "  RETURNING id, teacher_id, student_id, status"
           "), inserted_comment AS ("
           "  INSERT INTO assignment_comments (assignment_id, author_id, text) "
           "  SELECT $1::uuid, teacher_id, $4 FROM assignments "
           "  WHERE id = $1::uuid AND $4 <> '' "
           "  RETURNING id"
+          "), outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'assignment', updated_submission.assignment_id::uuid, "
+          "         'assignment.reviewed', 1, "
+          "         jsonb_build_object("
+          "           'assignment_id', updated_submission.assignment_id::text, "
+          "           'submission_id', updated_submission.id::text, "
+          "           'teacher_id', updated_assignment.teacher_id::text, "
+          "           'student_id', updated_submission.student_id::text, "
+          "           'review_status', updated_submission.status, "
+          "           'assignment_status', updated_assignment.status, "
+          "           'comment', NULLIF($4, ''), "
+          "           'reviewed_at', to_char(now() AT TIME ZONE 'UTC', "
+          "                                'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+          "  FROM updated_submission JOIN updated_assignment ON true"
           ") SELECT * FROM updated_submission",
       assignment_id, request.status, AssignmentStatusForReviewStatus(request.status),
       request.comment.value_or(""));

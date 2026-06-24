@@ -5,6 +5,9 @@ components_manager:
             worker_threads: 4
         fs-task-processor:
             worker_threads: 2
+        producer-task-processor:
+            thread_name: kafka-prod
+            worker_threads: 1
     default_task_processor: main-task-processor
     components:
         server:
@@ -39,6 +42,15 @@ components_manager:
         assignment-db:
             dbconnection#env: ASSIGNMENT_DATABASE_URL
             blocking_task_processor: fs-task-processor
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+        kafka-producer:
+            security_protocol: PLAINTEXT
+            enable_idempotence: true
+            delivery_timeout: 5s
+            queue_buffering_max: 100ms
         assignment-repository: {}
         identity-client:
             endpoint: dns:///identity-service:9081
@@ -46,3 +58,4 @@ components_manager:
         assignment-domain-service: {}
         assignment-grpc-service:
             task-processor: main-task-processor
+        assignment-outbox-publisher: {}

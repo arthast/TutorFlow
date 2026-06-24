@@ -5,6 +5,7 @@ add_executable(finance-service
     src/domain/finance_service.cpp
     src/domain/models.cpp
     src/grpc/finance_grpc_service.cpp
+    src/outbox/outbox_publisher.cpp
     src/repositories/finance_repository.cpp
 )
 

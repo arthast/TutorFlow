@@ -1,7 +1,10 @@
 #include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
+#include <userver/kafka/producer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
+#include <userver/storages/secdist/component.hpp>
+#include <userver/storages/secdist/provider_component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/ugrpc/client/client_factory_component.hpp>
 #include <userver/ugrpc/client/component_list.hpp>
@@ -14,6 +17,7 @@
 
 #include "domain/assignment_service.hpp"
 #include "grpc/assignment_grpc_service.hpp"
+#include "outbox/outbox_publisher.hpp"
 #include "repositories/assignment_repository.hpp"
 
 int main(int argc, char* argv[]) {
@@ -26,11 +30,15 @@ int main(int argc, char* argv[]) {
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::components::Postgres>("assignment-db")
+          .Append<userver::components::Secdist>()
+          .Append<userver::components::DefaultSecdistProvider>()
+          .Append<userver::kafka::ProducerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::assignment::AssignmentRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
-          .Append<tutorflow::assignment::AssignmentGrpcService>();
+          .Append<tutorflow::assignment::AssignmentGrpcService>()
+          .Append<tutorflow::assignment::OutboxPublisher>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

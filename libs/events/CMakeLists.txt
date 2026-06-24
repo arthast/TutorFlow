@@ -6,6 +6,7 @@ add_library(tutorflow_events STATIC
     src/event_envelope.cpp
     src/event_publisher.cpp
     src/event_consumer.cpp
+    src/outbox_publisher.cpp
 )
 
 target_include_directories(tutorflow_events
@@ -16,6 +17,7 @@ target_link_libraries(tutorflow_events
     PUBLIC
         userver::core
         userver::kafka
+        userver::postgresql
 )
 
 target_compile_features(tutorflow_events PUBLIC cxx_std_20)

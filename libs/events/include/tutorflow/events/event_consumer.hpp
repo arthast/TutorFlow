@@ -1,8 +1,9 @@
 #pragma once
 
-// Thin consumer over a userver Kafka ConsumerScope (Этап 5D). Parses each Kafka
-// message payload as an EventEnvelope (JSON) and dispatches it to a handler.
-// Idempotency / retry / dead-letter handling is NOT here — that is 5E.
+// Thin consumer over a userver Kafka ConsumerScope. Parses each Kafka message
+// payload as an EventEnvelope (JSON) and dispatches it to a handler.
+// Idempotency is implemented by owning services (for example processed_events);
+// retry/DLQ policy is documented as a convention and can be added here later.
 
 #include <functional>
 #include <string>

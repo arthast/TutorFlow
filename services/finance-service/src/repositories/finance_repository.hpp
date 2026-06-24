@@ -39,6 +39,9 @@ public:
   Receipt RejectReceipt(const std::string &receipt_id,
                         const std::string &teacher_id,
                         const std::optional<std::string> &comment) const;
+  bool IsEventProcessed(const std::string &event_id) const;
+  void MarkEventProcessed(const std::string &event_id,
+                          const std::string &event_type) const;
 
 private:
   userver::storages::postgres::ClusterPtr pg_;
