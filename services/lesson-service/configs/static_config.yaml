@@ -29,9 +29,6 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
-        http-client: {}
-        http-client-core:
-            fs-task-processor: fs-task-processor
         grpc-client-common:
             blocking-task-processor: fs-task-processor
         grpc-client-middlewares-pipeline: {}
@@ -45,9 +42,6 @@ components_manager:
         lesson-repository: {}
         identity-client:
             endpoint: dns:///identity-service:9081
-            timeout-ms: 5000
-        finance-client:
-            base-url#env: FINANCE_SERVICE_URL
             timeout-ms: 5000
         secdist:
             provider: default-secdist-provider

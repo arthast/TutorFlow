@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -210,3 +211,38 @@ def transactions(student: Dict[str, Any], token: Optional[str] = None) -> Any:
     )
     assert status == 200, (status, body)
     return body
+
+
+def wait_for_lesson_charge(
+    student: Dict[str, Any],
+    lesson_id: str,
+    *,
+    amount: float = LESSON_PRICE,
+    expected_balance: float = LESSON_PRICE,
+    timeout: float = 15.0,
+) -> Any:
+    deadline = time.monotonic() + timeout
+    last_balance = None
+    last_charges = []
+
+    while time.monotonic() < deadline:
+        last_charges = [
+            tx for tx in transactions(student)
+            if tx["type"] == "charge" and tx.get("lesson_id") == lesson_id
+        ]
+        last_balance = balance(student)
+        if (
+            len(last_charges) == 1
+            and round(float(last_charges[0]["amount"]), 2) == round(float(amount), 2)
+            and round(float(last_balance), 2) == round(float(expected_balance), 2)
+        ):
+            return last_charges
+        time.sleep(0.5)
+
+    raise AssertionError({
+        "lesson_id": lesson_id,
+        "expected_amount": amount,
+        "expected_balance": expected_balance,
+        "last_balance": last_balance,
+        "last_charges": last_charges,
+    })

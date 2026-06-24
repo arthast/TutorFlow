@@ -1,4 +1,3 @@
-#include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/kafka/consumer_component.hpp>
@@ -18,13 +17,11 @@
 #include "consumers/lesson_completed_consumer.hpp"
 #include "domain/finance_service.hpp"
 #include "grpc/finance_grpc_service.hpp"
-#include "handlers/finance_handlers.hpp"
 #include "repositories/finance_repository.hpp"
 
 int main(int argc, char *argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
-          .AppendComponentList(userver::clients::http::ComponentList())
           .AppendComponentList(userver::ugrpc::client::MinimalComponentList())
           .AppendComponentList(userver::ugrpc::server::MinimalComponentList())
           .Append<userver::ugrpc::client::ClientFactoryComponent>()
@@ -40,7 +37,6 @@ int main(int argc, char *argv[]) {
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::finance::FinanceService>()
           .Append<tutorflow::finance::FinanceGrpcService>()
-          .Append<tutorflow::finance::CreateChargeHandler>()
           .Append<tutorflow::finance::LessonCompletedConsumer>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

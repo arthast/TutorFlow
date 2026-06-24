@@ -35,8 +35,8 @@ void LessonCompletedConsumer::OnLessonCompleted(
       .comment = std::string{"Lesson charge"},
   };
 
-  // Idempotent by unique(lesson_id): duplicate event / parallel direct call
-  // returns created=false and does not insert a second charge.
+  // Idempotent by unique(lesson_id): duplicate events return created=false
+  // and do not insert a second charge.
   const auto result = service_.CreateCharge(request);
 
   LOG_INFO() << "[lesson.completed] consumed event_id=" << event.event_id

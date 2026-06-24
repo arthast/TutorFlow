@@ -1,7 +1,6 @@
 # lesson-service (owner: Agent B). Расписание + занятия.
 add_executable(lesson-service
     src/main.cpp
-    src/clients/finance_client.cpp
     src/domain/lesson_service.cpp
     src/grpc/lesson_grpc_service.cpp
     src/outbox/outbox_publisher.cpp

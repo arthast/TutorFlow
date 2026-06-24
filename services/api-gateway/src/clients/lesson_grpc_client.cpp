@@ -60,6 +60,13 @@ json::Value ToJson(const proto::Lesson &lesson) {
   return body.ExtractValue();
 }
 
+json::Value ToJson(const proto::CompleteLessonResponse &response) {
+  json::ValueBuilder body;
+  body["lesson"] = ToJson(response.lesson());
+  body["charge_status"] = response.charge_status();
+  return body.ExtractValue();
+}
+
 } // namespace
 
 GrpcLessonClient::GrpcLessonClient(

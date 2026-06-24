@@ -32,10 +32,14 @@ def list_receipts(token, path="/payments/receipts"):
 def test_complete_is_idempotent_for_charge(teacher, student, lesson):
     status, body = complete_lesson(teacher, lesson)
     assert status == 200, body
-    assert money(api.balance(student)) == 1000.0
+    assert body["lesson"]["status"] == "completed"
+    assert body["charge_status"] == "pending"
+    api.wait_for_lesson_charge(student, lesson["id"])
 
     status, body = complete_lesson(teacher, lesson)
     assert status == 200, body
+    assert body["lesson"]["status"] == "completed"
+    assert body["charge_status"] == "pending"
     assert money(api.balance(student)) == 1000.0
 
     charges = [
@@ -48,7 +52,9 @@ def test_complete_is_idempotent_for_charge(teacher, student, lesson):
 def test_receipt_balance_rules(teacher, student, lesson):
     status, body = complete_lesson(teacher, lesson)
     assert status == 200, body
-    assert money(api.balance(student)) == 1000.0
+    assert body["lesson"]["status"] == "completed"
+    assert body["charge_status"] == "pending"
+    api.wait_for_lesson_charge(student, lesson["id"])
 
     receipt = create_receipt(student)
     assert money(api.balance(student)) == 1000.0

@@ -31,6 +31,11 @@ struct Lesson {
   std::optional<std::string> completed_at;
 };
 
+struct CompleteLessonOutcome {
+  Lesson lesson;
+  std::string charge_status;
+};
+
 struct CreateSlotRequest {
   std::string starts_at;
   std::string ends_at;

@@ -56,6 +56,13 @@ proto::Lesson ToProto(const Lesson &lesson) {
   return response;
 }
 
+proto::CompleteLessonResponse ToProto(const CompleteLessonOutcome &outcome) {
+  proto::CompleteLessonResponse response;
+  *response.mutable_lesson() = ToProto(outcome.lesson);
+  response.set_charge_status(outcome.charge_status);
+  return response;
+}
+
 CreateSlotRequest FromProto(const proto::CreateSlotRequest &request) {
   return CreateSlotRequest{
       .starts_at = request.starts_at(),
@@ -148,7 +155,7 @@ LessonGrpcService::GetLesson(CallContext &, proto::GetLessonRequest &&request) {
 LessonGrpcService::CompleteLessonResult
 LessonGrpcService::CompleteLesson(CallContext &context,
                                   proto::CompleteLessonRequest &&request) {
-  return InvokeServerUnary<proto::Lesson>([&] {
+  return InvokeServerUnary<proto::CompleteLessonResponse>([&] {
     const auto auth = ResolveServerAuthContext(context, request.user());
     return ToProto(service_.CompleteLesson(auth, request.lesson_id()));
   });

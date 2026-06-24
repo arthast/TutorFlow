@@ -1,4 +1,3 @@
-#include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/kafka/producer_component.hpp>
@@ -15,7 +14,6 @@
 #include <tutorflow/common/health_handler.hpp>
 #include <tutorflow/clients/identity_grpc_client.hpp>
 
-#include "clients/finance_client.hpp"
 #include "domain/lesson_service.hpp"
 #include "grpc/lesson_grpc_service.hpp"
 #include "outbox/outbox_publisher.hpp"
@@ -24,7 +22,6 @@
 int main(int argc, char *argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
-          .AppendComponentList(userver::clients::http::ComponentList())
           .AppendComponentList(userver::ugrpc::client::MinimalComponentList())
           .AppendComponentList(userver::ugrpc::server::MinimalComponentList())
           .Append<userver::ugrpc::client::ClientFactoryComponent>()
@@ -38,7 +35,6 @@ int main(int argc, char *argv[]) {
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::lesson::LessonRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
-          .Append<tutorflow::lesson::HttpFinanceClient>()
           .Append<tutorflow::lesson::LessonService>()
           .Append<tutorflow::lesson::LessonGrpcService>()
           .Append<tutorflow::lesson::OutboxPublisher>();

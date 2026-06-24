@@ -32,9 +32,6 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
-        http-client: {}
-        http-client-core:
-            fs-task-processor: fs-task-processor
         grpc-client-common:
             blocking-task-processor: fs-task-processor
         grpc-client-middlewares-pipeline: {}
@@ -63,11 +60,5 @@ components_manager:
         finance-domain-service: {}
         finance-grpc-service:
             task-processor: main-task-processor
-        # Kafka consumer (5E-1): lesson.completed -> idempotent charge.
+        # Kafka consumer (5E-2): the only charge creation path.
         finance-lesson-completed-consumer: {}
-        # NOT deprecated: lesson->finance charge stays internal REST until 5E
-        # (Kafka). gateway never calls this endpoint.
-        finance-create-charge-handler:
-            path: /internal/charges
-            method: POST
-            task_processor: main-task-processor

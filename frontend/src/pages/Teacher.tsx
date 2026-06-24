@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   api,
   openFile,
   type Assignment,
   type AssignmentDetail,
   type Balance,
+  type CompleteLessonResponse,
   type FileMeta,
   type Lesson,
   type Receipt,
@@ -32,6 +33,7 @@ export default function Teacher() {
     () => api.get("/payments/receipts?status=pending_review"),
     [],
   );
+  const [chargeRefresh, setChargeRefresh] = useState<{ studentId: string; seq: number } | null>(null);
 
   const studentList = students.data ?? [];
   const scheduled = (lessons.data ?? []).filter((l) => l.status === "scheduled").length;
@@ -48,9 +50,13 @@ export default function Teacher() {
 
         <div className="grid">
           <StudentsCard students={students} />
-          <LessonsCard lessons={lessons} students={studentList} />
+          <LessonsCard
+            lessons={lessons}
+            students={studentList}
+            onChargePending={(studentId) => setChargeRefresh({ studentId, seq: Date.now() })}
+          />
           <AssignmentsCard assignments={assignments} students={studentList} />
-          <FinanceCard receipts={receipts} students={studentList} />
+          <FinanceCard receipts={receipts} students={studentList} chargeRefresh={chargeRefresh} />
         </div>
       </div>
     </>
@@ -124,22 +130,46 @@ function toIso(local: string): string {
   return new Date(local).toISOString();
 }
 
-function LessonsCard({ lessons, students }: { lessons: Async<Lesson[]>; students: StudentLink[] }) {
+function LessonsCard({
+  lessons,
+  students,
+  onChargePending,
+}: {
+  lessons: Async<Lesson[]>;
+  students: StudentLink[];
+  onChargePending: (studentId: string) => void;
+}) {
   const [studentId, setStudentId] = useState("");
   const [starts, setStarts] = useState("");
   const [ends, setEnds] = useState("");
   const [topic, setTopic] = useState("");
   const [price, setPrice] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
   }
 
-  async function act(path: string) {
+  async function complete(id: string) {
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.post<CompleteLessonResponse>(`/lessons/${id}/complete`);
+      lessons.reload();
+      if (result.charge_status === "pending") {
+        setNotice("Начисление создается, баланс обновится через пару секунд.");
+        onChargePending(result.lesson.student_id);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function cancel(id: string) {
     setError(null);
     try {
-      await api.post(path);
+      await api.post(`/lessons/${id}/cancel`);
       lessons.reload();
     } catch (err) {
       setError((err as Error).message);
@@ -171,14 +201,15 @@ function LessonsCard({ lessons, students }: { lessons: Async<Lesson[]>; students
           <span>{nameOf(l.student_id)} · {fmtDate(l.starts_at)}</span>
           {l.status === "scheduled" ? (
             <span className="btn-group">
-              <button className="small" onClick={() => act(`/lessons/${l.id}/complete`)}>Завершить</button>
-              <button className="small" onClick={() => act(`/lessons/${l.id}/cancel`)}>Отмена</button>
+              <button className="small" onClick={() => complete(l.id)}>Завершить</button>
+              <button className="small" onClick={() => cancel(l.id)}>Отмена</button>
             </span>
           ) : (
             <StatusPill status={l.status} />
           )}
         </div>
       ))}
+      {notice && <p className="hint">{notice}</p>}
       {lessons.data?.length === 0 && <p className="hint">Занятий пока нет.</p>}
 
       <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
@@ -338,10 +369,19 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
   );
 }
 
-function FinanceCard({ receipts, students }: { receipts: Async<Receipt[]>; students: StudentLink[] }) {
+function FinanceCard({
+  receipts,
+  students,
+  chargeRefresh,
+}: {
+  receipts: Async<Receipt[]>;
+  students: StudentLink[];
+  chargeRefresh: { studentId: string; seq: number } | null;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [balStudent, setBalStudent] = useState("");
   const [balance, setBalance] = useState<Balance | null>(null);
+  const [balanceNotice, setBalanceNotice] = useState<string | null>(null);
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
@@ -360,6 +400,7 @@ function FinanceCard({ receipts, students }: { receipts: Async<Receipt[]>; stude
 
   async function loadBalance(id: string) {
     setBalStudent(id);
+    setBalanceNotice(null);
     setBalance(null);
     if (!id) return;
     try {
@@ -368,6 +409,44 @@ function FinanceCard({ receipts, students }: { receipts: Async<Receipt[]>; stude
       setError((err as Error).message);
     }
   }
+
+  useEffect(() => {
+    if (!chargeRefresh) return;
+
+    const refresh = chargeRefresh;
+    let cancelled = false;
+    const initialBalance =
+      balStudent === refresh.studentId ? balance?.balance : undefined;
+
+    async function pollBalance() {
+      setBalStudent(refresh.studentId);
+      setBalanceNotice("Ждем начисление по завершенному занятию...");
+      const deadline = Date.now() + 10000;
+      while (!cancelled) {
+        try {
+          const next = await api.get<Balance>(`/students/${refresh.studentId}/balance`);
+          if (cancelled) return;
+          setBalance(next);
+          if (initialBalance === undefined || next.balance !== initialBalance || Date.now() >= deadline) {
+            setBalanceNotice(null);
+            return;
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError((err as Error).message);
+            setBalanceNotice(null);
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+
+    pollBalance();
+    return () => {
+      cancelled = true;
+    };
+  }, [chargeRefresh?.seq]);
 
   return (
     <Card title="Чеки на проверку">
@@ -395,6 +474,7 @@ function FinanceCard({ receipts, students }: { receipts: Async<Receipt[]>; stude
             Долг: <strong>{Math.round(balance.balance)} {balance.currency}</strong>
           </p>
         )}
+        {balanceNotice && <p className="hint">{balanceNotice}</p>}
       </div>
     </Card>
   );

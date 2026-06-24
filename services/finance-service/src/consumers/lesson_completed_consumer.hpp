@@ -1,9 +1,8 @@
 #pragma once
 
-// Kafka consumer of tutorflow.lesson.completed (Этап 5E-1). Creates a charge
+// Kafka consumer of tutorflow.lesson.completed (Этап 5E). Creates a charge
 // IDEMPOTENTLY by lesson_id (existing unique on financial_transactions). A
-// duplicate event — or the parallel direct lesson->finance REST call (variant
-// C) — is a no-op. Idempotency lives in the domain/DB, not here.
+// duplicate event is a no-op. Idempotency lives in the domain/DB, not here.
 
 #include <string>
 #include <string_view>
