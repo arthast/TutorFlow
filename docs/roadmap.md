@@ -25,7 +25,8 @@
 | lesson-service | реализован, в `main` |
 | assignment-service | реализован, в `main` |
 | finance-service | реализован, в `main` |
-| api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование), в `main` |
+| api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование), в `main`; в ветке 5G добавлены notification routes |
+| notification-service | реализуется в ветке `feat/notification-service`: Kafka consumer + gRPC list/mark-read |
 
 Ядро из 6 сервисов собрано и согласовано: REST снаружи через gateway, gRPC между
 сервисами, Kafka/outbox для первого бизнес-flow `lesson.completed -> charge`.
@@ -50,6 +51,7 @@ finance    → identity                                (gRPC check-access)
 file       → identity                                (gRPC check-access на скачивание)
 lesson     → Kafka                                   (`lesson.completed` через outbox)
 finance    ← Kafka                                   (consumer создаёт charge)
+notification ← Kafka                                 (`assignment.*`, `payment.*`, `lesson.completed`)
 identity   → никого                                  (лист графа)
 ```
 
@@ -482,7 +484,7 @@ lesson.rescheduled
 consumer. Для текущего домена важнее бизнес-события assignment/finance, чем сам
 факт загрузки файла.
 
-### Этап 5G — notification-service  ⬜ ОСТАЁТСЯ
+### Этап 5G — notification-service  ✅ СДЕЛАНО В ВЕТКЕ `feat/notification-service`
 Первый полноценный Kafka consumer после расширения событий.
 
 Минимальная версия:
@@ -497,10 +499,15 @@ notification-service
     payment_receipt.uploaded -> уведомить teacher
     payment.confirmed        -> уведомить student
     payment.rejected         -> уведомить student
-    lesson.completed         -> опционально уведомить student
+    lesson.completed         -> уведомить student
 ```
 Gateway вызывает notification-service по gRPC, frontend показывает список
 уведомлений и mark-as-read. Email/Telegram/push — позже, не в первой версии.
+
+Реализация: отдельная `notification_db`, таблицы `notifications` и
+`processed_events`, idempotency по `event_id`/`source_event_id`, gRPC health,
+gateway endpoints `GET /notifications` и `POST /notifications/{notificationId}/read`.
+Frontend показывает in-app уведомления в кабинетах teacher/student.
 
 ### Этап 5H — report-service / read-models  ⬜ ОСТАЁТСЯ
 После notification-service. Цель — не собирать dashboard синхронными запросами к

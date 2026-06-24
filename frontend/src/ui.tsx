@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { api, openFile, type FileMeta } from "./api";
+import { api, openFile, type AppNotification, type FileMeta } from "./api";
 import { useAuth } from "./auth";
 
 export function TopBar() {
@@ -80,6 +80,48 @@ export function ListState<T>({
   }
   if ((query.data ?? []).length === 0) return <p className="hint">{empty}</p>;
   return null;
+}
+
+export function NotificationsCard() {
+  const notifications = useAsync<AppNotification[]>(() => api.get("/notifications"), []);
+  const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const items = notifications.data ?? [];
+  const unread = items.filter((n) => !n.is_read).length;
+
+  async function markRead(id: string) {
+    setError(null);
+    setActingId(id);
+    try {
+      await api.post(`/notifications/${id}/read`);
+      notifications.reload();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  return (
+    <Card title={unread ? `Уведомления (${unread})` : "Уведомления"}>
+      <ErrorMsg error={error} />
+      {items.map((n) => (
+        <div className={"notification " + (n.is_read ? "notification-read" : "notification-unread")} key={n.id}>
+          <div>
+            <div className="notification-title">{n.title}</div>
+            <div className="muted">{n.body}</div>
+            <div className="hint">{fmtDate(n.created_at)}</div>
+          </div>
+          {!n.is_read && (
+            <button className="small" disabled={actingId === n.id} onClick={() => markRead(n.id)}>
+              {actingId === n.id ? "…" : "Прочитано"}
+            </button>
+          )}
+        </div>
+      ))}
+      <ListState query={notifications} empty="Новых уведомлений нет." />
+    </Card>
+  );
 }
 
 // Список файлов по file_ids: имя (если доступно) + скачать/открыть.

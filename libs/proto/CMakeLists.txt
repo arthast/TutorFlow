@@ -7,6 +7,7 @@ set(TUTORFLOW_PROTO_FILES
     tutorflow/lesson.proto
     tutorflow/assignment.proto
     tutorflow/finance.proto
+    tutorflow/notification.proto
 )
 
 userver_add_grpc_library(tutorflow_proto

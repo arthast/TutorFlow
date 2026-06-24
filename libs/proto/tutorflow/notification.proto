@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package tutorflow.notification.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc MarkAsRead(MarkAsReadRequest) returns (Notification);
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2;
+  string type = 3;
+  string title = 4;
+  string body = 5;
+  string payload_json = 6;
+  bool is_read = 7;
+  string created_at = 8;
+}
+
+message ListNotificationsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  bool unread_only = 2;
+  tutorflow.common.v1.PageRequest page = 3;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message MarkAsReadRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string notification_id = 2;
+}

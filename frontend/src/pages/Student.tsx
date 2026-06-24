@@ -10,7 +10,7 @@ import {
   type Receipt,
 } from "../api";
 import { useAuth } from "../auth";
-import { Card, ErrorMsg, FileChips, ListState, Notice, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
@@ -47,6 +47,7 @@ export default function Student() {
         </div>
 
         <div className="grid">
+          <NotificationsCard />
           <AssignmentsCard assignments={assignments} />
           <ReceiptCard teacherIds={teacherIds} onSent={() => receipts.reload()} />
           <ReceiptsListCard receipts={receipts} />

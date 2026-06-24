@@ -251,6 +251,24 @@ paths:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Receipt" } } } }
         "409": { $ref: "#/components/responses/Error" }
 
+  # ---------- Notifications ----------
+  /notifications:
+    get:
+      summary: Список уведомлений текущего пользователя
+      parameters:
+        - { name: unread_only, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Notification" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /notifications/{notificationId}/read:
+    post:
+      summary: Пометить уведомление текущего пользователя прочитанным
+      parameters: [ { $ref: "#/components/parameters/NotificationId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Notification" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   # ---------- Files ----------
   /files:
     post:
@@ -292,6 +310,7 @@ components:
     AssignmentId: { name: assignmentId, in: path, required: true, schema: { type: string, format: uuid } }
     ReceiptId: { name: receiptId, in: path, required: true, schema: { type: string, format: uuid } }
     FileId: { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+    NotificationId: { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } }
   responses:
     Health:
       description: ok
@@ -529,6 +548,26 @@ components:
       type: object
       properties:
         comment: { type: string }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        type:
+          type: string
+          enum:
+            - assignment_created
+            - submission_uploaded
+            - assignment_reviewed
+            - payment_receipt_uploaded
+            - payment_confirmed
+            - payment_rejected
+            - lesson_completed
+        title: { type: string }
+        body: { type: string }
+        payload: { type: object, additionalProperties: true }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
     FileMeta:
       type: object
       properties:

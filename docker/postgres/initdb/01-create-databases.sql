@@ -22,3 +22,6 @@ SELECT 'CREATE DATABASE finance_db'
 
 SELECT 'CREATE DATABASE file_db'
  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'file_db')\gexec
+
+SELECT 'CREATE DATABASE notification_db'
+ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notification_db')\gexec

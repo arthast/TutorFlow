@@ -46,8 +46,9 @@ services:
       - sh
       - -ec
       - |
-        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db; do
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db; do
           svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
+          createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
           for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
             echo "== applying $$svc/$$(basename "$$f") -> $$db"
             psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$db" -f "$$f"
@@ -132,6 +133,7 @@ services:
       - assignment-service
       - finance-service
       - file-service
+      - notification-service
     networks: [tutorflow]
 
   identity-service:
@@ -195,6 +197,8 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     networks: [tutorflow]
 
   finance-service:
@@ -239,6 +243,24 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
+    networks: [tutorflow]
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+    environment:
+      NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     networks: [tutorflow]
 
 networks:
