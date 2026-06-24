@@ -115,10 +115,36 @@ FinanceRepository::CreateCharge(const CreateChargeRequest &request) const {
       "    (teacher_id, student_id, type, amount, currency, lesson_id, "
       "comment) "
       "  VALUES ($1::uuid, $2::uuid, 'charge', $4::numeric, $5, $3::uuid, $6) "
-      "  ON CONFLICT (lesson_id) WHERE type = 'charge' DO NOTHING "
-      "  RETURNING " +
+          "  ON CONFLICT (lesson_id) WHERE type = 'charge' DO NOTHING "
+          "  RETURNING " +
           std::string{kTransactionFields} +
           ", TRUE AS created"
+          "), charge_outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'transaction', id::uuid, 'charge.created', 1, "
+          "         jsonb_build_object("
+          "           'transaction_id', id, "
+          "           'teacher_id', teacher_id, "
+          "           'student_id', student_id, "
+          "           'lesson_id', lesson_id, "
+          "           'amount', amount, "
+          "           'currency', currency, "
+          "           'created_at', created_at) "
+          "  FROM inserted"
+          "), balance_outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'student_balance', student_id::uuid, 'balance.changed', 1, "
+          "         jsonb_build_object("
+          "           'student_id', student_id, "
+          "           'teacher_id', teacher_id, "
+          "           'delta', amount, "
+          "           'currency', currency, "
+          "           'reason', 'charge.created', "
+          "           'source_transaction_id', id, "
+          "           'changed_at', created_at) "
+          "  FROM inserted"
           "), existing AS ("
           "  SELECT " +
           std::string{kTransactionFields} +
@@ -171,11 +197,29 @@ Receipt
 FinanceRepository::CreateReceipt(const CreateReceiptRequest &request) const {
   const auto result = pg_->Execute(
       kMaster,
-      "INSERT INTO payment_receipts "
-      "  (teacher_id, student_id, file_id, amount, currency, comment) "
-      "VALUES ($1::uuid, $2::uuid, $3::uuid, $4::numeric, $5, $6) "
-      "RETURNING " +
-          std::string{kReceiptFields},
+      "WITH inserted AS ("
+      "  INSERT INTO payment_receipts "
+      "    (teacher_id, student_id, file_id, amount, currency, comment) "
+      "  VALUES ($1::uuid, $2::uuid, $3::uuid, $4::numeric, $5, $6) "
+      "  RETURNING *"
+      "), outbox AS ("
+      "  INSERT INTO outbox_events "
+      "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+      "  SELECT 'payment_receipt', id, 'payment_receipt.uploaded', 1, "
+      "         jsonb_build_object("
+      "           'receipt_id', id::text, "
+      "           'teacher_id', teacher_id::text, "
+      "           'student_id', student_id::text, "
+      "           'file_id', file_id::text, "
+      "           'amount', amount::double precision, "
+      "           'currency', currency, "
+      "           'status', status, "
+      "           'submitted_at', to_char(submitted_at AT TIME ZONE 'UTC', "
+      "                                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+      "  FROM inserted"
+      ") SELECT " +
+          std::string{kReceiptFields} +
+      " FROM inserted",
       request.teacher_id, request.student_id, request.file_id, request.amount,
       request.currency, request.comment);
   return RequireSingleReceipt(result);
@@ -241,7 +285,34 @@ Receipt FinanceRepository::ConfirmReceipt(const std::string &receipt_id,
           "         'Payment receipt confirmed' "
           "  FROM updated "
           "  ON CONFLICT (receipt_id) WHERE type = 'payment' DO NOTHING "
-          "  RETURNING id"
+          "  RETURNING " +
+          std::string{kTransactionFields} +
+          "), payment_outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'payment_receipt', receipt_id::uuid, 'payment.confirmed', 1, "
+          "         jsonb_build_object("
+          "           'receipt_id', receipt_id, "
+          "           'payment_id', id, "
+          "           'teacher_id', teacher_id, "
+          "           'student_id', student_id, "
+          "           'amount', amount, "
+          "           'currency', currency, "
+          "           'confirmed_at', created_at) "
+          "  FROM payment"
+          "), balance_outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+          "  SELECT 'student_balance', student_id::uuid, 'balance.changed', 1, "
+          "         jsonb_build_object("
+          "           'student_id', student_id, "
+          "           'teacher_id', teacher_id, "
+          "           'delta', -amount, "
+          "           'currency', currency, "
+          "           'reason', 'payment.confirmed', "
+          "           'source_transaction_id', id, "
+          "           'changed_at', created_at) "
+          "  FROM payment"
           ") SELECT * FROM updated",
       receipt_id, teacher_id);
   return RequireSingleReceipt(result);
@@ -252,17 +323,50 @@ Receipt FinanceRepository::RejectReceipt(
     const std::optional<std::string> &comment) const {
   const auto result =
       pg_->Execute(kMaster,
-                   "UPDATE payment_receipts "
-                   "SET status = 'rejected', "
-                   "    reviewed_at = COALESCE(reviewed_at, now()), "
-                   "    reviewed_by = COALESCE(reviewed_by, $2::uuid), "
-                   "    comment = COALESCE($3, comment) "
-                   "WHERE id = $1::uuid AND teacher_id = $2::uuid "
-                   "  AND status IN ('pending_review', 'rejected') "
-                   "RETURNING " +
-                       std::string{kReceiptFields},
+                   "WITH updated AS ("
+                   "  UPDATE payment_receipts "
+                   "  SET status = 'rejected', "
+                   "      reviewed_at = COALESCE(reviewed_at, now()), "
+                   "      reviewed_by = COALESCE(reviewed_by, $2::uuid), "
+                   "      comment = COALESCE($3, comment) "
+                   "  WHERE id = $1::uuid AND teacher_id = $2::uuid "
+                   "    AND status IN ('pending_review', 'rejected') "
+                   "  RETURNING *"
+                   "), outbox AS ("
+                   "  INSERT INTO outbox_events "
+                   "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
+                   "  SELECT 'payment_receipt', id, 'payment.rejected', 1, "
+                   "         jsonb_build_object("
+                   "           'receipt_id', id::text, "
+                   "           'teacher_id', teacher_id::text, "
+                   "           'student_id', student_id::text, "
+                   "           'amount', amount::double precision, "
+                   "           'currency', currency, "
+                   "           'comment', comment, "
+                   "           'rejected_at', to_char(reviewed_at AT TIME ZONE 'UTC', "
+                   "                                  'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+                   "  FROM updated"
+                   ") SELECT " +
+                       std::string{kReceiptFields} +
+                   " FROM updated",
                    receipt_id, teacher_id, comment);
   return RequireSingleReceipt(result);
+}
+
+bool FinanceRepository::IsEventProcessed(const std::string &event_id) const {
+  const auto result = pg_->Execute(
+      kSlave,
+      "SELECT 1 FROM processed_events WHERE event_id = $1::uuid LIMIT 1",
+      event_id);
+  return !result.IsEmpty();
+}
+
+void FinanceRepository::MarkEventProcessed(const std::string &event_id,
+                                           const std::string &event_type) const {
+  pg_->Execute(kMaster,
+               "INSERT INTO processed_events (event_id, event_type) "
+               "VALUES ($1::uuid, $2) ON CONFLICT DO NOTHING",
+               event_id, event_type);
 }
 
 } // namespace tutorflow::finance

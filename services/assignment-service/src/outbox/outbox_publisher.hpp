@@ -1,10 +1,6 @@
 #pragma once
 
-// Transactional outbox publisher (Этап 5E-1). Periodically reads `pending`
-// outbox_events and publishes them to Kafka via libs/events, then marks them
-// `published`. Publish-then-mark = at-least-once (a crash between the two re-
-// publishes the row on the next tick; consumers dedup). Single lesson-service
-// instance + non-overlapping PeriodicTask => no concurrent publishing.
+#include <string_view>
 
 #include <userver/components/component_context.hpp>
 #include <userver/components/component_fwd.hpp>
@@ -12,12 +8,12 @@
 
 #include <tutorflow/events/outbox_publisher.hpp>
 
-namespace tutorflow::lesson {
+namespace tutorflow::assignment {
 
 class OutboxPublisher final
     : public userver::components::LoggableComponentBase {
 public:
-  static constexpr std::string_view kName = "lesson-outbox-publisher";
+  static constexpr std::string_view kName = "assignment-outbox-publisher";
 
   OutboxPublisher(const userver::components::ComponentConfig& config,
                   const userver::components::ComponentContext& context);
@@ -28,4 +24,4 @@ private:
   tutorflow::events::PostgresOutboxPublisher publisher_;
 };
 
-}  // namespace tutorflow::lesson
+}  // namespace tutorflow::assignment

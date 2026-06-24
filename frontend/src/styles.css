@@ -106,6 +106,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .btn-group { display: flex; gap: 6px; }
 
 .error { background: var(--danger-bg); color: var(--danger-text); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px; margin: 8px 0; }
+.notice { background: var(--success-bg); color: var(--success-text); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 14px; margin: 8px 0; }
 
 .auth-wrap { max-width: 360px; margin: 8vh auto; }
 .auth-wrap .card { padding: 24px; }

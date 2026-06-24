@@ -6,6 +6,7 @@
 
 #include "domain/finance_service.hpp"
 #include "domain/models.hpp"
+#include "repositories/finance_repository.hpp"
 
 namespace tutorflow::finance {
 
@@ -14,6 +15,7 @@ LessonCompletedConsumer::LessonCompletedConsumer(
     const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       service_(context.FindComponent<FinanceService>()),
+      repository_(context.FindComponent<FinanceRepository>()),
       consumer_(context.FindComponent<userver::kafka::ConsumerComponent>(),
                 [this](const tutorflow::events::EventEnvelope& event,
                        std::string_view key, const std::string& topic) {
@@ -25,6 +27,12 @@ void LessonCompletedConsumer::OnAllComponentsLoaded() { consumer_.Start(); }
 void LessonCompletedConsumer::OnLessonCompleted(
     const tutorflow::events::EventEnvelope& event, std::string_view,
     const std::string&) const {
+  if (repository_.IsEventProcessed(event.event_id)) {
+    LOG_INFO() << "[lesson.completed] duplicate event_id=" << event.event_id
+               << " skipped by inbox";
+    return;
+  }
+
   const auto& payload = event.payload;
   const CreateChargeRequest request{
       .teacher_id = payload["teacher_id"].As<std::string>(),
@@ -38,6 +46,7 @@ void LessonCompletedConsumer::OnLessonCompleted(
   // Idempotent by unique(lesson_id): duplicate events return created=false
   // and do not insert a second charge.
   const auto result = service_.CreateCharge(request);
+  repository_.MarkEventProcessed(event.event_id, event.event_type);
 
   LOG_INFO() << "[lesson.completed] consumed event_id=" << event.event_id
              << " lesson_id=" << request.lesson_id

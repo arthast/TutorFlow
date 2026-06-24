@@ -5,9 +5,10 @@
 > Координатор — Claude (контракты, PLAN, ревью, интеграция). Источники правды:
 > `docs/PLAN.md`, `docs/api-contracts/*.openapi.yaml`, общие правила — `AGENTS.md`.
 >
-> Стадия проекта: **не «архитектура на бумаге», а стабилизация MVP.** Новые
-> сервисы сейчас НЕ добавляем. Цель этапа — довести 6 готовых сервисов до
-> демонстрируемого продукта: сквозной сценарий + тесты + простой UI + деплой.
+> Стадия проекта: MVP-ядро стабилизировано; следующий архитектурный фокус —
+> аккуратно расширять уже работающую gRPC/Kafka базу. Команды и запросы остаются
+> синхронными через gRPC, Kafka используется только для доменных фактов и
+> побочных эффектов.
 
 Обновлено: 2026-06-24. (Восстановлено из git + дописан статус Этапа 5 после потери
 локальных docs при пересоздании ветки.)
@@ -26,39 +27,42 @@
 | finance-service | реализован, в `main` |
 | api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование), в `main` |
 
-Ядро из 6 сервисов собрано и согласовано. Дальше — закрыть gaps до полного
-сценария, тесты, фронт, деплой.
+Ядро из 6 сервисов собрано и согласовано: REST снаружи через gateway, gRPC между
+сервисами, Kafka/outbox для первого бизнес-flow `lesson.completed -> charge`.
+Дальше — закрыть UI gaps и расширять event-driven слой вокруг уже работающего ядра.
 
 ---
 
 ## Текущее межсервисное взаимодействие (зафиксировано по коду)
 
-Транспорт: синхронный REST/HTTP + JSON (`libs/common/http_client_base` поверх
-userver http-client, base-url из env `<SVC>_SERVICE_URL`). Пробрасываются
-`X-User-Id`, `X-User-Roles`, `X-Request-Id`. Чужую БД никто не читает. Kafka нет.
+Транспорт: REST/JSON снаружи (`frontend -> api-gateway`) и HTTP multipart для
+файлов (`gateway -> file-service`); gRPC для синхронных внутренних вызовов;
+Kafka для асинхронных доменных событий. Пробрасываются `X-User-Id`,
+`X-User-Roles`, `x-request-id`/`x-trace-id`. Чужую БД никто не читает.
 
 **Что реально вызывается сейчас:**
 ```text
-gateway    → identity, lesson, assignment, finance, file   (проксирование + auth)
-lesson     → identity   (check-access перед созданием занятия)
-lesson     → finance    (POST /internal/charges при complete, идемпотентно)
-assignment → identity   (check-access перед созданием ДЗ)
-finance    → identity   (check-access)
-file       → identity   (check-access на скачивание)
-identity   → никого     (лист графа)
+gateway    → identity, lesson, assignment, finance   (gRPC + auth/mapping)
+gateway    → file                                    (HTTP multipart upload/download)
+lesson     → identity                                (gRPC check-access)
+assignment → identity                                (gRPC check-access)
+finance    → identity                                (gRPC check-access)
+file       → identity                                (gRPC check-access на скачивание)
+lesson     → Kafka                                   (`lesson.completed` через outbox)
+finance    ← Kafka                                   (consumer создаёт charge)
+identity   → никого                                  (лист графа)
 ```
 
 **Разрешено, но пока НЕ подключено** (завести client-интерфейс при реальной
-надобности, не раньше): `assignment → file`, `finance → file`. Связь
-`finance → lesson` намеренно отсутствует — стрелка развёрнута: lesson сам пушит
-`charge` в finance. (NB: в PLAN §10 граф описан как «разрешённый» — при правке
-доков, Этап 1.3, привести §10 к этому разделению «реально / разрешено».)
+надобности, не раньше): `assignment → file`, `finance → file`.
 
-**Будущее (после MVP, не сейчас):** побочные действия вынести в события
-(`lesson_completed`, `assignment_created`, `submission_uploaded`,
-`assignment_reviewed`, `payment_receipt_uploaded`, `payment_confirmed`) через
-Kafka/outbox; слушатели — notification/report. Синхронными остаются только
-вызовы, где нужен немедленный ответ (проверка прав, получение файла/метаданных).
+**Будущее:** расширять Kafka только под понятных потребителей. Ближайшие события:
+`assignment.created`, `submission.uploaded`, `assignment.reviewed`,
+`payment_receipt.uploaded`, `payment.confirmed`, `payment.rejected`,
+`charge.created`, `balance.changed`. Потенциальные слушатели:
+notification-service, report-service, audit/read-models. Синхронными остаются
+операции, где нужен ответ сейчас: auth, access-check, create/get/review/confirm,
+balance, file upload/download.
 
 ---
 
@@ -366,8 +370,9 @@ upload receipt (заявить сумму + файл), my receipts со стат
 
 ## Этап 5 — Расширение архитектуры (REST → gRPC → Kafka)
 
-> Гейт: gRPC-трек (5A–5C) сделан; Kafka-трек (5D–5E) сделан; дальше 5F (события) и
-> 5G (сервисы-консьюмеры). Все proto/event-контракты — через координатора (Claude).
+> Гейт: gRPC-трек (5A–5C) сделан; Kafka-трек (5D–5E) сделан; дальше 5F
+> (event hardening + события), 5G notification, 5H report, 5I storage, 5J chat.
+> Все proto/event-контракты — через координатора (Claude).
 
 **Главный принцип: gRPC сначала, Kafka потом.** Разделение коммуникаций по смыслу:
 ```text
@@ -420,24 +425,148 @@ publisher `lesson-outbox-publisher` (PeriodicTask, at-least-once); consumer
 smoke/`test_finance` на poll-with-timeout. Реплей/повтор второй charge не создаёт.
 См. `docs/agent-outbox-lesson-completed.md`.
 
-### Этап 5F — остальные события  ⬜ ОСТАЁТСЯ
-По надобности (на старте слушателей может не быть): `assignment.created`,
-`submission.uploaded`, `assignment.reviewed`, `payment_receipt.uploaded`,
-`payment.confirmed`, `payment.rejected`, `charge.created`, `balance.changed`.
-Тот же outbox-паттерн, что в 5E (вынести общий outbox-код в libs).
+### Этап 5F — event foundation hardening + новые доменные события  ✅ СДЕЛАНО (5F-0/1/2)
+Цель: превратить Kafka-flow из разового `lesson.completed` в переиспользуемый
+event-driven каркас. Не добавлять события ради событий: у каждого события должен
+быть ожидаемый потребитель (notification/report/audit/read-model).
 
-### Этап 5G — новые сервисы (consumers)  ⬜ ОСТАЁТСЯ
+**5F-0. Hardening событийной базы — ✅ СДЕЛАНО**
+- Зафиксировать naming convention: `<domain>.<past_tense>` (`assignment.created`,
+  `payment.confirmed`, `balance.changed`).
+- Расширить `docs/event-contracts/`: versioned JSON-контракты для новых событий.
+- Вынесен общий outbox publisher в `libs/events`.
+- Добавлен consumer idempotency/inbox (`processed_events(event_id primary key,
+  event_type, processed_at)`) для finance consumer `lesson.completed`.
+- Зафиксировать retry/DLQ convention: retry только безопасных обработчиков,
+  DLQ topic naming, structured logs, request/trace id в event envelope.
+- Минимальное наблюдение сейчас через structured logs; полноценный DLQ/lag
+  monitoring остаётся в production hardening (5K).
+
+**5F-1. `assignment-service -> Kafka` — ✅ СДЕЛАНО**
+Через outbox публиковать:
 ```text
-1 notification-service  — слушает события, пишет notification records (email/Telegram позже)
-2 report-service        — read-model consumer: агрегаты из событий (не раньше Kafka)
-3 chat-service          — и только здесь: Redis + WebSocket/SSE, read-status, online-state
+assignment.created       -> notification-service, report-service
+submission.uploaded      -> notification-service, report-service
+assignment.reviewed      -> notification-service, report-service
 ```
-Позже: identity → `auth-service` + `user-service`; MinIO/S3 вместо локального storage.
+Опционально позже: `assignment.needs_fix`, `assignment.done`,
+`assignment.deadline_expired`. Эти события не должны менять бизнес-поведение
+assignment-service; это факты после успешной команды.
+
+**5F-2. `finance-service -> Kafka` — ✅ СДЕЛАНО**
+Через outbox публиковать:
+```text
+payment_receipt.uploaded -> notification-service, report-service
+payment.confirmed        -> notification-service, report-service
+payment.rejected         -> notification-service, report-service
+charge.created           -> report-service
+balance.changed          -> report-service, notification-service при необходимости
+```
+Источник истины по балансу остаётся finance-service и append-only ledger;
+`balance.changed` нужен read-models/notifications, а не для замены ledger.
+
+**5F-3. Дополнительные lesson events**
+`lesson.completed` уже внедрён. По мере появления потребителей добавить:
+```text
+lesson.scheduled
+lesson.cancelled
+lesson.rescheduled
+```
+Слушатели: notification-service и report-service. Finance остаётся consumer только
+для `lesson.completed`.
+
+**5F-later. Не первоочередно**
+`identity-service` events (`user.registered`, `student.created`,
+`teacher_student_link.created`, `password.changed`) и `file-service` events
+(`file.uploaded`, `file.deleted`) добавлять осторожно и только под конкретный
+consumer. Для текущего домена важнее бизнес-события assignment/finance, чем сам
+факт загрузки файла.
+
+### Этап 5G — notification-service  ⬜ ОСТАЁТСЯ
+Первый полноценный Kafka consumer после расширения событий.
+
+Минимальная версия:
+```text
+notification-service
+  DB: notifications(id, user_id, type, title, body, payload, is_read, created_at)
+  gRPC API: ListNotifications(user_id), MarkAsRead(notification_id)
+  Kafka consumers:
+    assignment.created       -> уведомить student
+    submission.uploaded      -> уведомить teacher
+    assignment.reviewed      -> уведомить student
+    payment_receipt.uploaded -> уведомить teacher
+    payment.confirmed        -> уведомить student
+    payment.rejected         -> уведомить student
+    lesson.completed         -> опционально уведомить student
+```
+Gateway вызывает notification-service по gRPC, frontend показывает список
+уведомлений и mark-as-read. Email/Telegram/push — позже, не в первой версии.
+
+### Этап 5H — report-service / read-models  ⬜ ОСТАЁТСЯ
+После notification-service. Цель — не собирать dashboard синхронными запросами к
+4 сервисам, а строить read-models из событий.
+
+Минимальная версия:
+```text
+report-service
+  consumes lesson.*
+  consumes assignment.*
+  consumes finance.*
+  builds:
+    teacher_dashboard_summary
+    student_dashboard_summary
+    finance_summary
+    assignment_stats
+    lesson_stats
+```
+Gateway читает готовые dashboard по gRPC:
+```text
+api-gateway -> report-service: GetTeacherDashboard / GetStudentDashboard
+```
+Read-model не источник истины; при расхождении истина остаётся в доменных сервисах.
+
+### Этап 5I — MinIO/S3 для file-service  ⬜ ОСТАЁТСЯ
+Заменить local volume на object storage без изменения внешнего API:
+```text
+api-gateway -> file-service -> MinIO/S3
+file-service -> file_db metadata
+```
+Нужно для lesson materials, assignment files, submission files, receipts и будущих
+chat attachments. Метаданные остаются в `file_db`; сервисы по-прежнему хранят
+только `file_id`.
+
+### Этап 5J — chat-service  ⬜ ОСТАЁТСЯ
+Делать после notification/report, потому что чат тянет realtime и статусы чтения.
+
+Минимальная версия без realtime:
+```text
+chat-service
+  gRPC API: CreateChat, SendMessage, ListMessages, MarkRead
+  DB: dialogs, messages, message_attachments
+  file-service: attachments через file_id
+  Kafka: message.sent, message.read
+```
+Следующая итерация: WebSocket/SSE, Redis для online state/session routing,
+unread counters. `message.sent` слушает notification-service.
+
+### Этап 5K — production hardening  ⬜ ОСТАЁТСЯ
+После расширения доменных возможностей:
+```text
+Caddy/Nginx reverse proxy
+CI/CD и Docker image build
+readiness checks отдельно от health
+structured logs + request_id/trace_id
+metrics
+Kafka lag/retry/DLQ monitoring
+backup/restore для Postgres и object storage
+```
 
 ### Что НЕ делать
 file upload на gRPC не переводить (multipart на HTTP); access-check через Kafka —
 нельзя (gRPC); gateway-вызовы Kafka-командами — нет; не делать все события сразу;
-report-service до Kafka/outbox не делать.
+report-service до Kafka/outbox не делать; chat-service не делать раньше
+notification/report; YDB/разделение identity на auth/user и реальные платежи —
+только отдельными будущими решениями.
 
 ---
 
@@ -471,6 +600,8 @@ UI материалов урока (3.6.3, backend готов) — в работ
 ## Правила назначения задач
 - В один момент активен **один** агент с **одной** задачей (PLAN §13).
 - Человек называет агенту задачу по номеру (напр. «Этап 2.5.1»).
-- Зависимости: Этап 2.5 — после 1.2/1.6; Этап 3 — после 2.5 (и 1.4, готово).
+- Зависимости: UI gaps закрывать до новых сервисов; 5F-0 перед 5F-1/5F-2;
+  notification-service после появления assignment/finance events; report-service
+  после стабильных event contracts; chat-service после notification/report.
 - Менять контракты (api-contracts) и public-сигнатуры `libs/common` — только через
   координатора (Claude) с подтверждением человека.

@@ -130,6 +130,7 @@ export interface Lesson {
   status: string;
   topic?: string;
   price?: number;
+  file_ids?: string[];
 }
 export interface CompleteLessonResponse {
   lesson: Lesson;

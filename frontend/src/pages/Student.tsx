@@ -10,7 +10,7 @@ import {
   type Receipt,
 } from "../api";
 import { useAuth } from "../auth";
-import { Card, ErrorMsg, FileChips, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, ListState, Notice, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
@@ -73,15 +73,18 @@ function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
   return (
     <Card title="Мои занятия">
       {(lessons.data ?? []).map((l) => (
-        <div className="row" key={l.id}>
-          <span>{l.topic || "Занятие"} · {fmtDate(l.starts_at)}</span>
-          <span className="btn-group" style={{ alignItems: "center" }}>
-            {typeof l.price === "number" && <span className="muted">{Math.round(l.price)} ₽</span>}
-            <StatusPill status={l.status} />
-          </span>
+        <div key={l.id}>
+          <div className="row">
+            <span>{l.topic || "Занятие"} · {fmtDate(l.starts_at)}</span>
+            <span className="btn-group" style={{ alignItems: "center" }}>
+              {typeof l.price === "number" && <span className="muted">{Math.round(l.price)} ₽</span>}
+              <StatusPill status={l.status} />
+            </span>
+          </div>
+          <FileChips fileIds={l.file_ids} label="Материалы урока" />
         </div>
       ))}
-      {lessons.data?.length === 0 && <p className="hint">Занятий пока нет.</p>}
+      <ListState query={lessons} empty="Занятий пока нет." />
     </Card>
   );
 }
@@ -101,7 +104,7 @@ function AssignmentsCard({ assignments }: { assignments: Async<Assignment[]> }) 
           {openId === a.id && <SubmitView id={a.id} onChange={() => assignments.reload()} />}
         </div>
       ))}
-      {assignments.data?.length === 0 && <p className="hint">Заданий пока нет.</p>}
+      <ListState query={assignments} empty="Заданий пока нет." />
     </Card>
   );
 }
@@ -111,11 +114,13 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setBusy(true);
     try {
       const fileIds: string[] = [];
@@ -130,6 +135,7 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
         text_answer: text || undefined,
         file_ids: fileIds.length ? fileIds : undefined,
       });
+      setNotice("Решение отправлено.");
       setText(""); setFiles([]);
       detail.reload();
       onChange();
@@ -144,6 +150,8 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
   return (
     <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
       <ErrorMsg error={error} />
+      <Notice text={notice} />
+      {detail.loading && !d && <p className="hint">Загрузка…</p>}
       {d?.description && <p className="muted">{d.description}</p>}
       <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
       {(d?.submissions ?? []).map((s) => <FileChips key={s.id} fileIds={s.file_ids} label="Мои файлы решения" />)}
@@ -151,10 +159,11 @@ function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
         <div className="row" key={c.id}><span className="muted">Комментарий: {c.text}</span></div>
       ))}
       <form onSubmit={submit}>
-        <div className="field"><textarea placeholder="Текст решения" value={text} onChange={(e) => setText(e.target.value)} /></div>
+        <div className="field"><label>Текст решения<textarea placeholder="Текст решения" value={text} onChange={(e) => setText(e.target.value)} /></label></div>
         <div className="field">
-          <label>Файлы решения (можно несколько)</label>
-          <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+          <label>Файлы решения (можно несколько)
+            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+          </label>
         </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Отправка…" : "Отправить решение"}</button>
       </form>
@@ -167,7 +176,7 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const effectiveTeacher = teacherId || (teacherIds.length === 1 ? teacherIds[0] : "");
@@ -175,7 +184,7 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
   async function send(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setOk(false);
+    setNotice(null);
     if (!effectiveTeacher) { setError("Не удалось определить преподавателя"); return; }
     if (!file) { setError("Прикрепите файл чека"); return; }
     setBusy(true);
@@ -189,7 +198,9 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
         file_id: meta.id,
         amount: Number(amount),
       });
-      setAmount(""); setFile(null); setOk(true);
+      setNotice("Чек отправлен — ждёт подтверждения преподавателя.");
+      setAmount(""); setFile(null);
+      (e.target as HTMLFormElement).reset();
       onSent();
     } catch (err) {
       setError((err as Error).message);
@@ -201,19 +212,20 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
   return (
     <Card title="Загрузить чек оплаты">
       <ErrorMsg error={error} />
-      {ok && <p className="muted">Чек отправлен — ждёт подтверждения преподавателя.</p>}
+      <Notice text={notice} />
       <form onSubmit={send}>
         {teacherIds.length > 1 && (
           <div className="field">
-            <label>Преподаватель</label>
-            <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required>
-              <option value="">— выбрать —</option>
-              {teacherIds.map((id) => <option key={id} value={id}>{id.slice(0, 8)}…</option>)}
-            </select>
+            <label>Преподаватель
+              <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required>
+                <option value="">— выбрать —</option>
+                {teacherIds.map((id) => <option key={id} value={id}>{id.slice(0, 8)}…</option>)}
+              </select>
+            </label>
           </div>
         )}
-        <div className="field"><input type="number" placeholder="сумма ₽" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
-        <div className="field"><input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required /></div>
+        <div className="field"><label>Сумма ₽<input type="number" min="0" placeholder="сумма" value={amount} onChange={(e) => setAmount(e.target.value)} required /></label></div>
+        <div className="field"><label>Файл чека<input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required /></label></div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Отправка…" : "Отправить чек"}</button>
       </form>
       <p className="hint">Это заявка об оплате: баланс/долг ведёт преподаватель и подтверждает чек вручную.</p>
@@ -235,7 +247,7 @@ function ReceiptsListCard({ receipts }: { receipts: Async<Receipt[]> }) {
           </span>
         </div>
       ))}
-      {receipts.data?.length === 0 && <p className="hint">Чеков пока нет.</p>}
+      <ListState query={receipts} empty="Чеков пока нет." />
     </Card>
   );
 }
@@ -244,28 +256,33 @@ function PasswordCard() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function change(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setOk(false);
+    setNotice(null);
+    setBusy(true);
     try {
       await api.post("/auth/change-password", { current_password: current, new_password: next });
-      setCurrent(""); setNext(""); setOk(true);
+      setNotice("Пароль обновлён.");
+      setCurrent(""); setNext("");
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
     <Card title="Сменить пароль">
       <ErrorMsg error={error} />
-      {ok && <p className="muted">Пароль обновлён.</p>}
+      <Notice text={notice} />
       <form onSubmit={change}>
-        <div className="field"><input type="password" placeholder="текущий пароль" value={current} onChange={(e) => setCurrent(e.target.value)} required /></div>
-        <div className="field"><input type="password" placeholder="новый пароль (мин. 8)" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required /></div>
-        <button className="primary" type="submit">Обновить</button>
+        <div className="field"><label>Текущий пароль<input type="password" placeholder="текущий пароль" value={current} onChange={(e) => setCurrent(e.target.value)} required /></label></div>
+        <div className="field"><label>Новый пароль (мин. 8)<input type="password" placeholder="новый пароль" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required /></label></div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Обновление…" : "Обновить"}</button>
       </form>
     </Card>
   );
