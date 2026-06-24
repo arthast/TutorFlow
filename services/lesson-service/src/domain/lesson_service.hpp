@@ -39,6 +39,8 @@ public:
   Lesson GetLesson(const std::string &lesson_id) const;
   CompleteLessonOutcome CompleteLesson(const tutorflow::common::AuthContext &auth,
                                        const std::string &lesson_id) const;
+  Lesson RescheduleLesson(const tutorflow::common::AuthContext &auth,
+                          const RescheduleLessonRequest &request) const;
   Lesson CancelLesson(const tutorflow::common::AuthContext &auth,
                       const std::string &lesson_id) const;
 

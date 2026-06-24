@@ -561,6 +561,47 @@ Kafka lag/retry/DLQ monitoring
 backup/restore для Postgres и object storage
 ```
 
+### Этап 5L — lesson lifecycle + finance corrections  🔶 В РАБОТЕ (5L.1 сделан)
+Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с
+человеком (2026-06-24). Расширяем жизненный цикл занятия и связь с финансами.
+
+Охват:
+- **reschedule** — перенос времени занятия (`scheduled`, новое время/слот; денег не касается);
+- **reactivate** — восстановление отменённого (`cancelled → scheduled`);
+- **cancel completed** — отмена завершённого (`completed → cancelled`) с
+  АВТОМАТИЧЕСКОЙ финансовой компенсацией;
+- **manual correction** — ручная корректировка баланса ученика преподавателем.
+
+Жёсткий инвариант: finance append-only — charge НЕ удаляем; откат = добавление
+компенсирующей `correction` (тип уже есть в модели). Компенсация идемпотентна по
+`lesson_id`. Принято product-решение: отмена оплаченного завершённого занятия может
+увести баланс в минус (кредит ученику) — это допустимо.
+
+Под-задачи (порядок и зависимости — см. design-doc §7):
+```text
+5L.0 контракты (координатор): proto lesson/finance + gateway/finance OpenAPI +
+     event-contracts lesson.rescheduled/lesson.cancelled (JSON готовы)
+5L.1 lesson: RescheduleLesson (+ слот, 409) + outbox lesson.rescheduled   ✅ СДЕЛАНО (feat/lesson-reschedule)
+5L.2 lesson: ReactivateLesson (cancelled→scheduled, ребронь слота, идемпотентно)   ⬜
+5L.3 lesson: CancelLesson допускает completed→cancelled + outbox lesson.cancelled   ⬜
+5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по lesson_id)   ⬜
+5L.5 finance: CreateCorrection (manual, ±amount + comment, check-access)   ⬜
+5L.6 gateway: роуты reschedule(✅)/reactivate/cancel/corrections (тонко)
+5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ⬜
+5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ⬜
+5L.9 tests + smoke: переходы, компенсация, идемпотентность, доступ   ⬜
+```
+5L.1 (feat/lesson-reschedule): RescheduleLesson — только teacher, только `scheduled`,
+ownership+check-access, атомарная ребронь слота (409 если занят), идемпотентный no-op,
+`lesson.rescheduled` в outbox одной транзакцией. Попутно фикс cast-бага
+(`uuid = text`) в освобождении слота `CancelLesson`. Контракты менялись → перед
+мержем PR/подтверждение координатора. NB: ветка от чистого `main` (без 5G).
+
+Решённые edge-cases (design-doc §4): после компенсации `unique(lesson_id)` не даёт
+повторного авто-charge → повторное начисление через ручную correction; reschedule/
+reactivate занятия в прошлом — разрешаем. Зависимость: `lesson.scheduled` (5F-3)
+нужен для reactivate; notification-service (5G) — потребитель новых событий.
+
 ### Что НЕ делать
 file upload на gRPC не переводить (multipart на HTTP); access-check через Kafka —
 нельзя (gRPC); gateway-вызовы Kafka-командами — нет; не делать все события сразу;

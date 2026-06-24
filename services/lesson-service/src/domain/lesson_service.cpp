@@ -78,6 +78,30 @@ LessonService::CompleteLesson(const tutorflow::common::AuthContext &auth,
   };
 }
 
+Lesson LessonService::RescheduleLesson(
+    const tutorflow::common::AuthContext &auth,
+    const RescheduleLessonRequest &request) const {
+  tutorflow::common::RequireTeacher(auth);
+  const auto current = repository_.FindLesson(request.lesson_id);
+  if (!current.has_value()) {
+    throw tutorflow::common::ServiceError::NotFound("lesson not found");
+  }
+  if (current->teacher_id != auth.user_id) {
+    throw tutorflow::common::ServiceError::Forbidden(
+        "teacher does not own lesson");
+  }
+  if (current->status != "scheduled") {
+    throw tutorflow::common::ServiceError::Conflict(
+        "only scheduled lesson can be rescheduled");
+  }
+  const auto access = identity_.CheckAccess(auth.user_id, current->student_id);
+  if (!access.allowed || access.status != "active") {
+    throw tutorflow::common::ServiceError::Forbidden(
+        "teacher-student relation is not active");
+  }
+  return repository_.RescheduleLesson(auth.user_id, request);
+}
+
 Lesson LessonService::CancelLesson(const tutorflow::common::AuthContext &auth,
                                    const std::string &lesson_id) const {
   return repository_.CancelLesson(lesson_id, auth.user_id);

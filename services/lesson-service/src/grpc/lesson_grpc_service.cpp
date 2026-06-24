@@ -94,6 +94,18 @@ CreateLessonRequest FromProto(const proto::CreateLessonRequest &request) {
   return result;
 }
 
+RescheduleLessonRequest
+FromProto(const proto::RescheduleLessonRequest &request) {
+  return RescheduleLessonRequest{
+      .lesson_id = request.lesson_id(),
+      .new_starts_at = request.new_starts_at(),
+      .new_ends_at = request.new_ends_at(),
+      .new_slot_id = request.new_slot_id().empty()
+                         ? std::nullopt
+                         : std::optional<std::string>{request.new_slot_id()},
+  };
+}
+
 } // namespace
 
 LessonGrpcService::LessonGrpcService(
@@ -158,6 +170,15 @@ LessonGrpcService::CompleteLesson(CallContext &context,
   return InvokeServerUnary<proto::CompleteLessonResponse>([&] {
     const auto auth = ResolveServerAuthContext(context, request.user());
     return ToProto(service_.CompleteLesson(auth, request.lesson_id()));
+  });
+}
+
+LessonGrpcService::RescheduleLessonResult
+LessonGrpcService::RescheduleLesson(CallContext &context,
+                                    proto::RescheduleLessonRequest &&request) {
+  return InvokeServerUnary<proto::Lesson>([&] {
+    const auto auth = ResolveServerAuthContext(context, request.user());
+    return ToProto(service_.RescheduleLesson(auth, FromProto(request)));
   });
 }
 

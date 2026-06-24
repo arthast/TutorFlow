@@ -227,6 +227,13 @@ lesson_files(id, lesson_id, file_id, created_at)
 Статус слота: `open | booked`.
 Статус занятия: `scheduled | completed | cancelled`.
 
+Переходы статуса (Этап 5L, см. `docs/agent-lesson-lifecycle.md`):
+`scheduled → completed` (complete), `scheduled → cancelled` (cancel),
+`scheduled → scheduled` (reschedule — меняется только время/слот; внедрён 5L.1),
+`cancelled → scheduled` (reactivate), `completed → cancelled` (отмена завершённого
++ компенсация в finance). Reschedule/reactivate финансов не касаются; отмена
+завершённого занятия порождает компенсирующую `correction` в finance (§8.4).
+
 Цена: снимок `lessons.price` фиксируется при создании занятия (из
 `teacher_student_links.hourly_rate` или явно). При завершении (`complete`)
 lesson-service меняет статус и пишет `lesson.completed` в outbox одной транзакцией.
@@ -280,6 +287,12 @@ balance = sum(charge) - sum(payment) + sum(correction) - sum(refund)
   баланс меняется. Чек привязан к ученику, НЕ к одному начислению (оплата может
   быть наперёд/частичной).
 - Операции не редактируем — только добавляем `correction`/`refund`.
+- Отмена завершённого занятия (`completed → cancelled`, Этап 5L): finance-consumer
+  на `lesson.cancelled` (`previous_status=completed`) добавляет компенсирующую
+  `correction` на `-price`, **идемпотентно по `lesson_id`**; charge не удаляется.
+- Ручная коррекция (Этап 5L): преподаватель через `CreateCorrection` добавляет
+  `correction(amount ±, comment)` для конкретного ученика (после `check-access`).
+  Подробности и контракты — `docs/agent-lesson-lifecycle.md`.
 
 ### 8.5 file-service (`file_db`) — метаданные + локальный том
 
@@ -452,9 +465,9 @@ Kafka-события (статус — см. roadmap Этап 5):
 
 ```text
 lesson.completed            ✅ ВНЕДРЕНО (outbox lesson -> Kafka -> finance charge)
-lesson.scheduled            ⬜ 5F-3
-lesson.cancelled            ⬜ 5F-3
-lesson.rescheduled          ⬜ 5F-3
+lesson.scheduled            ⬜ 5F-3 (нужен для reactivate, 5L)
+lesson.cancelled            ⬜ 5L  (contract готов; consumer finance — компенсация)
+lesson.rescheduled          ✅ ВНЕДРЕНО (5L.1, ветка feat/lesson-reschedule; outbox lesson)
 assignment.created          ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
 submission.uploaded         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
 assignment.reviewed         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
@@ -484,6 +497,9 @@ file.uploaded               ⬜ optional later
 5I MinIO/S3 для file-service без изменения внешнего API
 5J chat-service: messages, read status, attachments, message.* events
 5K production hardening: reverse proxy, CI/CD, readiness, logs/metrics, Kafka lag/DLQ
+5L lesson lifecycle + finance corrections: reschedule(✅ 5L.1)/reactivate/cancel-completed +
+   ручная correction; компенсация append-only идемпотентно по lesson_id
+   (см. docs/agent-lesson-lifecycle.md)
 ```
 
 Не делаем сейчас: Redis/WebSocket до chat-service, email/Telegram/push до

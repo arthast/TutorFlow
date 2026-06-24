@@ -428,6 +428,22 @@ std::string LessonCompleteHandler::HandleRequestThrow(
   });
 }
 
+TUTORFLOW_GATEWAY_DEFINE_CTOR(LessonRescheduleHandler)
+std::string LessonRescheduleHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return JsonResponse(
+        request,
+        Lesson().RescheduleLesson(
+            RequirePathArg(request, "lessonId"),
+            tutorflow::common::ParseJsonBody(request),
+            BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
+  });
+}
+
 TUTORFLOW_GATEWAY_DEFINE_CTOR(LessonCancelHandler)
 std::string LessonCancelHandler::HandleRequestThrow(
     const http::HttpRequest& request,

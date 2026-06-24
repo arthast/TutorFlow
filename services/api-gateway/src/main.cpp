@@ -40,6 +40,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::LessonsHandler>()
           .Append<tutorflow::gateway::LessonHandler>()
           .Append<tutorflow::gateway::LessonCompleteHandler>()
+          .Append<tutorflow::gateway::LessonRescheduleHandler>()
           .Append<tutorflow::gateway::LessonCancelHandler>()
           .Append<tutorflow::gateway::AssignmentsHandler>()
           .Append<tutorflow::gateway::AssignmentHandler>()
