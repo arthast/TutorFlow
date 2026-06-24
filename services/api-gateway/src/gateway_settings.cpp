@@ -20,14 +20,6 @@ GatewaySettings::GatewaySettings(
     : LoggableComponentBase(config, context),
       jwt_secret_(config["jwt-secret"].As<std::string>()),
       cors_origin_(config["cors-origin"].As<std::string>("http://localhost:5173")),
-      identity_base_url_(
-          TrimTrailingSlash(config["identity-base-url"].As<std::string>())),
-      lesson_base_url_(
-          TrimTrailingSlash(config["lesson-base-url"].As<std::string>())),
-      assignment_base_url_(
-          TrimTrailingSlash(config["assignment-base-url"].As<std::string>())),
-      finance_base_url_(
-          TrimTrailingSlash(config["finance-base-url"].As<std::string>())),
       file_base_url_(
           TrimTrailingSlash(config["file-base-url"].As<std::string>())),
       timeout_(std::chrono::milliseconds{config["timeout-ms"].As<int>(5000)}) {}
@@ -46,18 +38,6 @@ properties:
         type: string
         description: Browser origin allowed by api-gateway CORS
         defaultDescription: http://localhost:5173
-    identity-base-url:
-        type: string
-        description: identity-service base URL
-    lesson-base-url:
-        type: string
-        description: lesson-service base URL
-    assignment-base-url:
-        type: string
-        description: assignment-service base URL
-    finance-base-url:
-        type: string
-        description: finance-service base URL
     file-base-url:
         type: string
         description: file-service base URL
@@ -70,18 +50,10 @@ properties:
 
 const std::string& GatewaySettings::BaseUrl(UpstreamService service) const {
   switch (service) {
-    case UpstreamService::kIdentity:
-      return identity_base_url_;
-    case UpstreamService::kLesson:
-      return lesson_base_url_;
-    case UpstreamService::kAssignment:
-      return assignment_base_url_;
-    case UpstreamService::kFinance:
-      return finance_base_url_;
     case UpstreamService::kFile:
       return file_base_url_;
   }
-  return identity_base_url_;
+  return file_base_url_;
 }
 
 }  // namespace tutorflow::gateway
