@@ -444,6 +444,20 @@ std::string LessonRescheduleHandler::HandleRequestThrow(
   });
 }
 
+TUTORFLOW_GATEWAY_DEFINE_CTOR(LessonReactivateHandler)
+std::string LessonReactivateHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return JsonResponse(
+        request,
+        Lesson().ReactivateLesson(RequirePathArg(request, "lessonId"),
+                                  BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
+  });
+}
+
 TUTORFLOW_GATEWAY_DEFINE_CTOR(LessonCancelHandler)
 std::string LessonCancelHandler::HandleRequestThrow(
     const http::HttpRequest& request,

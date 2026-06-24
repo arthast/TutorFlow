@@ -182,6 +182,15 @@ LessonGrpcService::RescheduleLesson(CallContext &context,
   });
 }
 
+LessonGrpcService::ReactivateLessonResult
+LessonGrpcService::ReactivateLesson(CallContext &context,
+                                    proto::ReactivateLessonRequest &&request) {
+  return InvokeServerUnary<proto::Lesson>([&] {
+    const auto auth = ResolveServerAuthContext(context, request.user());
+    return ToProto(service_.ReactivateLesson(auth, request.lesson_id()));
+  });
+}
+
 LessonGrpcService::CancelLessonResult
 LessonGrpcService::CancelLesson(CallContext &context,
                                 proto::CancelLessonRequest &&request) {

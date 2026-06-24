@@ -35,6 +35,9 @@ public:
   RescheduleLessonResult RescheduleLesson(
       CallContext &context,
       tutorflow::lesson::v1::RescheduleLessonRequest &&request) override;
+  ReactivateLessonResult ReactivateLesson(
+      CallContext &context,
+      tutorflow::lesson::v1::ReactivateLessonRequest &&request) override;
   CancelLessonResult
   CancelLesson(CallContext &context,
                tutorflow::lesson::v1::CancelLessonRequest &&request) override;
