@@ -61,7 +61,8 @@ services:
 
   # Kafka broker (Этап 5D). KRaft-режим (без zookeeper), одна нода
   # broker+controller. Внутренний listener kafka:9092, наружу НЕ публикуем.
-  # Боевые сервисы пока НЕ зависят от kafka (события подключатся на 5E).
+  # lesson/finance зависят от kafka (depends_on healthy): lesson публикует
+  # lesson.completed, finance консьюмит и создаёт charge (Этап 5E).
   kafka:
     image: apache/kafka:3.8.1
     environment:
@@ -120,10 +121,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
       GATEWAY_CORS_ORIGIN: ${GATEWAY_CORS_ORIGIN:-http://localhost:5173}
-      IDENTITY_SERVICE_URL: http://identity-service:8081
-      LESSON_SERVICE_URL: http://lesson-service:8082
-      ASSIGNMENT_SERVICE_URL: http://assignment-service:8083
-      FINANCE_SERVICE_URL: http://finance-service:8084
+      # Домены вызываются по gRPC (dns:/// в static_config); по HTTP gateway
+      # ходит только в file-service (multipart upload/download).
       FILE_SERVICE_URL: http://file-service:8085
     ports:
       - "${GATEWAY_PORT:-8080}:8080"   # ЕДИНСТВЕННЫЙ публичный порт
@@ -168,8 +167,6 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       LESSON_DATABASE_URL: ${LESSON_DATABASE_URL}
-      IDENTITY_SERVICE_URL: http://identity-service:8081
-      FINANCE_SERVICE_URL: http://finance-service:8084
     depends_on:
       postgres:
         condition: service_healthy
@@ -191,8 +188,6 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       ASSIGNMENT_DATABASE_URL: ${ASSIGNMENT_DATABASE_URL}
-      IDENTITY_SERVICE_URL: http://identity-service:8081
-      FILE_SERVICE_URL: http://file-service:8085
     depends_on:
       postgres:
         condition: service_healthy
@@ -212,8 +207,6 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       FINANCE_DATABASE_URL: ${FINANCE_DATABASE_URL}
-      IDENTITY_SERVICE_URL: http://identity-service:8081
-      FILE_SERVICE_URL: http://file-service:8085
     depends_on:
       postgres:
         condition: service_healthy
@@ -235,7 +228,6 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       FILE_DATABASE_URL: ${FILE_DATABASE_URL}
-      IDENTITY_SERVICE_URL: http://identity-service:8081
       FILE_STORAGE_DIR: ${FILE_STORAGE_DIR:-/data/files}
       FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
     volumes:

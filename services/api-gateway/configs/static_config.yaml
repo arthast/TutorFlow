@@ -46,10 +46,6 @@ components_manager:
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN
-            identity-base-url#env: IDENTITY_SERVICE_URL
-            lesson-base-url#env: LESSON_SERVICE_URL
-            assignment-base-url#env: ASSIGNMENT_SERVICE_URL
-            finance-base-url#env: FINANCE_SERVICE_URL
             file-base-url#env: FILE_SERVICE_URL
             timeout-ms: 5000
         gateway-auth-register-handler:

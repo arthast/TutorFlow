@@ -10,11 +10,9 @@
 
 namespace tutorflow::gateway {
 
+// Внутренние домены вызываются по gRPC; через HTTP-проксирование gateway ходит
+// только в file-service (multipart upload/download), поэтому upstream один.
 enum class UpstreamService {
-  kIdentity,
-  kLesson,
-  kAssignment,
-  kFinance,
   kFile,
 };
 
@@ -36,10 +34,6 @@ class GatewaySettings final
  private:
   std::string jwt_secret_;
   std::string cors_origin_;
-  std::string identity_base_url_;
-  std::string lesson_base_url_;
-  std::string assignment_base_url_;
-  std::string finance_base_url_;
   std::string file_base_url_;
   std::chrono::milliseconds timeout_;
 };
