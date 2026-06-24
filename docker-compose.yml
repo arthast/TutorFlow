@@ -29,6 +29,36 @@ services:
     networks: [tutorflow]
     # Порт наружу НЕ публикуем — только docker-сеть.
 
+  # One-shot миграции (PLAN §11). Ждёт postgres healthy, применяет
+  # migrations/<svc>/*.sql по возрастанию в соответствующие БД и завершается
+  # (exit 0). Прикладные сервисы стартуют только после успешного завершения,
+  # поэтому к моменту старта publisher/consumer таблицы уже есть.
+  # Та же логика, что в scripts/migrate.sh (ручной прогон тоже остаётся валидным).
+  migrator:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - sh
+      - -ec
+      - |
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db; do
+          svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
+          for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
+            echo "== applying $$svc/$$(basename "$$f") -> $$db"
+            psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$db" -f "$$f"
+          done
+        done
+        echo "migrations done."
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
   # Kafka broker (Этап 5D). KRaft-режим (без zookeeper), одна нода
   # broker+controller. Внутренний listener kafka:9092, наружу НЕ публикуем.
   # Боевые сервисы пока НЕ зависят от kafka (события подключатся на 5E).
@@ -82,6 +112,10 @@ services:
       dockerfile: services/api-gateway/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       JWT_SECRET: ${JWT_SECRET}
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS}
@@ -107,6 +141,10 @@ services:
       dockerfile: services/identity-service/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       IDENTITY_DATABASE_URL: ${IDENTITY_DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
@@ -114,6 +152,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     networks: [tutorflow]
 
   lesson-service:
@@ -122,6 +162,10 @@ services:
       dockerfile: services/lesson-service/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       LESSON_DATABASE_URL: ${LESSON_DATABASE_URL}
       IDENTITY_SERVICE_URL: http://identity-service:8081
@@ -129,6 +173,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
     networks: [tutorflow]
@@ -139,6 +185,10 @@ services:
       dockerfile: services/assignment-service/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       ASSIGNMENT_DATABASE_URL: ${ASSIGNMENT_DATABASE_URL}
       IDENTITY_SERVICE_URL: http://identity-service:8081
@@ -146,6 +196,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     networks: [tutorflow]
 
   finance-service:
@@ -154,6 +206,10 @@ services:
       dockerfile: services/finance-service/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       FINANCE_DATABASE_URL: ${FINANCE_DATABASE_URL}
       IDENTITY_SERVICE_URL: http://identity-service:8081
@@ -161,6 +217,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
       kafka:
         condition: service_healthy
     networks: [tutorflow]
@@ -171,6 +229,10 @@ services:
       dockerfile: services/file-service/Dockerfile
       args:
         USERVER_IMAGE: *userver-image
+        # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
+        # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
+        # свою память: BUILD_JOBS=12 docker compose build.
+        BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       FILE_DATABASE_URL: ${FILE_DATABASE_URL}
       IDENTITY_SERVICE_URL: http://identity-service:8081
@@ -181,6 +243,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     networks: [tutorflow]
 
 networks:
