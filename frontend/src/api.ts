@@ -187,3 +187,13 @@ export interface FileMeta {
   purpose: string;
   original_name?: string;
 }
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  payload?: Record<string, unknown>;
+  is_read: boolean;
+  created_at?: string;
+}

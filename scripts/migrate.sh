@@ -33,11 +33,12 @@ db_for() {
     assignment) echo "${ASSIGNMENT_DB:-assignment_db}" ;;
     finance)    echo "${FINANCE_DB:-finance_db}" ;;
     file)       echo "${FILE_DB:-file_db}" ;;
+    notification) echo "${NOTIFICATION_DB:-notification_db}" ;;
     *) echo "" ;;
   esac
 }
 
-ALL_SERVICES=(identity lesson assignment finance file)
+ALL_SERVICES=(identity lesson assignment finance file notification)
 
 DC="docker compose"
 $DC version >/dev/null 2>&1 || DC="docker-compose"
@@ -66,6 +67,11 @@ apply_service() {
   fi
 
   IFS=$'\n' files=($(sort <<<"${files[*]}")); unset IFS
+
+  # initdb scripts run only for a fresh postgres volume. Create newly added
+  # service databases here as well so existing dev volumes keep working.
+  $DC exec -T postgres \
+    createdb -U "$POSTGRES_USER" "$db" >/dev/null 2>&1 || true
 
   echo "== $svc -> $db"
   for f in "${files[@]}"; do

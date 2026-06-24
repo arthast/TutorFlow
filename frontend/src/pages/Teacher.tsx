@@ -11,7 +11,7 @@ import {
   type Receipt,
   type StudentLink,
 } from "../api";
-import { Card, ErrorMsg, FileChips, ListState, Notice, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   const ids: string[] = [];
@@ -49,6 +49,7 @@ export default function Teacher() {
         </div>
 
         <div className="grid">
+          <NotificationsCard />
           <StudentsCard students={students} />
           <LessonsCard
             lessons={lessons}

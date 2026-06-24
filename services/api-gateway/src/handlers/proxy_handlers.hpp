@@ -19,6 +19,7 @@ class GrpcIdentityClient;
 class GrpcLessonClient;
 class GrpcAssignmentClient;
 class GrpcFinanceClient;
+class GrpcNotificationClient;
 
 struct AuthInfo {
   std::string user_id;
@@ -49,6 +50,9 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
     return assignment_client_;
   }
   GrpcFinanceClient& Finance() const noexcept { return finance_client_; }
+  GrpcNotificationClient& Notification() const noexcept {
+    return notification_client_;
+  }
 
  private:
   const GatewaySettings& settings_;
@@ -57,6 +61,7 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
   GrpcLessonClient& lesson_client_;
   GrpcAssignmentClient& assignment_client_;
   GrpcFinanceClient& finance_client_;
+  GrpcNotificationClient& notification_client_;
 };
 
 #define TUTORFLOW_GATEWAY_DECLARE_HANDLER(ClassName, NameValue)              \
@@ -112,6 +117,10 @@ TUTORFLOW_GATEWAY_DECLARE_HANDLER(PaymentReceiptConfirmHandler,
                                   "gateway-payment-receipt-confirm-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(PaymentReceiptRejectHandler,
                                   "gateway-payment-receipt-reject-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(NotificationsHandler,
+                                  "gateway-notifications-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(NotificationReadHandler,
+                                  "gateway-notification-read-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(FilesHandler, "gateway-files-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(FileMetaHandler,
                                   "gateway-file-meta-handler");

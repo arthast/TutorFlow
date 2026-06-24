@@ -19,6 +19,7 @@ TutorFlow — учебная платформа для связки «препо
 - Payment receipts: ученик загружает чек, преподаватель подтверждает или отклоняет.
 - Финансовый append-only журнал: `charge`, `payment`, корректирующие операции.
 - Асинхронное создание charge: `lesson.completed` через transactional outbox -> Kafka -> finance consumer.
+- Notification-service: Kafka consumer создаёт in-app уведомления; frontend показывает список и mark-as-read.
 - React + TypeScript + Vite frontend для teacher/student demo-flow.
 - Smoke и pytest e2e-проверки через внешний gateway.
 
@@ -37,11 +38,13 @@ identity-service   :9081 / identity_db
 lesson-service     :9082 / lesson_db
 assignment-service :9083 / assignment_db
 finance-service    :9084 / finance_db
+notification-service :9086 / notification_db
 
 api-gateway -- HTTP multipart --> file-service :8085 / file_db
 
 lesson-service -- transactional outbox --> Kafka topic tutorflow.lesson.completed
 Kafka --> finance-service consumer --> charge в finance_db
+assignment/finance/lesson events --> Kafka --> notification-service --> notifications
 ```
 
 Основные правила архитектуры:
@@ -52,6 +55,7 @@ Kafka --> finance-service consumer --> charge в finance_db
 - Файлы остаются на HTTP multipart, потому что это проще и практичнее для upload/download.
 - События и побочные эффекты идут через Kafka. Первый внедренный flow:
   `lesson.completed -> finance charge`.
+- In-app уведомления строятся асинхронно из Kafka-событий и читаются через gateway.
 - Ошибки наружу возвращаются в едином envelope:
 
 ```json
@@ -68,6 +72,7 @@ Kafka --> finance-service consumer --> charge в finance_db
 | `assignment-service` | ДЗ, submissions, review, comments | — | `9083` | `assignment_db` |
 | `finance-service` | receipts, баланс, append-only ledger, Kafka consumer | — | `9084` | `finance_db` |
 | `file-service` | metadata + локальное хранение файлов | — | — | `file_db` |
+| `notification-service` | in-app уведомления из Kafka-событий | — | `9086` | `notification_db` |
 
 ## Библиотеки
 
@@ -208,6 +213,7 @@ services/                 C++ userver services
   assignment-service/
   finance-service/
   file-service/
+  notification-service/
 libs/
   common/                 common infra helpers
   clients/                shared gRPC clients
@@ -223,8 +229,8 @@ docs/                     architecture notes and contracts
 ## Что Не Входит Сейчас
 
 - Реальные платежные интеграции.
-- Redis, чат, уведомления, report-service.
-- Остальные доменные события из этапа 5F (`assignment.*`, `payment.*`, `balance.changed`).
+- Redis, чат, report-service.
+- Email/Telegram/push-уведомления: сейчас есть только in-app notification-service.
 - S3/MinIO storage вместо локального file storage.
 
 Эти направления оставлены как следующие этапы развития.

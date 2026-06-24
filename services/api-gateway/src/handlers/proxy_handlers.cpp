@@ -27,6 +27,7 @@
 #include "clients/finance_grpc_client.hpp"
 #include "clients/identity_grpc_client.hpp"
 #include "clients/lesson_grpc_client.hpp"
+#include "clients/notification_grpc_client.hpp"
 #include "cors.hpp"
 
 namespace tutorflow::gateway {
@@ -48,6 +49,11 @@ bool StartsWithNoCase(std::string_view value, std::string_view prefix) {
 
 bool EqualsNoCase(std::string_view lhs, std::string_view rhs) {
   return lhs.size() == rhs.size() && StartsWithNoCase(lhs, rhs);
+}
+
+bool IsTruthy(std::string_view value) {
+  return EqualsNoCase(value, "true") || value == "1" ||
+         EqualsNoCase(value, "yes");
 }
 
 std::string JoinRoles(const std::vector<std::string>& roles) {
@@ -167,7 +173,8 @@ ProxyHandlerBase::ProxyHandlerBase(
       identity_client_(context.FindComponent<GrpcIdentityClient>()),
       lesson_client_(context.FindComponent<GrpcLessonClient>()),
       assignment_client_(context.FindComponent<GrpcAssignmentClient>()),
-      finance_client_(context.FindComponent<GrpcFinanceClient>()) {}
+      finance_client_(context.FindComponent<GrpcFinanceClient>()),
+      notification_client_(context.FindComponent<GrpcNotificationClient>()) {}
 
 AuthInfo ProxyHandlerBase::Authenticate(const http::HttpRequest& request) const {
   const auto& header = request.GetHeader(userver::http::headers::kAuthorization);
@@ -599,6 +606,35 @@ std::string PaymentReceiptRejectHandler::HandleRequestThrow(
             RequirePathArg(request, "receiptId"),
             tutorflow::common::ParseJsonBody(request, /*allow_empty=*/true),
             BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(NotificationsHandler)
+std::string NotificationsHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto unread_only = IsTruthy(request.GetArg("unread_only"));
+    return JsonResponse(
+        request,
+        Notification().ListNotifications(
+            unread_only, BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(NotificationReadHandler)
+std::string NotificationReadHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return JsonResponse(
+        request,
+        Notification().MarkAsRead(RequirePathArg(request, "notificationId"),
+                                  BuildGrpcCallContext(request, auth)),
         http::HttpStatus::kOk);
   });
 }

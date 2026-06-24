@@ -43,6 +43,9 @@ components_manager:
         gateway-finance-grpc-client:
             endpoint: dns:///finance-service:9084
             timeout-ms: 5000
+        gateway-notification-grpc-client:
+            endpoint: dns:///notification-service:9086
+            timeout-ms: 5000
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN
@@ -138,6 +141,14 @@ components_manager:
             task_processor: main-task-processor
         gateway-payment-receipt-reject-handler:
             path: /payments/receipts/{receiptId}/reject
+            method: POST,OPTIONS
+            task_processor: main-task-processor
+        gateway-notifications-handler:
+            path: /notifications
+            method: GET,OPTIONS
+            task_processor: main-task-processor
+        gateway-notification-read-handler:
+            path: /notifications/{notificationId}/read
             method: POST,OPTIONS
             task_processor: main-task-processor
         gateway-files-handler:
