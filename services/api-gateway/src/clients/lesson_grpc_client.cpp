@@ -200,6 +200,18 @@ json::Value GrpcLessonClient::RescheduleLesson(
   }));
 }
 
+json::Value GrpcLessonClient::ReactivateLesson(
+    std::string_view lesson_id,
+    const tutorflow::clients::GrpcCallContext &call_context) const {
+  proto::ReactivateLessonRequest request;
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
+  request.set_lesson_id(std::string{lesson_id});
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.ReactivateLesson(
+        request, tutorflow::clients::NonIdempotentCall(call_context, options_));
+  }));
+}
+
 json::Value GrpcLessonClient::CancelLesson(
     std::string_view lesson_id,
     const tutorflow::clients::GrpcCallContext &call_context) const {

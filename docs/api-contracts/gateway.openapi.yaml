@@ -161,6 +161,19 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /lessons/{lessonId}/reactivate:
+    post:
+      summary: Восстановить отменённое занятие (teacher)
+      description: >-
+        Разрешено только для status=cancelled. Время занятия не меняется. Если
+        у занятия есть slot_id, слот должен быть open и будет заново booked.
+        Повтор для уже scheduled занятия идемпотентно возвращает текущий Lesson.
+      parameters: [ { $ref: "#/components/parameters/LessonId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /lessons/{lessonId}/cancel:
     post:
       summary: Отменить занятие (teacher)

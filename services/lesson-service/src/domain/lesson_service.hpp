@@ -41,6 +41,8 @@ public:
                                        const std::string &lesson_id) const;
   Lesson RescheduleLesson(const tutorflow::common::AuthContext &auth,
                           const RescheduleLessonRequest &request) const;
+  Lesson ReactivateLesson(const tutorflow::common::AuthContext &auth,
+                          const std::string &lesson_id) const;
   Lesson CancelLesson(const tutorflow::common::AuthContext &auth,
                       const std::string &lesson_id) const;
 

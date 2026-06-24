@@ -461,6 +461,110 @@ Lesson LessonRepository::RescheduleLesson(
   return lesson;
 }
 
+Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
+                                          const std::string &teacher_id) const {
+  const auto current = FindLesson(lesson_id);
+  if (!current.has_value()) {
+    throw tutorflow::common::ServiceError::NotFound("lesson not found");
+  }
+  if (current->teacher_id != teacher_id) {
+    throw tutorflow::common::ServiceError::Forbidden(
+        "teacher does not own lesson");
+  }
+  if (current->status == "scheduled") {
+    return *current;
+  }
+  if (current->status == "completed") {
+    throw tutorflow::common::ServiceError::Conflict(
+        "completed lesson cannot be reactivated");
+  }
+  if (current->status != "cancelled") {
+    throw tutorflow::common::ServiceError::Conflict(
+        "only cancelled lesson can be reactivated");
+  }
+
+  const auto slot_id = OptionalUuidParam(current->slot_id);
+  if (current->slot_id.has_value()) {
+    const std::string sql =
+        R"(WITH booked_slot AS (
+             UPDATE availability_slots
+             SET status = 'booked'
+             WHERE id = NULLIF($3, '')::uuid
+               AND teacher_id = $2::uuid
+               AND status = 'open'
+             RETURNING id
+           ), reactivated AS (
+             UPDATE lessons
+             SET status = 'scheduled'
+             WHERE id = $1::uuid
+               AND teacher_id = $2::uuid
+               AND status = 'cancelled'
+               AND EXISTS (SELECT 1 FROM booked_slot)
+             RETURNING )" +
+        std::string{kLessonFields} +
+        R"(
+           ), outbox AS (
+             INSERT INTO outbox_events
+               (aggregate_type, aggregate_id, event_type, event_version, payload)
+             SELECT 'lesson', id::uuid, 'lesson.scheduled', 1,
+                    jsonb_build_object(
+                      'lesson_id', id,
+                      'teacher_id', teacher_id,
+                      'student_id', student_id,
+                      'starts_at', starts_at,
+                      'ends_at', ends_at,
+                      'scheduled_at',
+                        to_char(now() AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                      'origin', 'reactivated')
+             FROM reactivated
+           ) SELECT * FROM reactivated)";
+    const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id, slot_id);
+    if (result.IsEmpty()) {
+      throw tutorflow::common::ServiceError::Conflict(
+          "lesson slot is not open or does not belong to teacher");
+    }
+    auto lesson = RowToLesson(result[0]);
+    AttachLessonFileIds(pg_, lesson);
+    return lesson;
+  }
+
+  const std::string sql =
+      R"(WITH reactivated AS (
+           UPDATE lessons
+           SET status = 'scheduled'
+           WHERE id = $1::uuid
+             AND teacher_id = $2::uuid
+             AND status = 'cancelled'
+           RETURNING )" +
+      std::string{kLessonFields} +
+      R"(
+         ), outbox AS (
+           INSERT INTO outbox_events
+             (aggregate_type, aggregate_id, event_type, event_version, payload)
+           SELECT 'lesson', id::uuid, 'lesson.scheduled', 1,
+                  jsonb_build_object(
+                    'lesson_id', id,
+                    'teacher_id', teacher_id,
+                    'student_id', student_id,
+                    'starts_at', starts_at,
+                    'ends_at', ends_at,
+                    'scheduled_at',
+                      to_char(now() AT TIME ZONE 'UTC',
+                              'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                    'origin', 'reactivated')
+           FROM reactivated
+         ) SELECT * FROM reactivated)";
+  const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id);
+  if (result.IsEmpty()) {
+    throw tutorflow::common::ServiceError::Conflict(
+        "only cancelled lesson can be reactivated");
+  }
+  auto lesson = RowToLesson(result[0]);
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
+}
+
 Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
                                       const std::string &teacher_id) const {
   const auto current = FindLesson(lesson_id);
