@@ -129,6 +129,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     networks: [tutorflow]
 
   assignment-service:
@@ -158,6 +160,8 @@ services:
       FILE_SERVICE_URL: http://file-service:8085
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks: [tutorflow]
 

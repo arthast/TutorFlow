@@ -4,6 +4,7 @@ add_executable(lesson-service
     src/clients/finance_client.cpp
     src/domain/lesson_service.cpp
     src/grpc/lesson_grpc_service.cpp
+    src/outbox/outbox_publisher.cpp
     src/repositories/lesson_repository.cpp
 )
 
@@ -13,7 +14,9 @@ target_link_libraries(lesson-service
     PRIVATE
         tutorflow_common
         tutorflow_grpc_clients
+        tutorflow_events
         userver::core
         userver::grpc
+        userver::kafka
         userver::postgresql
 )

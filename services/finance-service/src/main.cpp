@@ -1,7 +1,10 @@
 #include <userver/clients/http/component_list.hpp>
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
+#include <userver/kafka/consumer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
+#include <userver/storages/secdist/component.hpp>
+#include <userver/storages/secdist/provider_component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
 #include <userver/ugrpc/client/client_factory_component.hpp>
 #include <userver/ugrpc/client/component_list.hpp>
@@ -12,6 +15,7 @@
 #include <tutorflow/common/health_handler.hpp>
 #include <tutorflow/clients/identity_grpc_client.hpp>
 
+#include "consumers/lesson_completed_consumer.hpp"
 #include "domain/finance_service.hpp"
 #include "grpc/finance_grpc_service.hpp"
 #include "handlers/finance_handlers.hpp"
@@ -27,12 +31,16 @@ int main(int argc, char *argv[]) {
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::components::Postgres>("finance-db")
+          .Append<userver::components::Secdist>()
+          .Append<userver::components::DefaultSecdistProvider>()
+          .Append<userver::kafka::ConsumerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::finance::FinanceRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::finance::FinanceService>()
           .Append<tutorflow::finance::FinanceGrpcService>()
-          .Append<tutorflow::finance::CreateChargeHandler>();
+          .Append<tutorflow::finance::CreateChargeHandler>()
+          .Append<tutorflow::finance::LessonCompletedConsumer>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

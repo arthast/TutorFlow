@@ -5,6 +5,9 @@ components_manager:
             worker_threads: 4
         fs-task-processor:
             worker_threads: 2
+        producer-task-processor:
+            thread_name: kafka-prod
+            worker_threads: 1
     default_task_processor: main-task-processor
     components:
         server:
@@ -46,6 +49,17 @@ components_manager:
         finance-client:
             base-url#env: FINANCE_SERVICE_URL
             timeout-ms: 5000
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+        kafka-producer:
+            security_protocol: PLAINTEXT
+            enable_idempotence: true
+            delivery_timeout: 5s
+            queue_buffering_max: 100ms
         lesson-domain-service: {}
         lesson-grpc-service:
             task-processor: main-task-processor
+        # Transactional outbox publisher (5E-1): poll pending -> Kafka.
+        lesson-outbox-publisher: {}

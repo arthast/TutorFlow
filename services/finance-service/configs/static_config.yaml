@@ -5,6 +5,12 @@ components_manager:
             worker_threads: 4
         fs-task-processor:
             worker_threads: 2
+        consumer-task-processor:
+            thread_name: kafka-cons
+            worker_threads: 1
+        consumer-blocking-task-processor:
+            thread_name: kafka-cblk
+            worker_threads: 1
     default_task_processor: main-task-processor
     components:
         server:
@@ -43,9 +49,22 @@ components_manager:
         identity-client:
             endpoint: dns:///identity-service:9081
             timeout-ms: 5000
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+        kafka-consumer:
+            group_id: finance-lesson-completed
+            topics:
+              - tutorflow.lesson.completed
+            auto_offset_reset: smallest
+            max_batch_size: 1
+            security_protocol: PLAINTEXT
         finance-domain-service: {}
         finance-grpc-service:
             task-processor: main-task-processor
+        # Kafka consumer (5E-1): lesson.completed -> idempotent charge.
+        finance-lesson-completed-consumer: {}
         # NOT deprecated: lesson->finance charge stays internal REST until 5E
         # (Kafka). gateway never calls this endpoint.
         finance-create-charge-handler:

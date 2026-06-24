@@ -12,7 +12,9 @@ service LessonService {
   rpc CreateLesson(CreateLessonRequest) returns (Lesson);
   rpc ListLessons(ListLessonsRequest) returns (ListLessonsResponse);
   rpc GetLesson(GetLessonRequest) returns (Lesson);
-  rpc CompleteLesson(CompleteLessonRequest) returns (Lesson);
+  // Charge создаётся асинхронно (outbox lesson.completed -> Kafka -> finance),
+  // поэтому ответ — Lesson + charge_status (вариант A, Этап 5E-2).
+  rpc CompleteLesson(CompleteLessonRequest) returns (CompleteLessonResponse);
   rpc CancelLesson(CancelLessonRequest) returns (Lesson);
 }
 
@@ -87,6 +89,13 @@ message GetLessonRequest {
 message CompleteLessonRequest {
   tutorflow.common.v1.UserContext user = 1;
   string lesson_id = 2;
+}
+
+// charge_status: "pending" — событие lesson.completed опубликовано, charge будет
+// создан consumer'ом finance; "created" — charge уже существует (идемпотентно).
+message CompleteLessonResponse {
+  Lesson lesson = 1;
+  string charge_status = 2;
 }
 
 message CancelLessonRequest {
