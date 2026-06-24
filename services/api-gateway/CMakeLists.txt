@@ -1,7 +1,10 @@
 # api-gateway. Публичный API, auth, роутинг. Без БД.
 add_executable(api-gateway
   src/main.cpp
+  src/clients/assignment_grpc_client.cpp
+  src/clients/finance_grpc_client.cpp
   src/clients/identity_grpc_client.cpp
+  src/clients/lesson_grpc_client.cpp
   src/cors.cpp
   src/gateway_settings.cpp
   src/handlers/health_handler.cpp

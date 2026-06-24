@@ -44,31 +44,11 @@ components_manager:
             endpoint: dns:///identity-service:9081
             timeout-ms: 5000
         finance-domain-service: {}
+        finance-grpc-service:
+            task-processor: main-task-processor
+        # NOT deprecated: lesson->finance charge stays internal REST until 5E
+        # (Kafka). gateway never calls this endpoint.
         finance-create-charge-handler:
             path: /internal/charges
-            method: POST
-            task_processor: main-task-processor
-        finance-get-balance-handler:
-            path: /internal/students/{studentId}/balance
-            method: GET
-            task_processor: main-task-processor
-        finance-list-transactions-handler:
-            path: /internal/students/{studentId}/transactions
-            method: GET
-            task_processor: main-task-processor
-        finance-create-receipt-handler:
-            path: /internal/payment-receipts
-            method: POST
-            task_processor: main-task-processor
-        finance-list-receipts-handler:
-            path: /internal/payment-receipts
-            method: GET
-            task_processor: main-task-processor
-        finance-confirm-receipt-handler:
-            path: /internal/payment-receipts/{receiptId}/confirm
-            method: POST
-            task_processor: main-task-processor
-        finance-reject-receipt-handler:
-            path: /internal/payment-receipts/{receiptId}/reject
             method: POST
             task_processor: main-task-processor

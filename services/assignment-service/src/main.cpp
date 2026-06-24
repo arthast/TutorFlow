@@ -13,7 +13,7 @@
 #include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "domain/assignment_service.hpp"
-#include "handlers/assignment_handlers.hpp"
+#include "grpc/assignment_grpc_service.hpp"
 #include "repositories/assignment_repository.hpp"
 
 int main(int argc, char* argv[]) {
@@ -31,11 +31,6 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::assignment::AssignmentRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
-          .Append<tutorflow::assignment::CreateAssignmentHandler>()
-          .Append<tutorflow::assignment::ListAssignmentsHandler>()
-          .Append<tutorflow::assignment::GetAssignmentHandler>()
-          .Append<tutorflow::assignment::SubmitAssignmentHandler>()
-          .Append<tutorflow::assignment::ReviewAssignmentHandler>()
-          .Append<tutorflow::assignment::CreateCommentHandler>();
+          .Append<tutorflow::assignment::AssignmentGrpcService>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

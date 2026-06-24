@@ -34,6 +34,15 @@ components_manager:
         gateway-identity-grpc-client:
             endpoint: dns:///identity-service:9081
             timeout-ms: 5000
+        gateway-lesson-grpc-client:
+            endpoint: dns:///lesson-service:9082
+            timeout-ms: 5000
+        gateway-assignment-grpc-client:
+            endpoint: dns:///assignment-service:9083
+            timeout-ms: 5000
+        gateway-finance-grpc-client:
+            endpoint: dns:///finance-service:9084
+            timeout-ms: 5000
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN

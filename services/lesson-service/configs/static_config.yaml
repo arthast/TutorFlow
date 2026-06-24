@@ -47,31 +47,5 @@ components_manager:
             base-url#env: FINANCE_SERVICE_URL
             timeout-ms: 5000
         lesson-domain-service: {}
-        lesson-create-availability-handler:
-            path: /internal/availability
-            method: POST
-            task_processor: main-task-processor
-        lesson-list-availability-handler:
-            path: /internal/availability
-            method: GET
-            task_processor: main-task-processor
-        lesson-create-handler:
-            path: /internal/lessons
-            method: POST
-            task_processor: main-task-processor
-        lesson-list-handler:
-            path: /internal/lessons
-            method: GET
-            task_processor: main-task-processor
-        lesson-get-handler:
-            path: /internal/lessons/{lessonId}
-            method: GET
-            task_processor: main-task-processor
-        lesson-complete-handler:
-            path: /internal/lessons/{lessonId}/complete
-            method: POST
-            task_processor: main-task-processor
-        lesson-cancel-handler:
-            path: /internal/lessons/{lessonId}/cancel
-            method: POST
-            task_processor: main-task-processor
+        lesson-grpc-service:
+            task-processor: main-task-processor

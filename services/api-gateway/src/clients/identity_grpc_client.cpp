@@ -22,37 +22,6 @@ namespace json = userver::formats::json;
 namespace proto = tutorflow::identity::v1;
 namespace common_proto = tutorflow::common::v1;
 
-template <typename Func>
-auto CallIdentity(Func&& func) {
-  try {
-    return std::forward<Func>(func)();
-  } catch (const userver::ugrpc::client::ErrorWithStatus& e) {
-    throw tutorflow::clients::MapGrpcStatusToServiceError(e.GetStatus());
-  } catch (const userver::ugrpc::client::BaseError& e) {
-    throw tutorflow::common::ServiceError::Internal(e.what());
-  }
-}
-
-userver::ugrpc::client::CallOptions IdempotentOptions(
-    const tutorflow::clients::GrpcCallContext& context,
-    const tutorflow::clients::GrpcClientOptions& options) {
-  return tutorflow::clients::MakeGrpcCallOptions(
-      context, options, tutorflow::clients::GrpcOperationKind::kIdempotent);
-}
-
-userver::ugrpc::client::CallOptions NonIdempotentOptions(
-    const tutorflow::clients::GrpcCallContext& context,
-    const tutorflow::clients::GrpcClientOptions& options) {
-  return tutorflow::clients::MakeGrpcCallOptions(
-      context, options, tutorflow::clients::GrpcOperationKind::kNonIdempotent);
-}
-
-void FillUser(common_proto::UserContext* user,
-              const tutorflow::clients::GrpcCallContext& context) {
-  user->set_user_id(context.user_id);
-  user->set_role(context.roles);
-}
-
 json::Value ToJson(const proto::TokenResponse& token) {
   json::ValueBuilder body;
   body["access_token"] = token.access_token();
@@ -148,8 +117,8 @@ json::Value GrpcIdentityClient::Register(
   if (const auto timezone = tutorflow::common::OptionalString(body, "timezone")) {
     request.set_timezone(*timezone);
   }
-  return ToJson(CallIdentity([&] {
-    return client_.Register(request, NonIdempotentOptions(call_context, options_));
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.Register(request, tutorflow::clients::NonIdempotentCall(call_context, options_));
   }));
 }
 
@@ -159,8 +128,8 @@ json::Value GrpcIdentityClient::Login(
   proto::LoginRequest request;
   request.set_email(tutorflow::common::RequireString(body, "email"));
   request.set_password(tutorflow::common::RequireString(body, "password"));
-  return ToJson(CallIdentity([&] {
-    return client_.Login(request, NonIdempotentOptions(call_context, options_));
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.Login(request, tutorflow::clients::NonIdempotentCall(call_context, options_));
   }));
 }
 
@@ -169,9 +138,9 @@ json::Value GrpcIdentityClient::ValidateToken(
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::ValidateTokenRequest request;
   request.set_token(std::string{token});
-  return ToJson(CallIdentity([&] {
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
     return client_.ValidateToken(request,
-                                 IdempotentOptions(call_context, options_));
+                                 tutorflow::clients::IdempotentCall(call_context, options_));
   }));
 }
 
@@ -179,13 +148,13 @@ json::Value GrpcIdentityClient::ChangePassword(
     const json::Value& body,
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::ChangePasswordRequest request;
-  FillUser(request.mutable_user(), call_context);
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
   request.set_current_password(
       tutorflow::common::RequireString(body, "current_password"));
   request.set_new_password(tutorflow::common::RequireString(body, "new_password"));
-  CallIdentity([&] {
+  tutorflow::clients::InvokeUnary([&] {
     return client_.ChangePassword(request,
-                                  NonIdempotentOptions(call_context, options_));
+                                  tutorflow::clients::NonIdempotentCall(call_context, options_));
   });
   json::ValueBuilder response;
   response["status"] = "ok";
@@ -197,8 +166,8 @@ json::Value GrpcIdentityClient::GetUser(
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::GetUserRequest request;
   request.set_user_id(std::string{user_id});
-  return ToJson(CallIdentity([&] {
-    return client_.GetUser(request, IdempotentOptions(call_context, options_));
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.GetUser(request, tutorflow::clients::IdempotentCall(call_context, options_));
   }));
 }
 
@@ -206,22 +175,22 @@ json::Value GrpcIdentityClient::GetStudent(
     std::string_view student_id,
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::GetStudentRequest request;
-  FillUser(request.mutable_user(), call_context);
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
   request.set_student_id(std::string{student_id});
-  return ToJson(CallIdentity([&] {
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
     return client_.GetStudent(request,
-                              IdempotentOptions(call_context, options_));
+                              tutorflow::clients::IdempotentCall(call_context, options_));
   }));
 }
 
 json::Value GrpcIdentityClient::ListStudents(
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::ListStudentsRequest request;
-  FillUser(request.mutable_user(), call_context);
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
   request.set_teacher_id(call_context.user_id);
-  return ToJsonArray(CallIdentity([&] {
+  return ToJsonArray(tutorflow::clients::InvokeUnary([&] {
     return client_.ListStudents(request,
-                                IdempotentOptions(call_context, options_));
+                                tutorflow::clients::IdempotentCall(call_context, options_));
   }));
 }
 
@@ -229,7 +198,7 @@ json::Value GrpcIdentityClient::CreateStudent(
     const json::Value& body,
     const tutorflow::clients::GrpcCallContext& call_context) const {
   proto::CreateStudentRequest request;
-  FillUser(request.mutable_user(), call_context);
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
   request.set_email(tutorflow::common::RequireString(body, "email"));
   request.set_password(tutorflow::common::RequireString(body, "password"));
   request.set_display_name(
@@ -244,9 +213,9 @@ json::Value GrpcIdentityClient::CreateStudent(
           tutorflow::common::OptionalDouble(body, "hourly_rate")) {
     request.set_hourly_rate(*hourly_rate);
   }
-  return ToJson(CallIdentity([&] {
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
     return client_.CreateStudent(request,
-                                 NonIdempotentOptions(call_context, options_));
+                                 tutorflow::clients::NonIdempotentCall(call_context, options_));
   }));
 }
 

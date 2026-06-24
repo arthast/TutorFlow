@@ -40,39 +40,3 @@ components_manager:
             jwt-expires-in-seconds: 86400
         identity-grpc-service:
             task-processor: main-task-processor
-        # Deprecated after 5B: gateway now calls identity gRPC for auth.
-        identity-register-handler:
-            path: /internal/auth/register
-            method: POST
-            task_processor: main-task-processor
-        identity-login-handler:
-            path: /internal/auth/login
-            method: POST
-            task_processor: main-task-processor
-        identity-change-password-handler:
-            path: /internal/auth/change-password
-            method: POST
-            task_processor: main-task-processor
-        # Deprecated after 5B: internal callers use identity gRPC.
-        identity-get-user-handler:
-            path: /internal/users/{userId}
-            method: GET
-            task_processor: main-task-processor
-        # Deprecated after 5B: check-access moved to gRPC for lesson/assignment/finance.
-        identity-check-access-handler:
-            path: /internal/relations/check-access
-            method: POST
-            task_processor: main-task-processor
-        # Deprecated after 5B: gateway students flow now calls identity gRPC.
-        identity-create-student-handler:
-            path: /internal/students
-            method: POST
-            task_processor: main-task-processor
-        identity-get-student-handler:
-            path: /internal/students/{studentId}
-            method: GET
-            task_processor: main-task-processor
-        identity-list-students-handler:
-            path: /internal/teachers/{teacherId}/students
-            method: GET
-            task_processor: main-task-processor

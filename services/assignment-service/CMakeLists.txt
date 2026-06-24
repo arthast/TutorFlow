@@ -2,8 +2,7 @@
 add_executable(assignment-service
     src/main.cpp
     src/domain/assignment_service.cpp
-    src/domain/models.cpp
-    src/handlers/assignment_handlers.cpp
+    src/grpc/assignment_grpc_service.cpp
     src/repositories/assignment_repository.cpp
 )
 

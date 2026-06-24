@@ -1,23 +1,18 @@
-# Shared typed HTTP clients. Keep service DTOs out of libs/common.
-
-add_library(tutorflow_clients STATIC
-    src/identity_client.cpp
-)
-
-target_include_directories(tutorflow_clients
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(tutorflow_clients
-    PUBLIC
-        tutorflow_common
-        userver::core
-)
-
-target_compile_features(tutorflow_clients PUBLIC cxx_std_20)
+# Shared gRPC plumbing + typed domain clients. Keep service DTOs out of
+# libs/common (rule §7). All internal sync calls use gRPC; the old HTTP identity
+# client was removed after the 5C cleanup.
+#
+# Contents:
+#   grpc_client_base   - client call options, status<->ServiceError mapping,
+#                        UserContext fill, unary-call wrapper.
+#   grpc_server_utils  - server-side auth-context resolution, ServiceError ->
+#                        grpc::Status mapping, unary-handler wrapper.
+#   identity_client.hpp - IdentityClient interface + AccessCheckResult.
+#   identity_grpc_client - GrpcIdentityClient implementing IdentityClient.
 
 add_library(tutorflow_grpc_clients STATIC
     src/grpc_client_base.cpp
+    src/grpc_server_utils.cpp
     src/identity_grpc_client.cpp
 )
 

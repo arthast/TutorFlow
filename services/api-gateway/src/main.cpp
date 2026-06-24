@@ -6,7 +6,10 @@
 #include <userver/ugrpc/client/component_list.hpp>
 #include <userver/utils/daemon_run.hpp>
 
+#include "clients/assignment_grpc_client.hpp"
+#include "clients/finance_grpc_client.hpp"
 #include "clients/identity_grpc_client.hpp"
+#include "clients/lesson_grpc_client.hpp"
 #include "gateway_settings.hpp"
 #include "handlers/health_handler.hpp"
 #include "handlers/proxy_handlers.hpp"
@@ -20,6 +23,9 @@ int main(int argc, char* argv[]) {
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<tutorflow::gateway::GrpcIdentityClient>()
+          .Append<tutorflow::gateway::GrpcLessonClient>()
+          .Append<tutorflow::gateway::GrpcAssignmentClient>()
+          .Append<tutorflow::gateway::GrpcFinanceClient>()
           .Append<tutorflow::gateway::GatewaySettings>()
           .Append<tutorflow::gateway::HealthHandler>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()

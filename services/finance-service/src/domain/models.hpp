@@ -68,7 +68,5 @@ struct CreateChargeResult {
 };
 
 userver::formats::json::Value ToJson(const Transaction &transaction);
-userver::formats::json::Value ToJson(const Receipt &receipt);
-userver::formats::json::Value ToJson(const Balance &balance);
 
 } // namespace tutorflow::finance

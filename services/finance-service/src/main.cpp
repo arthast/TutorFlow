@@ -13,6 +13,7 @@
 #include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "domain/finance_service.hpp"
+#include "grpc/finance_grpc_service.hpp"
 #include "handlers/finance_handlers.hpp"
 #include "repositories/finance_repository.hpp"
 
@@ -31,12 +32,7 @@ int main(int argc, char *argv[]) {
           .Append<tutorflow::finance::FinanceRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::finance::FinanceService>()
-          .Append<tutorflow::finance::CreateChargeHandler>()
-          .Append<tutorflow::finance::GetBalanceHandler>()
-          .Append<tutorflow::finance::ListTransactionsHandler>()
-          .Append<tutorflow::finance::CreateReceiptHandler>()
-          .Append<tutorflow::finance::ListReceiptsHandler>()
-          .Append<tutorflow::finance::ConfirmReceiptHandler>()
-          .Append<tutorflow::finance::RejectReceiptHandler>();
+          .Append<tutorflow::finance::FinanceGrpcService>()
+          .Append<tutorflow::finance::CreateChargeHandler>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

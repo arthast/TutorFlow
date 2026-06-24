@@ -1,18 +1,12 @@
 #include "grpc/identity_grpc_service.hpp"
 
-#include <string>
-#include <string_view>
-#include <exception>
 #include <optional>
-#include <utility>
+#include <string>
 #include <vector>
 
-#include <grpcpp/support/status.h>
-
 #include <userver/components/component_context.hpp>
-#include <userver/server/http/http_status.hpp>
-#include <userver/ugrpc/server/metadata_utils.hpp>
 
+#include <tutorflow/clients/grpc_server_utils.hpp>
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
 
@@ -20,94 +14,11 @@
 
 namespace tutorflow::identity {
 namespace {
-namespace http = userver::server::http;
 namespace proto = tutorflow::identity::v1;
 namespace common_proto = tutorflow::common::v1;
 
-constexpr std::string_view kMetadataUserId = "x-user-id";
-constexpr std::string_view kMetadataUserRoles = "x-user-roles";
-constexpr std::string_view kEmailTaken = "email_taken";
-
-std::string FirstMetadata(userver::ugrpc::server::CallContext& context,
-                          std::string_view name) {
-    for (const auto value : userver::ugrpc::server::GetRepeatedMetadata(context, name)) {
-        return std::string{value};
-    }
-    return {};
-}
-
-std::vector<std::string> SplitCsv(std::string_view csv) {
-    std::vector<std::string> roles;
-    std::size_t pos = 0;
-    while (pos <= csv.size()) {
-        const auto comma = csv.find(',', pos);
-        const auto chunk = csv.substr(
-            pos, comma == std::string_view::npos ? std::string_view::npos
-                                                 : comma - pos);
-        if (!chunk.empty()) {
-            roles.emplace_back(chunk);
-        }
-        if (comma == std::string_view::npos) {
-            break;
-        }
-        pos = comma + 1;
-    }
-    return roles;
-}
-
-tutorflow::common::AuthContext ResolveAuthContext(
-    userver::ugrpc::server::CallContext& context,
-    const common_proto::UserContext& user = {}) {
-    auto roles = SplitCsv(FirstMetadata(context, kMetadataUserRoles));
-    tutorflow::common::AuthContext auth{
-        .user_id = FirstMetadata(context, kMetadataUserId),
-        .roles = std::move(roles),
-    };
-    if (auth.user_id.empty()) {
-        auth.user_id = user.user_id();
-    }
-    if (auth.roles.empty()) {
-        auth.roles = SplitCsv(user.role());
-    }
-    return auth;
-}
-
-grpc::StatusCode ToGrpcCode(http::HttpStatus status) {
-    switch (status) {
-        case http::HttpStatus::kBadRequest:
-            return grpc::StatusCode::INVALID_ARGUMENT;
-        case http::HttpStatus::kUnauthorized:
-            return grpc::StatusCode::UNAUTHENTICATED;
-        case http::HttpStatus::kForbidden:
-            return grpc::StatusCode::PERMISSION_DENIED;
-        case http::HttpStatus::kNotFound:
-            return grpc::StatusCode::NOT_FOUND;
-        case http::HttpStatus::kConflict:
-            return grpc::StatusCode::ALREADY_EXISTS;
-        case http::HttpStatus::kUnprocessableEntity:
-            return grpc::StatusCode::FAILED_PRECONDITION;
-        default:
-            return grpc::StatusCode::INTERNAL;
-    }
-}
-
-grpc::Status ToGrpcStatus(const tutorflow::common::ServiceError& error) {
-    const auto code = ToGrpcCode(error.Status());
-    const std::string details =
-        error.Code() == kEmailTaken ? std::string{kEmailTaken} : std::string{};
-    return grpc::Status{code, error.what(), details};
-}
-
-template <typename Response, typename Func>
-userver::ugrpc::server::Result<Response> HandleGrpc(Func&& func) {
-    try {
-        return std::forward<Func>(func)();
-    } catch (const tutorflow::common::ServiceError& e) {
-        return ToGrpcStatus(e);
-    } catch (const std::exception& e) {
-        return grpc::Status{grpc::StatusCode::INTERNAL, e.what()};
-    }
-}
+using tutorflow::clients::InvokeServerUnary;
+using tutorflow::clients::ResolveServerAuthContext;
 
 proto::TokenResponse ToProto(const TokenResponse& token) {
     proto::TokenResponse response;
@@ -214,26 +125,26 @@ IdentityGrpcService::IdentityGrpcService(
 
 IdentityGrpcService::RegisterResult IdentityGrpcService::Register(
     CallContext&, proto::RegisterRequest&& request) {
-    return HandleGrpc<proto::TokenResponse>(
+    return InvokeServerUnary<proto::TokenResponse>(
         [&] { return ToProto(service_.Register(FromProto(request))); });
 }
 
 IdentityGrpcService::LoginResult IdentityGrpcService::Login(
     CallContext&, proto::LoginRequest&& request) {
-    return HandleGrpc<proto::TokenResponse>(
+    return InvokeServerUnary<proto::TokenResponse>(
         [&] { return ToProto(service_.Login(FromProto(request))); });
 }
 
 IdentityGrpcService::ValidateTokenResult IdentityGrpcService::ValidateToken(
     CallContext&, proto::ValidateTokenRequest&& request) {
-    return HandleGrpc<proto::TokenClaims>(
+    return InvokeServerUnary<proto::TokenClaims>(
         [&] { return ToProto(service_.ValidateToken(request.token())); });
 }
 
 IdentityGrpcService::ChangePasswordResult IdentityGrpcService::ChangePassword(
     CallContext& context, proto::ChangePasswordRequest&& request) {
-    return HandleGrpc<common_proto::Empty>([&] {
-        const auto auth = ResolveAuthContext(context, request.user());
+    return InvokeServerUnary<common_proto::Empty>([&] {
+        const auto auth = ResolveServerAuthContext(context, request.user());
         if (auth.user_id.empty()) {
             throw tutorflow::common::ServiceError::Unauthorized(
                 "missing user context");
@@ -245,20 +156,20 @@ IdentityGrpcService::ChangePasswordResult IdentityGrpcService::ChangePassword(
 
 IdentityGrpcService::GetUserResult IdentityGrpcService::GetUser(
     CallContext&, proto::GetUserRequest&& request) {
-    return HandleGrpc<proto::User>(
+    return InvokeServerUnary<proto::User>(
         [&] { return ToProto(service_.GetUser(request.user_id())); });
 }
 
 IdentityGrpcService::GetStudentResult IdentityGrpcService::GetStudent(
     CallContext&, proto::GetStudentRequest&& request) {
-    return HandleGrpc<proto::StudentLink>(
+    return InvokeServerUnary<proto::StudentLink>(
         [&] { return ToProto(service_.GetStudentLink(request.student_id())); });
 }
 
 IdentityGrpcService::ListStudentsResult IdentityGrpcService::ListStudents(
     CallContext& context, proto::ListStudentsRequest&& request) {
-    return HandleGrpc<proto::ListStudentsResponse>([&] {
-        const auto auth = ResolveAuthContext(context, request.user());
+    return InvokeServerUnary<proto::ListStudentsResponse>([&] {
+        const auto auth = ResolveServerAuthContext(context, request.user());
         const std::string teacher_id =
             request.teacher_id().empty() ? auth.user_id : request.teacher_id();
         proto::ListStudentsResponse response;
@@ -271,8 +182,8 @@ IdentityGrpcService::ListStudentsResult IdentityGrpcService::ListStudents(
 
 IdentityGrpcService::CreateStudentResult IdentityGrpcService::CreateStudent(
     CallContext& context, proto::CreateStudentRequest&& request) {
-    return HandleGrpc<proto::StudentLink>([&] {
-        const auto auth = ResolveAuthContext(context, request.user());
+    return InvokeServerUnary<proto::StudentLink>([&] {
+        const auto auth = ResolveServerAuthContext(context, request.user());
         tutorflow::common::RequireTeacher(auth);
         return ToProto(service_.CreateStudent(auth.user_id, FromProto(request)));
     });
@@ -281,7 +192,7 @@ IdentityGrpcService::CreateStudentResult IdentityGrpcService::CreateStudent(
 IdentityGrpcService::CheckTeacherStudentAccessResult
 IdentityGrpcService::CheckTeacherStudentAccess(
     CallContext&, proto::CheckTeacherStudentAccessRequest&& request) {
-    return HandleGrpc<proto::CheckTeacherStudentAccessResponse>([&] {
+    return InvokeServerUnary<proto::CheckTeacherStudentAccessResponse>([&] {
         const auto result =
             service_.CheckAccess(request.teacher_id(), request.student_id());
         proto::CheckTeacherStudentAccessResponse response;

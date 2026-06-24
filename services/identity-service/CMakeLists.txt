@@ -7,8 +7,6 @@ add_executable(identity-service
     src/domain/identity_service.cpp
     src/repositories/identity_repository.cpp
     src/grpc/identity_grpc_service.cpp
-    src/handlers/auth_handlers.cpp
-    src/handlers/identity_handlers.cpp
 )
 
 target_include_directories(identity-service PRIVATE src)
@@ -16,7 +14,7 @@ target_include_directories(identity-service PRIVATE src)
 target_link_libraries(identity-service
     PRIVATE
         tutorflow_common
-        tutorflow::proto
+        tutorflow_grpc_clients
         userver::core
         userver::grpc
         userver::postgresql

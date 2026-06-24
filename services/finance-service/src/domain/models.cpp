@@ -35,28 +35,4 @@ userver::formats::json::Value ToJson(const Transaction &transaction) {
   return json.ExtractValue();
 }
 
-userver::formats::json::Value ToJson(const Receipt &receipt) {
-  ValueBuilder json(common::Type::kObject);
-  json["id"] = receipt.id;
-  json["teacher_id"] = receipt.teacher_id;
-  json["student_id"] = receipt.student_id;
-  json["file_id"] = receipt.file_id;
-  json["amount"] = receipt.amount;
-  json["currency"] = receipt.currency;
-  json["status"] = receipt.status;
-  json["submitted_at"] = receipt.submitted_at;
-  SetNullable(json, "reviewed_at", receipt.reviewed_at);
-  SetNullable(json, "reviewed_by", receipt.reviewed_by);
-  SetNullable(json, "comment", receipt.comment);
-  return json.ExtractValue();
-}
-
-userver::formats::json::Value ToJson(const Balance &balance) {
-  ValueBuilder json(common::Type::kObject);
-  json["student_id"] = balance.student_id;
-  json["currency"] = balance.currency;
-  json["balance"] = balance.balance;
-  return json.ExtractValue();
-}
-
 } // namespace tutorflow::finance

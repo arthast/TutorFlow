@@ -11,8 +11,6 @@
 
 #include "domain/identity_service.hpp"
 #include "grpc/identity_grpc_service.hpp"
-#include "handlers/auth_handlers.hpp"
-#include "handlers/identity_handlers.hpp"
 #include "repositories/identity_repository.hpp"
 
 int main(int argc, char* argv[]) {
@@ -27,14 +25,6 @@ int main(int argc, char* argv[]) {
             .Append<tutorflow::common::HealthHandler>()
             .Append<tutorflow::identity::IdentityRepository>()
             .Append<tutorflow::identity::IdentityService>()
-            .Append<tutorflow::identity::IdentityGrpcService>()
-            .Append<tutorflow::identity::RegisterHandler>()
-            .Append<tutorflow::identity::LoginHandler>()
-            .Append<tutorflow::identity::ChangePasswordHandler>()
-            .Append<tutorflow::identity::GetUserHandler>()
-            .Append<tutorflow::identity::CheckAccessHandler>()
-            .Append<tutorflow::identity::CreateStudentHandler>()
-            .Append<tutorflow::identity::GetStudentLinkHandler>()
-            .Append<tutorflow::identity::ListStudentsHandler>();
+            .Append<tutorflow::identity::IdentityGrpcService>();
     return userver::utils::DaemonMain(argc, argv, component_list);
 }

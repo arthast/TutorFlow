@@ -3,6 +3,7 @@ add_executable(finance-service
     src/main.cpp
     src/domain/finance_service.cpp
     src/domain/models.cpp
+    src/grpc/finance_grpc_service.cpp
     src/handlers/finance_handlers.cpp
     src/repositories/finance_repository.cpp
 )

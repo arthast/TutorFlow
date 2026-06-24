@@ -44,27 +44,5 @@ components_manager:
             endpoint: dns:///identity-service:9081
             timeout-ms: 5000
         assignment-domain-service: {}
-        assignment-create-handler:
-            path: /internal/assignments
-            method: POST
-            task_processor: main-task-processor
-        assignment-list-handler:
-            path: /internal/assignments
-            method: GET
-            task_processor: main-task-processor
-        assignment-get-handler:
-            path: /internal/assignments/{assignmentId}
-            method: GET
-            task_processor: main-task-processor
-        assignment-submit-handler:
-            path: /internal/assignments/{assignmentId}/submit
-            method: POST
-            task_processor: main-task-processor
-        assignment-review-handler:
-            path: /internal/assignments/{assignmentId}/review
-            method: POST
-            task_processor: main-task-processor
-        assignment-comment-handler:
-            path: /internal/assignments/{assignmentId}/comments
-            method: POST
-            task_processor: main-task-processor
+        assignment-grpc-service:
+            task-processor: main-task-processor

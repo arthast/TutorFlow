@@ -11,7 +11,7 @@
 #include <userver/yaml_config/merge_schemas.hpp>
 
 #include <tutorflow/common/errors.hpp>
-#include <tutorflow/clients/identity_client.hpp>
+#include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "repositories/file_repository.hpp"
 
@@ -21,7 +21,7 @@ FileService::FileService(const userver::components::ComponentConfig& config,
                          const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<FileRepository>()),
-      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()),
+      identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()),
       fs_tp_(context.GetTaskProcessor("fs-task-processor")),
       storage_dir_(config["storage-dir"].As<std::string>()),
       max_size_bytes_(config["max-size-bytes"].As<int64_t>(10 * 1024 * 1024)) {}

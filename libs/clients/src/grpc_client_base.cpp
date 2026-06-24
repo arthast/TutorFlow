@@ -126,4 +126,20 @@ tutorflow::common::ServiceError MapGrpcStatusToServiceError(
                                          BuildDetails(status));
 }
 
+userver::ugrpc::client::CallOptions IdempotentCall(
+    const GrpcCallContext& ctx, const GrpcClientOptions& options) {
+  return MakeGrpcCallOptions(ctx, options, GrpcOperationKind::kIdempotent);
+}
+
+userver::ugrpc::client::CallOptions NonIdempotentCall(
+    const GrpcCallContext& ctx, const GrpcClientOptions& options) {
+  return MakeGrpcCallOptions(ctx, options, GrpcOperationKind::kNonIdempotent);
+}
+
+void FillUserContext(tutorflow::common::v1::UserContext& user,
+                     const GrpcCallContext& ctx) {
+  user.set_user_id(ctx.user_id);
+  user.set_role(ctx.roles);
+}
+
 }  // namespace tutorflow::clients

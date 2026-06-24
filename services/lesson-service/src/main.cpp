@@ -14,7 +14,7 @@
 
 #include "clients/finance_client.hpp"
 #include "domain/lesson_service.hpp"
-#include "handlers/lesson_handlers.hpp"
+#include "grpc/lesson_grpc_service.hpp"
 #include "repositories/lesson_repository.hpp"
 
 int main(int argc, char *argv[]) {
@@ -33,12 +33,6 @@ int main(int argc, char *argv[]) {
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::lesson::HttpFinanceClient>()
           .Append<tutorflow::lesson::LessonService>()
-          .Append<tutorflow::lesson::CreateAvailabilityHandler>()
-          .Append<tutorflow::lesson::ListAvailabilityHandler>()
-          .Append<tutorflow::lesson::CreateLessonHandler>()
-          .Append<tutorflow::lesson::ListLessonsHandler>()
-          .Append<tutorflow::lesson::GetLessonHandler>()
-          .Append<tutorflow::lesson::CompleteLessonHandler>()
-          .Append<tutorflow::lesson::CancelLessonHandler>();
+          .Append<tutorflow::lesson::LessonGrpcService>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }
