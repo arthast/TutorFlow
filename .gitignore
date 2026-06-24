@@ -3,13 +3,12 @@
 *.env
 !.env.example
 
-# === Локальные проектные инструкции и документация (не коммитим) ===
-# Docs, AGENTS and agent notes stay local for this checkout.
-AGENTS*.md
+# === Локальная конфигурация (не коммитим) ===
+# docs/ и AGENTS.md теперь ОТСЛЕЖИВАЮТСЯ (едут с веткой/клоном, не теряются при
+# переключении). Локальными остаются только *.local.md (напр. AGENTS.local.md).
 *.local.md
 local/
 **/local/
-docs/
 
 # Локальные настройки агентских инструментов
 .claude/settings.local.json
