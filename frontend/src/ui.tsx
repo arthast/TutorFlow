@@ -54,6 +54,34 @@ export function ErrorMsg({ error }: { error: string | null }) {
   return <div className="error">{error}</div>;
 }
 
+// Зелёное уведомление об успехе действия.
+export function Notice({ text }: { text: string | null }) {
+  if (!text) return null;
+  return <div className="notice">{text}</div>;
+}
+
+// Единообразные состояния списка: загрузка / ошибка (+повтор) / пусто.
+// Возвращает узел-состояние или null, если данные готовы и не пусты.
+export function ListState<T>({
+  query,
+  empty = "Пока ничего нет.",
+}: {
+  query: { data: T[] | null; error: string | null; loading: boolean; reload: () => void };
+  empty?: string;
+}) {
+  if (query.loading && !query.data) return <p className="hint">Загрузка…</p>;
+  if (query.error) {
+    return (
+      <div>
+        <ErrorMsg error={query.error} />
+        <button className="small" onClick={query.reload}>Повторить</button>
+      </div>
+    );
+  }
+  if ((query.data ?? []).length === 0) return <p className="hint">{empty}</p>;
+  return null;
+}
+
 // Список файлов по file_ids: имя (если доступно) + скачать/открыть.
 export function FileChips({ fileIds, label }: { fileIds?: string[]; label?: string }) {
   if (!fileIds || fileIds.length === 0) return null;

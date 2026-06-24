@@ -11,7 +11,7 @@ import {
   type Receipt,
   type StudentLink,
 } from "../api";
-import { Card, ErrorMsg, FileChips, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { Card, ErrorMsg, FileChips, ListState, Notice, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   const ids: string[] = [];
@@ -81,10 +81,14 @@ function StudentsCard({ students }: { students: Async<StudentLink[]> }) {
   const [subject, setSubject] = useState("");
   const [rate, setRate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function create(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
+    setBusy(true);
     try {
       await api.post("/students", {
         email,
@@ -93,10 +97,13 @@ function StudentsCard({ students }: { students: Async<StudentLink[]> }) {
         subject: subject || undefined,
         hourly_rate: rate ? Number(rate) : undefined,
       });
+      setNotice(`Ученик «${name}» создан. Передайте ему email и временный пароль.`);
       setEmail(""); setPassword(""); setName(""); setSubject(""); setRate("");
       students.reload();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -108,19 +115,20 @@ function StudentsCard({ students }: { students: Async<StudentLink[]> }) {
           <StatusPill status={s.status} />
         </div>
       ))}
-      {students.data?.length === 0 && <p className="hint">Пока нет учеников.</p>}
+      <ListState query={students} empty="Пока нет учеников." />
 
       <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
         <p className="section-title">Создать ученика (логин + временный пароль)</p>
         <ErrorMsg error={error} />
-        <div className="field"><input placeholder="email ученика" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-        <div className="field"><input placeholder="временный пароль (мин. 8)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></div>
-        <div className="field"><input placeholder="имя" value={name} onChange={(e) => setName(e.target.value)} required /></div>
+        <Notice text={notice} />
+        <div className="field"><label>Email ученика<input placeholder="student@example.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label></div>
+        <div className="field"><label>Временный пароль (мин. 8)<input placeholder="временный пароль" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></label></div>
+        <div className="field"><label>Имя<input placeholder="имя ученика" value={name} onChange={(e) => setName(e.target.value)} required /></label></div>
         <div className="field field-row">
-          <input placeholder="предмет" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          <input placeholder="ставка ₽" type="number" value={rate} onChange={(e) => setRate(e.target.value)} style={{ width: 110 }} />
+          <label style={{ flex: 1 }}>Предмет<input placeholder="предмет" value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
+          <label style={{ width: 120 }}>Ставка ₽<input placeholder="ставка" type="number" min="0" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
         </div>
-        <button className="primary" type="submit">Создать ученика</button>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать ученика"}</button>
       </form>
     </Card>
   );
@@ -144,8 +152,11 @@ function LessonsCard({
   const [ends, setEnds] = useState("");
   const [topic, setTopic] = useState("");
   const [price, setPrice] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
@@ -154,80 +165,109 @@ function LessonsCard({
   async function complete(id: string) {
     setError(null);
     setNotice(null);
+    setActingId(id);
     try {
       const result = await api.post<CompleteLessonResponse>(`/lessons/${id}/complete`);
       lessons.reload();
       if (result.charge_status === "pending") {
-        setNotice("Начисление создается, баланс обновится через пару секунд.");
+        setNotice("Занятие завершено. Начисление создаётся — баланс ученика обновится через пару секунд.");
         onChargePending(result.lesson.student_id);
+      } else {
+        setNotice("Занятие завершено.");
       }
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setActingId(null);
     }
   }
 
   async function cancel(id: string) {
+    if (!window.confirm("Отменить это занятие? Действие необратимо.")) return;
     setError(null);
+    setNotice(null);
+    setActingId(id);
     try {
       await api.post(`/lessons/${id}/cancel`);
       lessons.reload();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setActingId(null);
     }
   }
 
   async function create(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
+    setBusy(true);
     try {
+      const fileIds = await uploadAll(files, "lesson_material");
       await api.post("/lessons", {
         student_id: studentId,
         starts_at: toIso(starts),
         ends_at: toIso(ends),
         topic: topic || undefined,
         price: price ? Number(price) : undefined,
+        file_ids: fileIds.length ? fileIds : undefined,
       });
-      setStarts(""); setEnds(""); setTopic(""); setPrice("");
+      setNotice("Занятие создано.");
+      setStarts(""); setEnds(""); setTopic(""); setPrice(""); setFiles([]);
       lessons.reload();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
     <Card title="Занятия">
       {(lessons.data ?? []).map((l) => (
-        <div className="row" key={l.id}>
-          <span>{nameOf(l.student_id)} · {fmtDate(l.starts_at)}</span>
-          {l.status === "scheduled" ? (
-            <span className="btn-group">
-              <button className="small" onClick={() => complete(l.id)}>Завершить</button>
-              <button className="small" onClick={() => cancel(l.id)}>Отмена</button>
-            </span>
-          ) : (
-            <StatusPill status={l.status} />
-          )}
+        <div key={l.id}>
+          <div className="row">
+            <span>{nameOf(l.student_id)} · {fmtDate(l.starts_at)}{l.topic ? ` · ${l.topic}` : ""}</span>
+            {l.status === "scheduled" ? (
+              <span className="btn-group">
+                <button className="small" disabled={actingId === l.id} onClick={() => complete(l.id)}>
+                  {actingId === l.id ? "…" : "Завершить"}
+                </button>
+                <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отмена</button>
+              </span>
+            ) : (
+              <StatusPill status={l.status} />
+            )}
+          </div>
+          <FileChips fileIds={l.file_ids} label="Материалы урока" />
         </div>
       ))}
-      {notice && <p className="hint">{notice}</p>}
-      {lessons.data?.length === 0 && <p className="hint">Занятий пока нет.</p>}
+      <ListState query={lessons} empty="Занятий пока нет." />
+      <Notice text={notice} />
 
       <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
         <p className="section-title">Создать занятие</p>
         <ErrorMsg error={error} />
         <div className="field">
-          <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
-            <option value="">— ученик —</option>
-            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-          </select>
+          <label>Ученик
+            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
+              <option value="">— ученик —</option>
+              {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
+            </select>
+          </label>
         </div>
-        <div className="field"><label>Начало</label><input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} required /></div>
-        <div className="field"><label>Конец</label><input type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} required /></div>
+        <div className="field"><label>Начало<input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} required /></label></div>
+        <div className="field"><label>Конец<input type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} required /></label></div>
         <div className="field field-row">
-          <input placeholder="тема" value={topic} onChange={(e) => setTopic(e.target.value)} />
-          <input placeholder="цена ₽ (опц.)" type="number" value={price} onChange={(e) => setPrice(e.target.value)} style={{ width: 130 }} />
+          <label style={{ flex: 1 }}>Тема<input placeholder="тема" value={topic} onChange={(e) => setTopic(e.target.value)} /></label>
+          <label style={{ width: 130 }}>Цена ₽ (опц.)<input placeholder="из ставки" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} /></label>
         </div>
-        <button className="primary" type="submit">Создать занятие</button>
+        <div className="field">
+          <label>Материалы урока (можно несколько)
+            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+          </label>
+        </div>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать занятие"}</button>
       </form>
     </Card>
   );
@@ -240,11 +280,13 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
   const [files, setFiles] = useState<File[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function create(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setBusy(true);
     try {
       const fileIds = await uploadAll(files, "assignment_attachment");
@@ -254,6 +296,7 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
         description: description || undefined,
         file_ids: fileIds.length ? fileIds : undefined,
       });
+      setNotice("ДЗ создано.");
       setTitle(""); setDescription(""); setFiles([]);
       assignments.reload();
     } catch (err) {
@@ -276,22 +319,26 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
           {openId === a.id && <AssignmentDetailView id={a.id} onChange={() => assignments.reload()} />}
         </div>
       ))}
-      {assignments.data?.length === 0 && <p className="hint">Заданий пока нет.</p>}
+      <ListState query={assignments} empty="Заданий пока нет." />
 
       <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
         <p className="section-title">Создать ДЗ</p>
         <ErrorMsg error={error} />
+        <Notice text={notice} />
         <div className="field">
-          <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
-            <option value="">— ученик —</option>
-            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-          </select>
+          <label>Ученик
+            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
+              <option value="">— ученик —</option>
+              {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
+            </select>
+          </label>
         </div>
-        <div className="field"><input placeholder="название" value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
-        <div className="field"><textarea placeholder="описание" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+        <div className="field"><label>Название<input placeholder="название" value={title} onChange={(e) => setTitle(e.target.value)} required /></label></div>
+        <div className="field"><label>Описание<textarea placeholder="описание" value={description} onChange={(e) => setDescription(e.target.value)} /></label></div>
         <div className="field">
-          <label>Файлы к ДЗ (можно несколько)</label>
-          <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+          <label>Файлы к ДЗ (можно несколько)
+            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+          </label>
         </div>
         <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать ДЗ"}</button>
       </form>
@@ -304,28 +351,36 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
   const [status, setStatus] = useState("reviewed");
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function review(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setBusy(true);
     try {
       await api.post(`/assignments/${id}/review`, { status, comment: comment || undefined });
+      setComment("");
       detail.reload();
       onChange();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function addComment() {
     if (!comment.trim()) return;
     setError(null);
+    setBusy(true);
     try {
       await api.post(`/assignments/${id}/comments`, { text: comment });
       setComment("");
       detail.reload();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -333,6 +388,7 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
   return (
     <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
       <ErrorMsg error={error} />
+      {detail.loading && !d && <p className="hint">Загрузка…</p>}
       {d?.description && <p className="muted">{d.description}</p>}
       <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
       <p className="section-title">Решения</p>
@@ -350,16 +406,18 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
       <p className="section-title">Проверка</p>
       <form onSubmit={review}>
         <div className="field field-row">
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="reviewed">reviewed</option>
-            <option value="needs_fix">needs_fix</option>
-            <option value="accepted">accepted</option>
-          </select>
-          <button className="primary" type="submit">Проверить</button>
+          <label style={{ flex: 1 }}>Статус
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="reviewed">reviewed</option>
+              <option value="needs_fix">needs_fix</option>
+              <option value="accepted">accepted</option>
+            </select>
+          </label>
+          <button className="primary" type="submit" disabled={busy} style={{ alignSelf: "flex-end" }}>Проверить</button>
         </div>
-        <div className="field"><input placeholder="комментарий" value={comment} onChange={(e) => setComment(e.target.value)} /></div>
+        <div className="field"><label>Комментарий<input placeholder="комментарий" value={comment} onChange={(e) => setComment(e.target.value)} /></label></div>
       </form>
-      <button className="small" onClick={addComment}>Добавить комментарий</button>
+      <button className="small" onClick={addComment} disabled={busy || !comment.trim()}>Добавить комментарий</button>
 
       {(d?.comments ?? []).length > 0 && <p className="section-title">Комментарии</p>}
       {(d?.comments ?? []).map((c) => (
@@ -382,20 +440,30 @@ function FinanceCard({
   const [balStudent, setBalStudent] = useState("");
   const [balance, setBalance] = useState<Balance | null>(null);
   const [balanceNotice, setBalanceNotice] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
   }
 
-  async function act(path: string, body?: unknown) {
+  async function act(id: string, path: string, body?: unknown) {
     setError(null);
+    setActingId(id);
     try {
       await api.post(path, body);
       receipts.reload();
       if (balStudent) loadBalance(balStudent);
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setActingId(null);
     }
+  }
+
+  function reject(r: Receipt) {
+    if (!window.confirm(`Отклонить чек ученика ${nameOf(r.student_id)} на ${Math.round(r.amount)} ₽?`)) return;
+    const reason = window.prompt("Причина отклонения (необязательно):", "") ?? "";
+    act(r.id, `/payments/receipts/${r.id}/reject`, { comment: reason });
   }
 
   async function loadBalance(id: string) {
@@ -420,7 +488,7 @@ function FinanceCard({
 
     async function pollBalance() {
       setBalStudent(refresh.studentId);
-      setBalanceNotice("Ждем начисление по завершенному занятию...");
+      setBalanceNotice("Ждём начисление по завершённому занятию…");
       const deadline = Date.now() + 10000;
       while (!cancelled) {
         try {
@@ -446,6 +514,7 @@ function FinanceCard({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chargeRefresh?.seq]);
 
   return (
@@ -456,19 +525,21 @@ function FinanceCard({
           <span>{nameOf(r.student_id)} · {Math.round(r.amount)} ₽</span>
           <span className="btn-group">
             <button className="small" onClick={() => openFile(r.file_id).catch((e) => setError((e as Error).message))}>Чек</button>
-            <button className="small" onClick={() => act(`/payments/receipts/${r.id}/confirm`)}>Подтвердить</button>
-            <button className="small" onClick={() => act(`/payments/receipts/${r.id}/reject`, { comment: "" })}>Отклонить</button>
+            <button className="small" disabled={actingId === r.id} onClick={() => act(r.id, `/payments/receipts/${r.id}/confirm`)}>Подтвердить</button>
+            <button className="small" disabled={actingId === r.id} onClick={() => reject(r)}>Отклонить</button>
           </span>
         </div>
       ))}
-      {receipts.data?.length === 0 && <p className="hint">Чеков на проверку нет.</p>}
+      <ListState query={receipts} empty="Чеков на проверку нет." />
 
       <div style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
         <p className="section-title">Долг ученика</p>
-        <select value={balStudent} onChange={(e) => loadBalance(e.target.value)}>
-          <option value="">— ученик —</option>
-          {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-        </select>
+        <label>Ученик
+          <select value={balStudent} onChange={(e) => loadBalance(e.target.value)}>
+            <option value="">— ученик —</option>
+            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
+          </select>
+        </label>
         {balance && (
           <p style={{ marginTop: 8 }}>
             Долг: <strong>{Math.round(balance.balance)} {balance.currency}</strong>
