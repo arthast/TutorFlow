@@ -52,4 +52,11 @@ struct CreateLessonRequest {
   std::vector<std::string> file_ids;
 };
 
+struct RescheduleLessonRequest {
+  std::string lesson_id;
+  std::string new_starts_at;
+  std::string new_ends_at;
+  std::optional<std::string> new_slot_id;
+};
+
 } // namespace tutorflow::lesson

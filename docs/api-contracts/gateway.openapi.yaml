@@ -148,6 +148,19 @@ paths:
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/CompleteLessonResponse" } } } }
         "409": { $ref: "#/components/responses/Error" }
+  /lessons/{lessonId}/reschedule:
+    post:
+      summary: Перенести запланированное занятие (teacher)
+      description: >-
+        Разрешено только для status=scheduled. Если new_slot_id передан, слот
+        должен принадлежать teacher и быть open; старый слот освобождается.
+      parameters: [ { $ref: "#/components/parameters/LessonId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RescheduleLessonRequest" } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /lessons/{lessonId}/cancel:
     post:
       summary: Отменить занятие (teacher)
@@ -380,6 +393,13 @@ components:
         topic: { type: string }
         price: { type: number, description: "если не задано — берётся из hourly_rate связи" }
         file_ids: { type: array, items: { type: string, format: uuid }, description: "материалы урока (lesson_material)" }
+    RescheduleLessonRequest:
+      type: object
+      required: [new_starts_at, new_ends_at]
+      properties:
+        new_starts_at: { type: string, format: date-time }
+        new_ends_at: { type: string, format: date-time }
+        new_slot_id: { type: string, format: uuid, nullable: true }
     Lesson:
       type: object
       properties:

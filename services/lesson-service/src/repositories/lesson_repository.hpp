@@ -34,6 +34,8 @@ public:
   std::optional<Lesson> FindLesson(const std::string &lesson_id) const;
   Lesson CompleteLesson(const std::string &lesson_id,
                         const std::string &teacher_id) const;
+  Lesson RescheduleLesson(const std::string &teacher_id,
+                          const RescheduleLessonRequest &request) const;
   Lesson CancelLesson(const std::string &lesson_id,
                       const std::string &teacher_id) const;
 

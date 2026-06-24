@@ -90,6 +90,8 @@ TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonsHandler, "gateway-lessons-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonHandler, "gateway-lesson-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonCompleteHandler,
                                   "gateway-lesson-complete-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonRescheduleHandler,
+                                  "gateway-lesson-reschedule-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonCancelHandler,
                                   "gateway-lesson-cancel-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(AssignmentsHandler,

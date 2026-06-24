@@ -181,6 +181,25 @@ json::Value GrpcLessonClient::CompleteLesson(
   }));
 }
 
+json::Value GrpcLessonClient::RescheduleLesson(
+    std::string_view lesson_id, const json::Value &body,
+    const tutorflow::clients::GrpcCallContext &call_context) const {
+  proto::RescheduleLessonRequest request;
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
+  request.set_lesson_id(std::string{lesson_id});
+  request.set_new_starts_at(
+      tutorflow::common::RequireString(body, "new_starts_at"));
+  request.set_new_ends_at(tutorflow::common::RequireString(body, "new_ends_at"));
+  if (const auto slot_id =
+          tutorflow::common::OptionalString(body, "new_slot_id")) {
+    request.set_new_slot_id(*slot_id);
+  }
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.RescheduleLesson(
+        request, tutorflow::clients::NonIdempotentCall(call_context, options_));
+  }));
+}
+
 json::Value GrpcLessonClient::CancelLesson(
     std::string_view lesson_id,
     const tutorflow::clients::GrpcCallContext &call_context) const {

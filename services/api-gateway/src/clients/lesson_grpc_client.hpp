@@ -40,6 +40,10 @@ public:
   CompleteLesson(std::string_view lesson_id,
                  const tutorflow::clients::GrpcCallContext &call_context) const;
   userver::formats::json::Value
+  RescheduleLesson(std::string_view lesson_id,
+                   const userver::formats::json::Value &body,
+                   const tutorflow::clients::GrpcCallContext &call_context) const;
+  userver::formats::json::Value
   CancelLesson(std::string_view lesson_id,
                const tutorflow::clients::GrpcCallContext &call_context) const;
 

@@ -131,6 +131,18 @@ void InsertLessonFiles(const userver::storages::postgres::ClusterPtr &pg,
   }
 }
 
+bool SameOptionalString(const std::optional<std::string> &lhs,
+                        const std::optional<std::string> &rhs) {
+  if (lhs.has_value() != rhs.has_value()) {
+    return false;
+  }
+  return !lhs.has_value() || *lhs == *rhs;
+}
+
+std::string OptionalUuidParam(const std::optional<std::string> &value) {
+  return value.value_or("");
+}
+
 } // namespace
 
 LessonRepository::LessonRepository(
@@ -305,6 +317,150 @@ Lesson LessonRepository::CompleteLesson(const std::string &lesson_id,
   return lesson;
 }
 
+Lesson LessonRepository::RescheduleLesson(
+    const std::string &teacher_id,
+    const RescheduleLessonRequest &request) const {
+  const auto current = FindLesson(request.lesson_id);
+  if (!current.has_value()) {
+    throw tutorflow::common::ServiceError::NotFound("lesson not found");
+  }
+  if (current->teacher_id != teacher_id) {
+    throw tutorflow::common::ServiceError::Forbidden(
+        "teacher does not own lesson");
+  }
+  if (current->status != "scheduled") {
+    throw tutorflow::common::ServiceError::Conflict(
+        "only scheduled lesson can be rescheduled");
+  }
+
+  const auto range =
+      pg_->Execute(kMaster,
+                   "SELECT $1::timestamptz < $2::timestamptz AS valid",
+                   request.new_starts_at, request.new_ends_at);
+  if (range.IsEmpty() || !range[0]["valid"].As<bool>()) {
+    throw tutorflow::common::ServiceError::Validation(
+        "new_starts_at must be earlier than new_ends_at");
+  }
+
+  if (current->starts_at == request.new_starts_at &&
+      current->ends_at == request.new_ends_at &&
+      SameOptionalString(current->slot_id, request.new_slot_id)) {
+    return *current;
+  }
+
+  const auto old_slot_id = OptionalUuidParam(current->slot_id);
+  const auto requested_slot_id = OptionalUuidParam(request.new_slot_id);
+  const bool has_new_slot = request.new_slot_id.has_value();
+  const bool same_slot = has_new_slot && current->slot_id.has_value() &&
+                         *request.new_slot_id == *current->slot_id;
+
+  if (has_new_slot && !same_slot) {
+    const std::string sql =
+        R"(WITH booked_slot AS (
+             UPDATE availability_slots
+             SET status = 'booked'
+             WHERE id = NULLIF($5, '')::uuid
+               AND teacher_id = $2::uuid
+               AND status = 'open'
+             RETURNING id
+           ), updated AS (
+             UPDATE lessons
+             SET starts_at = $3::timestamptz,
+                 ends_at = $4::timestamptz,
+                 slot_id = (SELECT id FROM booked_slot)
+             WHERE id = $1::uuid
+               AND teacher_id = $2::uuid
+               AND status = 'scheduled'
+               AND EXISTS (SELECT 1 FROM booked_slot)
+             RETURNING )" +
+        std::string{kLessonFields} +
+        R"(
+           ), reopened AS (
+             UPDATE availability_slots
+             SET status = 'open'
+             WHERE id = NULLIF($6, '')::uuid
+               AND id <> NULLIF($5, '')::uuid
+           ), outbox AS (
+             INSERT INTO outbox_events
+               (aggregate_type, aggregate_id, event_type, event_version, payload)
+             SELECT 'lesson', id::uuid, 'lesson.rescheduled', 1,
+                    jsonb_build_object(
+                      'lesson_id', id,
+                      'teacher_id', teacher_id,
+                      'student_id', student_id,
+                      'old_starts_at', $7,
+                      'old_ends_at', $8,
+                      'new_starts_at', starts_at,
+                      'new_ends_at', ends_at,
+                      'rescheduled_at',
+                        to_char(now() AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+             FROM updated
+           ) SELECT * FROM updated)";
+    const auto result =
+        pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
+                     request.new_starts_at, request.new_ends_at,
+                     requested_slot_id, old_slot_id, current->starts_at,
+                     current->ends_at);
+    if (result.IsEmpty()) {
+      throw tutorflow::common::ServiceError::Conflict(
+          "new slot is not open or does not belong to teacher");
+    }
+    auto lesson = RowToLesson(result[0]);
+    AttachLessonFileIds(pg_, lesson);
+    return lesson;
+  }
+
+  const std::optional<std::string> next_slot =
+      same_slot ? current->slot_id : std::nullopt;
+  const auto next_slot_id = OptionalUuidParam(next_slot);
+  const std::string sql =
+      R"(WITH updated AS (
+           UPDATE lessons
+           SET starts_at = $3::timestamptz,
+               ends_at = $4::timestamptz,
+               slot_id = NULLIF($5, '')::uuid
+           WHERE id = $1::uuid
+             AND teacher_id = $2::uuid
+             AND status = 'scheduled'
+           RETURNING )" +
+      std::string{kLessonFields} +
+      R"(
+         ), reopened AS (
+           UPDATE availability_slots
+           SET status = 'open'
+           WHERE id = NULLIF($6, '')::uuid
+             AND (NULLIF($5, '')::uuid IS NULL OR id <> NULLIF($5, '')::uuid)
+         ), outbox AS (
+           INSERT INTO outbox_events
+             (aggregate_type, aggregate_id, event_type, event_version, payload)
+           SELECT 'lesson', id::uuid, 'lesson.rescheduled', 1,
+                  jsonb_build_object(
+                    'lesson_id', id,
+                    'teacher_id', teacher_id,
+                    'student_id', student_id,
+                    'old_starts_at', $7,
+                    'old_ends_at', $8,
+                    'new_starts_at', starts_at,
+                    'new_ends_at', ends_at,
+                    'rescheduled_at',
+                      to_char(now() AT TIME ZONE 'UTC',
+                              'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+           FROM updated
+         ) SELECT * FROM updated)";
+  const auto result =
+      pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
+                   request.new_starts_at, request.new_ends_at, next_slot_id,
+                   old_slot_id, current->starts_at, current->ends_at);
+  if (result.IsEmpty()) {
+    throw tutorflow::common::ServiceError::Conflict(
+        "only scheduled lesson can be rescheduled");
+  }
+  auto lesson = RowToLesson(result[0]);
+  AttachLessonFileIds(pg_, lesson);
+  return lesson;
+}
+
 Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
                                       const std::string &teacher_id) const {
   const auto current = FindLesson(lesson_id);
@@ -332,8 +488,8 @@ Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
                        std::string{kLessonFields} +
                        "), reopened AS ("
                        "  UPDATE availability_slots SET status = 'open' "
-                       "  WHERE id IN (SELECT slot_id FROM cancelled WHERE "
-                       "slot_id IS NOT NULL)"
+                       "  WHERE id IN (SELECT NULLIF(slot_id, '')::uuid "
+                       "               FROM cancelled WHERE slot_id <> '')"
                        ") SELECT * FROM cancelled",
                    lesson_id, teacher_id);
   auto lesson = RequireSingleLesson(result, "lesson not found");

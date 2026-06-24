@@ -96,6 +96,10 @@ components_manager:
             path: /lessons/{lessonId}/complete
             method: POST,OPTIONS
             task_processor: main-task-processor
+        gateway-lesson-reschedule-handler:
+            path: /lessons/{lessonId}/reschedule
+            method: POST,OPTIONS
+            task_processor: main-task-processor
         gateway-lesson-cancel-handler:
             path: /lessons/{lessonId}/cancel
             method: POST,OPTIONS

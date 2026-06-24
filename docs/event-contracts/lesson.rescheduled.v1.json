@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lesson.rescheduled.v1",
+  "description": "Преподаватель перенёс время занятия (status остаётся scheduled, меняется starts_at/ends_at, при необходимости — slot). Финансов НЕ касается (charge возникает только при complete). Consumers: notification-service (уведомить ученика), report-service. Payload самодостаточен.",
+  "topic": "tutorflow.lesson.rescheduled",
+  "key": "lesson_id",
+  "producer": "lesson-service",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "lesson.rescheduled" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "lesson-service" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["lesson_id", "teacher_id", "student_id", "old_starts_at", "old_ends_at", "new_starts_at", "new_ends_at", "rescheduled_at"],
+      "properties": {
+        "lesson_id": { "type": "string", "format": "uuid" },
+        "teacher_id": { "type": "string", "format": "uuid" },
+        "student_id": { "type": "string", "format": "uuid" },
+        "old_starts_at": { "type": "string", "format": "date-time" },
+        "old_ends_at": { "type": "string", "format": "date-time" },
+        "new_starts_at": { "type": "string", "format": "date-time" },
+        "new_ends_at": { "type": "string", "format": "date-time" },
+        "rescheduled_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "example": {
+    "event_id": "9a1f0c2e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+    "event_type": "lesson.rescheduled",
+    "event_version": 1,
+    "occurred_at": "2026-06-24T10:00:00Z",
+    "producer": "lesson-service",
+    "trace_id": "req-abc123",
+    "payload": {
+      "lesson_id": "11111111-1111-1111-1111-111111111111",
+      "teacher_id": "22222222-2222-2222-2222-222222222222",
+      "student_id": "33333333-3333-3333-3333-333333333333",
+      "old_starts_at": "2026-06-25T09:00:00Z",
+      "old_ends_at": "2026-06-25T10:00:00Z",
+      "new_starts_at": "2026-06-26T12:00:00Z",
+      "new_ends_at": "2026-06-26T13:00:00Z",
+      "rescheduled_at": "2026-06-24T09:59:30Z"
+    }
+  }
+}
