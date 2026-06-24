@@ -9,9 +9,16 @@
 #include <userver/components/component_context.hpp>
 #include <userver/server/handlers/http_handler_base.hpp>
 
+#include <tutorflow/clients/grpc_client_base.hpp>
+
 #include "gateway_settings.hpp"
 
 namespace tutorflow::gateway {
+
+class GrpcIdentityClient;
+class GrpcLessonClient;
+class GrpcAssignmentClient;
+class GrpcFinanceClient;
 
 struct AuthInfo {
   std::string user_id;
@@ -36,9 +43,20 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
       const userver::server::http::HttpRequest& request,
       const std::function<std::string()>& func) const;
 
+  GrpcIdentityClient& Identity() const noexcept { return identity_client_; }
+  GrpcLessonClient& Lesson() const noexcept { return lesson_client_; }
+  GrpcAssignmentClient& Assignment() const noexcept {
+    return assignment_client_;
+  }
+  GrpcFinanceClient& Finance() const noexcept { return finance_client_; }
+
  private:
   const GatewaySettings& settings_;
   userver::clients::http::Client& http_client_;
+  GrpcIdentityClient& identity_client_;
+  GrpcLessonClient& lesson_client_;
+  GrpcAssignmentClient& assignment_client_;
+  GrpcFinanceClient& finance_client_;
 };
 
 #define TUTORFLOW_GATEWAY_DECLARE_HANDLER(ClassName, NameValue)              \

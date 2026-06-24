@@ -277,13 +277,29 @@ Lesson LessonRepository::CompleteLesson(const std::string &lesson_id,
         "cancelled lesson cannot be completed");
   }
 
-  const auto result = pg_->Execute(
-      kMaster,
-      "UPDATE lessons SET status = 'completed', completed_at = now() "
-      "WHERE id = $1::uuid AND teacher_id = $2::uuid AND status = 'scheduled' "
-      "RETURNING " +
-          std::string{kLessonFields},
-      lesson_id, teacher_id);
+  // Transactional outbox (5E-1): меняем статус и пишем событие
+  // lesson.completed в ОДНОЙ транзакции (один CTE-стейтмент = одна транзакция).
+  // payload самодостаточен (docs/event-contracts/lesson.completed.v1.json).
+  const std::string sql =
+      R"(WITH completed AS (
+           UPDATE lessons SET status = 'completed', completed_at = now()
+           WHERE id = $1::uuid AND teacher_id = $2::uuid AND status = 'scheduled'
+           RETURNING *
+         ), outbox AS (
+           INSERT INTO outbox_events
+             (aggregate_type, aggregate_id, event_type, event_version, payload)
+           SELECT 'lesson', id, 'lesson.completed', 1, jsonb_build_object(
+             'lesson_id', id::text,
+             'teacher_id', teacher_id::text,
+             'student_id', student_id::text,
+             'price', price::double precision,
+             'currency', 'RUB',
+             'completed_at', to_char(completed_at AT TIME ZONE 'UTC',
+                                     'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+           FROM completed
+         ) SELECT )" +
+      std::string{kLessonFields} + " FROM completed";
+  const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id);
   auto lesson = RequireSingleLesson(result, "lesson not found");
   AttachLessonFileIds(pg_, lesson);
   return lesson;

@@ -2,7 +2,7 @@
 
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
-#include <tutorflow/clients/identity_client.hpp>
+#include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "repositories/assignment_repository.hpp"
 
@@ -38,7 +38,7 @@ AssignmentService::AssignmentService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<AssignmentRepository>()),
-      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()) {}
+      identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()) {}
 
 Assignment AssignmentService::CreateAssignment(
     const tutorflow::common::AuthContext &auth,

@@ -26,6 +26,7 @@ public:
 
     TokenResponse Register(const RegisterRequest& req) const;
     TokenResponse Login(const LoginRequest& req) const;
+    TokenClaims ValidateToken(const std::string& token) const;
     void ChangePassword(const std::string& user_id,
                         const ChangePasswordRequest& req) const;
 

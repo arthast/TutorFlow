@@ -171,6 +171,48 @@ def balance_for(step: str, token: str, student_id: str) -> Dict[str, Any]:
     )
 
 
+def wait_for_lesson_charge(step: str, token: str, student_id: str,
+                           lesson_id: str, lesson_price: float,
+                           timeout_seconds: float = 15.0) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    deadline = time.monotonic() + timeout_seconds
+    last_charges: List[Dict[str, Any]] = []
+    last_balance: Dict[str, Any] = {}
+
+    while time.monotonic() < deadline:
+        transactions = transactions_for(step, token, student_id)
+        last_charges = [
+            tx for tx in transactions
+            if tx.get("type") == "charge" and tx.get("lesson_id") == lesson_id
+        ]
+        last_balance = balance_for(step, token, student_id)
+        try:
+            balance_value = float(last_balance.get("balance"))
+            charge_amount = (
+                float(last_charges[0].get("amount"))
+                if len(last_charges) == 1 else None
+            )
+        except (TypeError, ValueError):
+            balance_value = float("nan")
+            charge_amount = None
+        if (
+            len(last_charges) == 1
+            and charge_amount is not None
+            and abs(charge_amount - lesson_price) <= 0.001
+            and abs(balance_value - lesson_price) <= 0.001
+        ):
+            return last_charges, last_balance
+        time.sleep(0.5)
+
+    fail(
+        step,
+        "charge/balance did not become visible before timeout",
+        json.dumps(
+            {"charges": last_charges, "balance": last_balance},
+            ensure_ascii=False,
+        ),
+    )
+
+
 def main() -> int:
     run_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
     teacher_email = f"teacher-{run_id}@example.com"
@@ -348,26 +390,31 @@ def main() -> int:
                       "comment text")
 
         step = "11 teacher completes lesson"
-        completed_lesson = require_dict(
+        complete_response = require_dict(
             step,
             post_json(step, f"/lessons/{lesson_id}/complete", {}, [200], teacher_token),
         )
+        completed_lesson = require_dict(step, complete_response.get("lesson"))
         require_equal(step, completed_lesson.get("status"), "completed",
                       "lesson complete status")
+        require_equal(step, complete_response.get("charge_status"), "pending",
+                      "lesson complete charge_status")
 
-        step = "12 finance creates charge"
-        transactions = transactions_for(step, teacher_token, student_id)
-        charges = [
-            tx for tx in transactions
-            if tx.get("type") == "charge" and tx.get("lesson_id") == lesson_id
-        ]
+        step = "12 finance creates charge eventually"
+        charges, balance = wait_for_lesson_charge(
+            step, teacher_token, student_id, lesson_id, lesson_price
+        )
         require_equal(step, len(charges), 1, "charge count for lesson")
         require_money(step, charges[0].get("amount"), lesson_price, "charge amount")
-        balance = balance_for(step, teacher_token, student_id)
         require_money(step, balance.get("balance"), lesson_price,
                       "balance after charge")
 
-        post_json(step, f"/lessons/{lesson_id}/complete", {}, [200], teacher_token)
+        repeat_complete = require_dict(
+            step,
+            post_json(step, f"/lessons/{lesson_id}/complete", {}, [200], teacher_token),
+        )
+        require_equal(step, repeat_complete.get("charge_status"), "pending",
+                      "repeat complete charge_status")
         transactions_after_repeat = transactions_for(step, teacher_token, student_id)
         repeat_charges = [
             tx for tx in transactions_after_repeat

@@ -2,9 +2,8 @@
 
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/errors.hpp>
-#include <tutorflow/clients/identity_client.hpp>
+#include <tutorflow/clients/identity_grpc_client.hpp>
 
-#include "clients/finance_client.hpp"
 #include "repositories/lesson_repository.hpp"
 
 namespace tutorflow::lesson {
@@ -14,8 +13,7 @@ LessonService::LessonService(
     const userver::components::ComponentContext &context)
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<LessonRepository>()),
-      identity_(context.FindComponent<tutorflow::clients::HttpIdentityClient>()),
-      finance_(context.FindComponent<HttpFinanceClient>()) {}
+      identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()) {}
 
 Slot LessonService::CreateSlot(const tutorflow::common::AuthContext &auth,
                                const CreateSlotRequest &request) const {
@@ -70,18 +68,14 @@ Lesson LessonService::GetLesson(const std::string &lesson_id) const {
   return *lesson;
 }
 
-Lesson LessonService::CompleteLesson(const tutorflow::common::AuthContext &auth,
-                                     const std::string &lesson_id) const {
+CompleteLessonOutcome
+LessonService::CompleteLesson(const tutorflow::common::AuthContext &auth,
+                              const std::string &lesson_id) const {
   const auto lesson = repository_.CompleteLesson(lesson_id, auth.user_id);
-  finance_.CreateCharge(ChargeRequest{
-      .teacher_id = lesson.teacher_id,
-      .student_id = lesson.student_id,
-      .lesson_id = lesson.id,
-      .amount = lesson.price,
-      .currency = "RUB",
-      .comment = std::string{"Lesson charge"},
-  });
-  return lesson;
+  return CompleteLessonOutcome{
+      .lesson = lesson,
+      .charge_status = "pending",
+  };
 }
 
 Lesson LessonService::CancelLesson(const tutorflow::common::AuthContext &auth,

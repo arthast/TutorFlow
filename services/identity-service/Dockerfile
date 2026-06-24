@@ -13,6 +13,11 @@ ARG USERVER_IMAGE=ghcr.io/userver-framework/ubuntu-22.04-userver:latest
 
 FROM ${USERVER_IMAGE}
 ARG SERVICE=identity-service
+# Число параллельных задач компиляции. Пусто -> nproc (как раньше). На машинах с
+# малым объёмом RAM полный nproc (по тяжёлым userver/C++ TU ~1.5-2 ГБ на job)
+# приводит к OOM (cc1plus killed) — тогда задаём малое значение (docker-compose
+# по умолчанию ставит 2). См. README «Быстрый старт».
+ARG BUILD_JOBS=
 WORKDIR /src
 
 COPY CMakeLists.txt ./
@@ -20,7 +25,7 @@ COPY libs ./libs
 COPY services/${SERVICE} ./services/${SERVICE}
 
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
- && cmake --build build --target ${SERVICE} -j "$(nproc)"
+ && cmake --build build --target ${SERVICE} -j "${BUILD_JOBS:-$(nproc)}"
 
 # Бинарь и конфиги под фиксированными путями, чтобы ENTRYPOINT не зависел от ARG.
 WORKDIR /app

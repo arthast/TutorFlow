@@ -19,9 +19,14 @@
 #include <tutorflow/common/auth_context.hpp>
 #include <tutorflow/common/error_codes.hpp>
 #include <tutorflow/common/errors.hpp>
+#include <tutorflow/common/handler_helpers.hpp>
 #include <tutorflow/common/jwt.hpp>
 #include <tutorflow/common/request_context.hpp>
 
+#include "clients/assignment_grpc_client.hpp"
+#include "clients/finance_grpc_client.hpp"
+#include "clients/identity_grpc_client.hpp"
+#include "clients/lesson_grpc_client.hpp"
 #include "cors.hpp"
 
 namespace tutorflow::gateway {
@@ -62,7 +67,7 @@ std::string JsonResponse(const http::HttpRequest& req, json::Value body,
   return json::ToString(body);
 }
 
-std::string ErrorResponse(const http::HttpRequest& req, const ServiceError& e) {
+std::string GatewayErrorResponse(const http::HttpRequest& req, const ServiceError& e) {
   return JsonResponse(req, tutorflow::common::MakeErrorBody(e), e.Status());
 }
 
@@ -125,6 +130,17 @@ userver::clients::http::Headers BuildUpstreamHeaders(
   return headers;
 }
 
+tutorflow::clients::GrpcCallContext BuildGrpcCallContext(
+    const http::HttpRequest& request, const std::optional<AuthInfo>& auth) {
+  tutorflow::clients::GrpcCallContext context;
+  context.request_id = tutorflow::common::GetOrCreateRequestId(request);
+  if (auth) {
+    context.user_id = auth->user_id;
+    context.roles = auth->roles_csv;
+  }
+  return context;
+}
+
 std::string BuildUrl(const GatewaySettings& settings, UpstreamService service,
                      std::string internal_path) {
   if (internal_path.empty() || internal_path.front() != '/') {
@@ -147,7 +163,11 @@ ProxyHandlerBase::ProxyHandlerBase(
     : HttpHandlerBase(config, context),
       settings_(context.FindComponent<GatewaySettings>()),
       http_client_(
-          context.FindComponent<userver::components::HttpClient>().GetHttpClient()) {}
+          context.FindComponent<userver::components::HttpClient>().GetHttpClient()),
+      identity_client_(context.FindComponent<GrpcIdentityClient>()),
+      lesson_client_(context.FindComponent<GrpcLessonClient>()),
+      assignment_client_(context.FindComponent<GrpcAssignmentClient>()),
+      finance_client_(context.FindComponent<GrpcFinanceClient>()) {}
 
 AuthInfo ProxyHandlerBase::Authenticate(const http::HttpRequest& request) const {
   const auto& header = request.GetHeader(userver::http::headers::kAuthorization);
@@ -215,7 +235,7 @@ std::string ProxyHandlerBase::HandleGatewayErrors(
     return body;
   } catch (const ServiceError& e) {
     ApplyCorsHeaders(request, settings_);
-    return ErrorResponse(request, e);
+    return GatewayErrorResponse(request, e);
   } catch (const userver::clients::http::TimeoutException&) {
     ApplyCorsHeaders(request, settings_);
     return GatewayUnavailableResponse(request, "upstream service timeout");
@@ -224,7 +244,7 @@ std::string ProxyHandlerBase::HandleGatewayErrors(
     return GatewayUnavailableResponse(request, "upstream service unavailable");
   } catch (const std::exception& e) {
     ApplyCorsHeaders(request, settings_);
-    return ErrorResponse(request, ServiceError::Internal(e.what()));
+    return GatewayErrorResponse(request, ServiceError::Internal(e.what()));
   }
 }
 
@@ -233,8 +253,11 @@ std::string AuthRegisterHandler::HandleRequestThrow(
     const http::HttpRequest& request,
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/auth/register", std::nullopt);
+    return JsonResponse(
+        request,
+        Identity().Register(tutorflow::common::ParseJsonBody(request),
+                            BuildGrpcCallContext(request, std::nullopt)),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -243,8 +266,11 @@ std::string AuthLoginHandler::HandleRequestThrow(
     const http::HttpRequest& request,
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/auth/login", std::nullopt);
+    return JsonResponse(
+        request,
+        Identity().Login(tutorflow::common::ParseJsonBody(request),
+                         BuildGrpcCallContext(request, std::nullopt)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -254,8 +280,11 @@ std::string AuthChangePasswordHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/auth/change-password", auth);
+    return JsonResponse(
+        request,
+        Identity().ChangePassword(tutorflow::common::ParseJsonBody(request),
+                                  BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -265,8 +294,10 @@ std::string MeHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/users/" + auth.user_id, auth);
+    return JsonResponse(
+        request,
+        Identity().GetUser(auth.user_id, BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -277,12 +308,16 @@ std::string StudentsHandler::HandleRequestThrow(
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
     if (request.GetMethodStr() == "GET") {
-      return ProxyToUpstream(request, UpstreamService::kIdentity,
-                             "/internal/teachers/" + auth.user_id + "/students",
-                             auth);
+      return JsonResponse(
+          request,
+          Identity().ListStudents(BuildGrpcCallContext(request, auth)),
+          http::HttpStatus::kOk);
     }
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/students", auth);
+    return JsonResponse(
+        request,
+        Identity().CreateStudent(tutorflow::common::ParseJsonBody(request),
+                                 BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -292,10 +327,11 @@ std::string StudentHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kIdentity,
-                           "/internal/students/" +
-                               RequirePathArg(request, "studentId"),
-                           auth);
+    return JsonResponse(
+        request,
+        Identity().GetStudent(RequirePathArg(request, "studentId"),
+                              BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -305,10 +341,11 @@ std::string StudentBalanceHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kFinance,
-                           "/internal/students/" +
-                               RequirePathArg(request, "studentId") + "/balance",
-                           auth);
+    return JsonResponse(
+        request,
+        Finance().GetBalance(RequirePathArg(request, "studentId"),
+                             BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -318,11 +355,11 @@ std::string StudentTransactionsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kFinance,
-                           "/internal/students/" +
-                               RequirePathArg(request, "studentId") +
-                               "/transactions",
-                           auth);
+    return JsonResponse(
+        request,
+        Finance().ListTransactions(RequirePathArg(request, "studentId"),
+                                   BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -332,8 +369,16 @@ std::string AvailabilityHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kLesson,
-                           "/internal/availability", auth);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    if (request.GetMethodStr() == "GET") {
+      return JsonResponse(request, Lesson().ListAvailability(ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Lesson().CreateAvailability(tutorflow::common::ParseJsonBody(request),
+                                    ctx),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -343,8 +388,15 @@ std::string LessonsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kLesson,
-                           "/internal/lessons", auth);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    if (request.GetMethodStr() == "GET") {
+      return JsonResponse(request, Lesson().ListLessons(ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Lesson().CreateLesson(tutorflow::common::ParseJsonBody(request), ctx),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -354,10 +406,11 @@ std::string LessonHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kLesson,
-                           "/internal/lessons/" +
-                               RequirePathArg(request, "lessonId"),
-                           auth);
+    return JsonResponse(
+        request,
+        Lesson().GetLesson(RequirePathArg(request, "lessonId"),
+                           BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -367,10 +420,11 @@ std::string LessonCompleteHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kLesson,
-                           "/internal/lessons/" +
-                               RequirePathArg(request, "lessonId") + "/complete",
-                           auth);
+    return JsonResponse(
+        request,
+        Lesson().CompleteLesson(RequirePathArg(request, "lessonId"),
+                                BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -380,10 +434,11 @@ std::string LessonCancelHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kLesson,
-                           "/internal/lessons/" +
-                               RequirePathArg(request, "lessonId") + "/cancel",
-                           auth);
+    return JsonResponse(
+        request,
+        Lesson().CancelLesson(RequirePathArg(request, "lessonId"),
+                              BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -393,8 +448,16 @@ std::string AssignmentsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kAssignment,
-                           "/internal/assignments", auth);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    if (request.GetMethodStr() == "GET") {
+      return JsonResponse(request, Assignment().ListAssignments(ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Assignment().CreateAssignment(
+            tutorflow::common::ParseJsonBody(request), ctx),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -404,10 +467,11 @@ std::string AssignmentHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kAssignment,
-                           "/internal/assignments/" +
-                               RequirePathArg(request, "assignmentId"),
-                           auth);
+    return JsonResponse(
+        request,
+        Assignment().GetAssignment(RequirePathArg(request, "assignmentId"),
+                                   BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -417,10 +481,13 @@ std::string AssignmentSubmitHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kAssignment,
-                           "/internal/assignments/" +
-                               RequirePathArg(request, "assignmentId") + "/submit",
-                           auth);
+    return JsonResponse(
+        request,
+        Assignment().SubmitAssignment(
+            RequirePathArg(request, "assignmentId"),
+            tutorflow::common::ParseJsonBody(request),
+            BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -430,10 +497,13 @@ std::string AssignmentReviewHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kAssignment,
-                           "/internal/assignments/" +
-                               RequirePathArg(request, "assignmentId") + "/review",
-                           auth);
+    return JsonResponse(
+        request,
+        Assignment().ReviewAssignment(
+            RequirePathArg(request, "assignmentId"),
+            tutorflow::common::ParseJsonBody(request),
+            BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -443,11 +513,12 @@ std::string AssignmentCommentsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(request, UpstreamService::kAssignment,
-                           "/internal/assignments/" +
-                               RequirePathArg(request, "assignmentId") +
-                               "/comments",
-                           auth);
+    return JsonResponse(
+        request,
+        Assignment().AddComment(RequirePathArg(request, "assignmentId"),
+                                tutorflow::common::ParseJsonBody(request),
+                                BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -457,10 +528,18 @@ std::string PaymentReceiptsHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    // GET (список чеков) и POST (загрузка чека) идут на один internal-путь;
-    // ProxyToUpstream маршрутизирует по HTTP-методу, query (?status=) прокидывает.
-    return ProxyToUpstream(request, UpstreamService::kFinance,
-                           "/internal/payment-receipts", auth);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    if (request.GetMethodStr() == "GET") {
+      const auto& status_arg = request.GetArg("status");
+      std::optional<std::string> status;
+      if (!status_arg.empty()) status = status_arg;
+      return JsonResponse(request, Finance().ListReceipts(status, ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Finance().CreateReceipt(tutorflow::common::ParseJsonBody(request), ctx),
+        http::HttpStatus::kCreated);
   });
 }
 
@@ -470,11 +549,11 @@ std::string PaymentReceiptConfirmHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(
-        request, UpstreamService::kFinance,
-        "/internal/payment-receipts/" + RequirePathArg(request, "receiptId") +
-            "/confirm",
-        auth);
+    return JsonResponse(
+        request,
+        Finance().ConfirmReceipt(RequirePathArg(request, "receiptId"),
+                                 BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 
@@ -484,11 +563,13 @@ std::string PaymentReceiptRejectHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
-    return ProxyToUpstream(
-        request, UpstreamService::kFinance,
-        "/internal/payment-receipts/" + RequirePathArg(request, "receiptId") +
-            "/reject",
-        auth);
+    return JsonResponse(
+        request,
+        Finance().RejectReceipt(
+            RequirePathArg(request, "receiptId"),
+            tutorflow::common::ParseJsonBody(request, /*allow_empty=*/true),
+            BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 

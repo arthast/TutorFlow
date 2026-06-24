@@ -161,6 +161,19 @@ TokenResponse IdentityService::Login(const LoginRequest& req) const {
     return IssueToken(found->first);
 }
 
+TokenClaims IdentityService::ValidateToken(const std::string& token) const {
+    auto claims = tutorflow::common::jwt::Verify(token, jwt_secret_);
+    if (!claims || claims->sub.empty() || claims->roles.empty()) {
+        throw tutorflow::common::ServiceError::Unauthorized(
+            "missing or invalid bearer token");
+    }
+    return TokenClaims{
+        .sub = claims->sub,
+        .roles = claims->roles,
+        .exp = claims->exp,
+    };
+}
+
 void IdentityService::ChangePassword(
     const std::string& user_id, const ChangePasswordRequest& req) const {
     if (req.current_password.empty() || req.new_password.empty()) {

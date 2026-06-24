@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <userver/formats/json/value.hpp>
-
 namespace tutorflow::lesson {
 
 struct Slot {
@@ -33,6 +31,11 @@ struct Lesson {
   std::optional<std::string> completed_at;
 };
 
+struct CompleteLessonOutcome {
+  Lesson lesson;
+  std::string charge_status;
+};
+
 struct CreateSlotRequest {
   std::string starts_at;
   std::string ends_at;
@@ -48,8 +51,5 @@ struct CreateLessonRequest {
   std::optional<double> price;
   std::vector<std::string> file_ids;
 };
-
-userver::formats::json::Value ToJson(const Slot &slot);
-userver::formats::json::Value ToJson(const Lesson &lesson);
 
 } // namespace tutorflow::lesson

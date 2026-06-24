@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package tutorflow.lesson.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service LessonService {
+  rpc CreateAvailability(CreateSlotRequest) returns (Slot);
+  rpc ListAvailability(ListAvailabilityRequest) returns (ListAvailabilityResponse);
+  rpc CreateLesson(CreateLessonRequest) returns (Lesson);
+  rpc ListLessons(ListLessonsRequest) returns (ListLessonsResponse);
+  rpc GetLesson(GetLessonRequest) returns (Lesson);
+  // Charge создаётся асинхронно (outbox lesson.completed -> Kafka -> finance),
+  // поэтому ответ — Lesson + charge_status (вариант A, Этап 5E-2).
+  rpc CompleteLesson(CompleteLessonRequest) returns (CompleteLessonResponse);
+  rpc CancelLesson(CancelLessonRequest) returns (Lesson);
+}
+
+message CreateSlotRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string starts_at = 2;
+  string ends_at = 3;
+}
+
+message Slot {
+  string id = 1;
+  string teacher_id = 2;
+  string starts_at = 3;
+  string ends_at = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message ListAvailabilityRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  tutorflow.common.v1.PageRequest page = 2;
+}
+
+message ListAvailabilityResponse {
+  repeated Slot slots = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message CreateLessonRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+  optional string slot_id = 3;
+  string starts_at = 4;
+  string ends_at = 5;
+  optional string topic = 6;
+  optional string notes = 7;
+  optional double price = 8;
+  repeated string file_ids = 9;
+}
+
+message Lesson {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  optional string slot_id = 4;
+  string starts_at = 5;
+  string ends_at = 6;
+  string status = 7;
+  optional string topic = 8;
+  optional string notes = 9;
+  double price = 10;
+  repeated string file_ids = 11;
+  string created_at = 12;
+  optional string completed_at = 13;
+}
+
+message ListLessonsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  tutorflow.common.v1.PageRequest page = 2;
+}
+
+message ListLessonsResponse {
+  repeated Lesson lessons = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message GetLessonRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string lesson_id = 2;
+}
+
+message CompleteLessonRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string lesson_id = 2;
+}
+
+// charge_status: "pending" — событие lesson.completed опубликовано, charge будет
+// создан consumer'ом finance; "created" — charge уже существует (идемпотентно).
+message CompleteLessonResponse {
+  Lesson lesson = 1;
+  string charge_status = 2;
+}
+
+message CancelLessonRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string lesson_id = 2;
+}

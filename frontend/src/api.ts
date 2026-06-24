@@ -131,6 +131,10 @@ export interface Lesson {
   topic?: string;
   price?: number;
 }
+export interface CompleteLessonResponse {
+  lesson: Lesson;
+  charge_status: "pending" | "created" | string;
+}
 export interface Assignment {
   id: string;
   teacher_id: string;

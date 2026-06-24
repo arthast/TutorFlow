@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package tutorflow.common.v1;
+
+option cc_enable_arenas = true;
+
+// Common types are versioned by package suffix. Do not use this file for
+// service-domain DTOs that belong to identity/lesson/assignment/finance.
+message Empty {}
+
+message UserContext {
+  string user_id = 1;
+  string role = 2;
+}
+
+message PageRequest {
+  int32 limit = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+}

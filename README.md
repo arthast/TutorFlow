@@ -22,14 +22,31 @@
 ## Быстрый старт (dev)
 
 ```bash
-cp .env.example .env          # заполнить JWT_SECRET, пароль БД и т.п.
-docker compose up --build     # postgres + 6 сервисов
-./scripts/migrate.sh all      # применить миграции (postgres должен быть поднят)
-curl http://localhost:8080/health   # -> {"status":"ok"} (через gateway)
+cp .env.example .env                       # заполнить JWT_SECRET, пароль БД и т.п.
+COMPOSE_PARALLEL_LIMIT=1 docker compose build   # последовательная сборка (см. ниже)
+docker compose up -d                       # postgres + миграции + 6 сервисов
+curl http://localhost:8080/health          # -> {"status":"ok"} (через gateway)
 ```
 
-Миграции по одному сервису: `./scripts/migrate.sh identity`.
+Миграции применяются **автоматически**: one-shot сервис `migrator` ждёт, пока
+postgres станет healthy, прогоняет `migrations/<svc>/*.sql` и завершается; только
+после этого стартуют прикладные сервисы. Ручной прогон тоже работает
+(`./scripts/migrate.sh all` / по сервису `./scripts/migrate.sh identity`); миграции
+идемпотентны (`IF NOT EXISTS`), повторный прогон безопасен.
+
 Сброс БД (пересоздать тома и per-service базы): `docker compose down -v`.
+
+> **Почему так собираем (OOM при сборке).** Тяжёлые C++/userver translation units
+> едят ~1.5–2 ГБ памяти на каждый параллельный компилятор. Два множителя дают OOM
+> (`cc1plus killed`): (1) compose по умолчанию собирает образы параллельно;
+> (2) внутри образа `cmake --build -j` берёт все ядра. Поэтому:
+> - `COMPOSE_PARALLEL_LIMIT=1` — собирать образы по одному;
+> - build-arg `BUILD_JOBS` (дефолт **2** в `docker-compose.yml`) — ограничить
+>   параллелизм компиляции внутри каждого образа. Пусто → `nproc` (старое поведение).
+>
+> На стандартной машине (~8 ГБ Docker) команда выше проходит как есть. Если памяти
+> больше — ускорьтесь: `BUILD_JOBS=12 docker compose build` (можно и без
+> `COMPOSE_PARALLEL_LIMIT`). Если памяти меньше — `BUILD_JOBS=1`.
 
 ## Что реализовано в MVP
 
@@ -40,7 +57,8 @@ MVP покрывает регистрацию и логин, создание у
 
 ## Smoke test
 
-После запуска сервисов и миграций:
+После того как `docker compose up -d` поднял сервисы (миграции применяются
+автоматически, отдельный шаг не нужен):
 
 ```bash
 python3 scripts/smoke_mvp.py

@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <userver/formats/json/value.hpp>
-
 namespace tutorflow::assignment {
 
 struct Assignment {
@@ -65,10 +63,5 @@ struct ReviewRequest {
 struct CommentRequest {
   std::string text;
 };
-
-userver::formats::json::Value ToJson(const Assignment &assignment);
-userver::formats::json::Value ToJson(const Submission &submission);
-userver::formats::json::Value ToJson(const Comment &comment);
-userver::formats::json::Value ToJson(const AssignmentDetail &detail);
 
 } // namespace tutorflow::assignment

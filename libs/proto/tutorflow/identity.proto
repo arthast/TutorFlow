@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package tutorflow.identity.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service IdentityService {
+  rpc Register(RegisterRequest) returns (TokenResponse);
+  rpc Login(LoginRequest) returns (TokenResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (TokenClaims);
+  rpc ChangePassword(ChangePasswordRequest)
+      returns (tutorflow.common.v1.Empty);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc GetStudent(GetStudentRequest) returns (StudentLink);
+  rpc ListStudents(ListStudentsRequest) returns (ListStudentsResponse);
+  rpc CreateStudent(CreateStudentRequest) returns (StudentLink);
+  rpc CheckTeacherStudentAccess(CheckTeacherStudentAccessRequest)
+      returns (CheckTeacherStudentAccessResponse);
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string role = 3;
+  string display_name = 4;
+  optional string timezone = 5;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+// Caller (the authenticated user) is taken from `user`; служит субъектом смены
+// пароля. Соответствует REST POST /auth/change-password {current_password, new_password}.
+message ChangePasswordRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message TokenResponse {
+  string access_token = 1;
+  string token_type = 2;
+  int64 expires_in = 3;
+  string user_id = 4;
+  repeated string roles = 5;
+}
+
+message TokenClaims {
+  string sub = 1;
+  repeated string roles = 2;
+  int64 exp = 3;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string role = 3;
+  string display_name = 4;
+  string created_at = 5;
+}
+
+message GetStudentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+}
+
+message ListStudentsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string teacher_id = 2;
+  tutorflow.common.v1.PageRequest page = 3;
+}
+
+message ListStudentsResponse {
+  repeated StudentLink students = 1;
+  tutorflow.common.v1.PageResponse page = 2;
+}
+
+message CreateStudentRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string email = 2;
+  string password = 3;
+  string display_name = 4;
+  optional string subject = 5;
+  optional string goal = 6;
+  optional double hourly_rate = 7;
+}
+
+message StudentLink {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  string display_name = 4;
+  optional string subject = 5;
+  optional string goal = 6;
+  optional double hourly_rate = 7;
+  string status = 8;
+  string created_at = 9;
+}
+
+message CheckTeacherStudentAccessRequest {
+  string teacher_id = 1;
+  string student_id = 2;
+}
+
+message CheckTeacherStudentAccessResponse {
+  bool allowed = 1;
+  optional string status = 2;
+  optional double hourly_rate = 3;
+}

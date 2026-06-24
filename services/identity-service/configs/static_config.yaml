@@ -11,6 +11,11 @@ components_manager:
             listener:
                 port: 8081
                 task_processor: main-task-processor
+        grpc-server:
+            port: 9081
+            completion-queue-count: 2
+        grpc-health:
+            task-processor: main-task-processor
         logging:
             loggers:
                 default:
@@ -33,35 +38,5 @@ components_manager:
         identity-domain-service:
             jwt-secret#env: JWT_SECRET
             jwt-expires-in-seconds: 86400
-        identity-register-handler:
-            path: /internal/auth/register
-            method: POST
-            task_processor: main-task-processor
-        identity-login-handler:
-            path: /internal/auth/login
-            method: POST
-            task_processor: main-task-processor
-        identity-change-password-handler:
-            path: /internal/auth/change-password
-            method: POST
-            task_processor: main-task-processor
-        identity-get-user-handler:
-            path: /internal/users/{userId}
-            method: GET
-            task_processor: main-task-processor
-        identity-check-access-handler:
-            path: /internal/relations/check-access
-            method: POST
-            task_processor: main-task-processor
-        identity-create-student-handler:
-            path: /internal/students
-            method: POST
-            task_processor: main-task-processor
-        identity-get-student-handler:
-            path: /internal/students/{studentId}
-            method: GET
-            task_processor: main-task-processor
-        identity-list-students-handler:
-            path: /internal/teachers/{teacherId}/students
-            method: GET
-            task_processor: main-task-processor
+        identity-grpc-service:
+            task-processor: main-task-processor

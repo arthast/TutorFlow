@@ -19,7 +19,6 @@ class IdentityClient;
 
 namespace tutorflow::lesson {
 
-class FinanceClient;
 class LessonRepository;
 
 class LessonService final : public userver::components::LoggableComponentBase {
@@ -38,15 +37,14 @@ public:
   std::vector<Lesson>
   ListLessons(const tutorflow::common::AuthContext &auth) const;
   Lesson GetLesson(const std::string &lesson_id) const;
-  Lesson CompleteLesson(const tutorflow::common::AuthContext &auth,
-                        const std::string &lesson_id) const;
+  CompleteLessonOutcome CompleteLesson(const tutorflow::common::AuthContext &auth,
+                                       const std::string &lesson_id) const;
   Lesson CancelLesson(const tutorflow::common::AuthContext &auth,
                       const std::string &lesson_id) const;
 
 private:
   LessonRepository &repository_;
   tutorflow::clients::IdentityClient &identity_;
-  FinanceClient &finance_;
 };
 
 } // namespace tutorflow::lesson
