@@ -475,7 +475,7 @@ Kafka-события (статус — см. roadmap Этап 5):
 ```text
 lesson.completed            ✅ ВНЕДРЕНО (outbox lesson -> Kafka -> finance charge)
 lesson.scheduled            ⬜ 5F-3 (нужен для reactivate, 5L)
-lesson.cancelled            ⬜ 5L  (contract готов; consumer finance — компенсация)
+lesson.cancelled            ✅ ВНЕДРЕНО (5L.3; consumer finance — компенсация, notification — уведомление)
 lesson.rescheduled          ✅ ВНЕДРЕНО (5L.1, ветка feat/lesson-reschedule; outbox lesson)
 assignment.created          ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
 submission.uploaded         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)

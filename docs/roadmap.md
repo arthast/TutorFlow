@@ -568,7 +568,7 @@ Kafka lag/retry/DLQ monitoring
 backup/restore для Postgres и object storage
 ```
 
-### Этап 5L — lesson lifecycle + finance corrections  🔶 В РАБОТЕ (бэкенд 5L.1–5L.6+5L.9 готов; 5L.7/5L.8 — опц.)
+### Этап 5L — lesson lifecycle + finance corrections  ✅ СДЕЛАНО (5L.1–5L.9)
 Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с
 человеком (2026-06-24). Расширяем жизненный цикл занятия и связь с финансами.
 
@@ -594,8 +594,8 @@ backup/restore для Postgres и object storage
 5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по lesson_id)   ✅ СДЕЛАНО
 5L.5 finance: CreateCorrection (manual, ±amount + comment, check-access)   ✅ СДЕЛАНО
 5L.6 gateway: роуты reschedule(✅)/reactivate(✅)/cancel(✅)/corrections(✅)   ✅ СДЕЛАНО
-5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ⬜ (Phase G, опц.)
-5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ⬜ (Phase H, опц.)
+5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ✅ СДЕЛАНО
+5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ✅ СДЕЛАНО
 5L.9 tests + smoke: переходы, компенсация, идемпотентность, доступ   ✅ СДЕЛАНО (tests/test_corrections.py + smoke шаг 16)
 ```
 
@@ -613,6 +613,15 @@ finance-консьюмер с дефолтным `topic_metadata_refresh_interva
 задерживалась. Фикс: `topic_metadata_refresh_interval: 3s` в finance kafka-consumer.
 Контракты менялись (finance.proto + gateway/finance OpenAPI) → перед мержем
 PR/подтверждение координатора.
+
+5L.7+5L.8 (feat/lesson-finance-corrections): notification-service — кейсы
+`lesson.rescheduled`/`lesson.scheduled(origin=reactivated)`/`lesson.cancelled`/
+`balance.changed` (только `reason=correction.created`, чтобы не дублировать
+charge/payment-уведомления) → уведомления ученику; +4 топика и `topic_metadata_refresh_interval: 3s`.
+frontend (Teacher): у занятия кнопки Перенести (inline-форма)/Восстановить/Отменить
+(вкл. completed); карточка финансов — журнал операций + форма ручной коррекции
+(`POST /students/{id}/corrections`), обновление баланса/журнала; ошибки envelope
+показываются. Все запросы — в gateway. Контракты G/H НЕ меняли (обычный PR).
 5L.1 (feat/lesson-reschedule): RescheduleLesson — только teacher, только `scheduled`,
 ownership+check-access, атомарная ребронь слота (409 если занят), идемпотентный no-op,
 `lesson.rescheduled` в outbox одной транзакцией. Попутно фикс cast-бага

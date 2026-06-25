@@ -29,6 +29,12 @@ std::string Money(const json::Value& payload) {
   return std::to_string(amount) + " " + currency;
 }
 
+std::string Delta(const json::Value& payload) {
+  const auto delta = payload["delta"].As<double>(0.0);
+  const auto currency = payload["currency"].As<std::string>("RUB");
+  return std::to_string(delta) + " " + currency;
+}
+
 CreateNotificationRequest NotificationFor(
     const tutorflow::events::EventEnvelope& event, std::string user_id,
     std::string type, std::string title, std::string body) {
@@ -95,6 +101,46 @@ std::optional<CreateNotificationRequest> BuildNotification(
         event, RequiredString(payload, "student_id"), "lesson_completed",
         "Lesson completed",
         "Lesson completed, charge is being processed");
+  }
+
+  if (event.event_type == "lesson.rescheduled") {
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"), "lesson_rescheduled",
+        "Занятие перенесено",
+        "Занятие перенесено на " + RequiredString(payload, "new_starts_at"));
+  }
+
+  if (event.event_type == "lesson.scheduled") {
+    // lesson.scheduled эмитится и при создании занятия (origin='created', 5F-3),
+    // и при восстановлении (origin='reactivated'). Уведомляем только о
+    // восстановлении; остальное пропускаем.
+    if (OptionalString(payload, "origin") != "reactivated") {
+      return std::nullopt;
+    }
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"), "lesson_reactivated",
+        "Занятие снова в силе",
+        "Отменённое занятие восстановлено на " +
+            RequiredString(payload, "starts_at"));
+  }
+
+  if (event.event_type == "lesson.cancelled") {
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"), "lesson_cancelled",
+        "Занятие отменено", "Занятие отменено преподавателем");
+  }
+
+  if (event.event_type == "balance.changed") {
+    // balance.changed эмитится на ЛЮБУЮ операцию (charge/payment/correction).
+    // Чтобы не дублировать уже существующие уведомления (lesson.completed /
+    // payment.confirmed), реагируем ТОЛЬКО на коррекции (ручные + компенсация
+    // отмены). Остальные reason — пропускаем.
+    if (RequiredString(payload, "reason") != "correction.created") {
+      return std::nullopt;
+    }
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"), "balance_corrected",
+        "Баланс скорректирован", "Корректировка баланса: " + Delta(payload));
   }
 
   return std::nullopt;

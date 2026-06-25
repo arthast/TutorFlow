@@ -44,21 +44,28 @@
 - `scheduled → completed` (есть)
 - `scheduled → cancelled` (есть)
 - `scheduled → scheduled` — reschedule, меняется только время/слот (**новое**)
-- `cancelled → scheduled` — reactivate (**новое**)
+- `cancelled → scheduled` — reactivate занятия, которое было `scheduled` до отмены (**новое**)
+- `cancelled → completed` — reactivate занятия, которое было `completed` до отмены
+  (сигнал `completed_at IS NOT NULL`) + восстановление долга в finance (**вариант A**)
 - `completed → cancelled` — отмена завершённого + компенсация (**новое**)
 
-Запрещено: `completed → scheduled`, `completed → completed`, любой переход из
-`cancelled`/`completed` кроме перечисленных. Идемпотентность: повтор операции,
-приводящей в то же состояние, → `200` с текущим объектом, без побочных эффектов.
+reactivate выбирает целевой статус по `completed_at` (см. §4.1). Запрещено:
+`completed → scheduled`, повторный `completed → completed`. Идемпотентность: повтор
+операции, приводящей в то же состояние, → `200` с текущим объектом, без побочных эффектов.
 
 ## 3. Финансовая модель компенсации
 
 - `complete` → charge (как сейчас, `unique(lesson_id)`, через `lesson.completed`).
+  Charge остаётся ровно один на занятие за всё время.
 - `completed → cancelled` → lesson эмитит `lesson.cancelled` c `previous_status=completed`
-  и `price`. finance-consumer добавляет `correction` на `-price`, **идемпотентно
-  по `lesson_id`** (одна компенсация на занятие).
-- Баланс = `sum(charge) − sum(payment) + sum(correction) − sum(refund)`. После
-  компенсации вклад занятия в баланс = `+price − price = 0`.
+  и `price`. finance-consumer добавляет `correction(-price)`, **идемпотентно по
+  event-id** (см. §4.1).
+- `cancelled → completed` (reactivate ранее-завершённого) → lesson эмитит
+  `lesson.restored` c `price`. finance-consumer добавляет `correction(+price)`,
+  **идемпотентно по event-id**. Долг возвращается.
+- Баланс = `sum(charge) − sum(payment) + sum(correction) − sum(refund)`. По циклу
+  завершить/отменить/восстановить вклад занятия: `+price` → `0` → `+price` …
+  всегда корректен, журнал append-only (charge один, корректировки парами).
 - **Принятое product-поведение:** если ученик уже оплатил это занятие, после
   компенсации баланс уходит в минус — у ученика образуется кредит/предоплата.
   Это допустимо и считается само.
@@ -68,12 +75,26 @@
 
 ## 4. Решённые edge-cases (дефолты согласованы)
 
-1. **`unique(lesson_id)` на charge vs повторное начисление.** После компенсации
-   через `correction` сам charge остаётся в журнале. Поэтому `reactivate → complete`
-   того же занятия **второй charge не создаст** (упрётся в `unique(lesson_id)`).
-   **Дефолт:** reactivate всегда возвращает в `scheduled` без авто-charge;
-   повторное начисление при необходимости делается **ручной `correction`**.
-   Идемпотентность charge НЕ усложняем.
+1. **Цикл cancel ↔ reactivate должен сохранять долг (РЕШЕНО, вариант A,
+   2026-06-25 — заменяет прежний дефолт).** Отмена и восстановление зеркальны:
+   - `reactivate` возвращает занятие в его **до-отменный** статус. Сигнал —
+     `lessons.completed_at`: если он установлен (занятие было завершено до отмены) →
+     `cancelled → completed` и долг восстанавливается; если `completed_at IS NULL`
+     (было `scheduled`) → `cancelled → scheduled`, финансов не трогаем.
+   - Долг отслеживается **через `correction`-пары**, а не через повторный `charge`:
+     `charge` остаётся ровно один на занятие (`uq_charge_lesson` НЕ трогаем).
+     Отмена завершённого → `correction(-price)`; восстановление завершённого →
+     `correction(+price)`. Цикл: `+price −price +price …` — баланс корректен на
+     каждом шаге.
+   - **Идемпотентность компенсации/восстановления переносится с `unique(lesson_id)`
+     на event-id inbox**: `uq_correction_lesson` снимается (миграция), а
+     `processed_events(event_id)` становится единственным гардом. Чтобы дубль
+     не задвоил correction, вставка `correction` + `balance.changed` + отметка
+     `processed_events` выполняются **одной транзакцией** (атомарный inbox:
+     `INSERT … processed_events ON CONFLICT DO NOTHING RETURNING`, и `correction`
+     пишется только если событие ещё не обработано). Charge-путь
+     (`lesson.completed`) не меняем — там `uq_charge_lesson` + inbox остаются.
+   - Повторный `complete` уже завершённого занятия по-прежнему запрещён (один charge).
 2. **Кредит при отмене оплаченного завершённого занятия** — допустим (см. §3).
 3. **Reschedule/reactivate занятия с `starts_at` в прошлом** — **разрешаем**
    (бывает задним числом), отдельной проверки времени не добавляем.

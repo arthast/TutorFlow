@@ -181,6 +181,18 @@ export interface Balance {
   currency: string;
   balance: number;
 }
+export interface Transaction {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  type: "charge" | "payment" | "correction" | "refund" | string;
+  amount: number;
+  currency: string;
+  lesson_id?: string | null;
+  receipt_id?: string | null;
+  comment?: string | null;
+  created_at?: string;
+}
 export interface FileMeta {
   id: string;
   owner_user_id: string;

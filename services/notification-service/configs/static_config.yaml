@@ -51,6 +51,13 @@ components_manager:
               - tutorflow.payment.confirmed
               - tutorflow.payment.rejected
               - tutorflow.lesson.completed
+              - tutorflow.lesson.rescheduled
+              - tutorflow.lesson.scheduled
+              - tutorflow.lesson.cancelled
+              - tutorflow.balance.changed
+            # Топики создаются лениво (auto-create на первый publish); частый
+            # refresh подхватывает свежий топик без задержки (как в finance, 5L.4).
+            topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1
             security_protocol: PLAINTEXT
