@@ -67,6 +67,23 @@ struct CreateChargeResult {
   bool created{};
 };
 
+// 5L: корректировка баланса (type=correction, ±amount).
+// lesson_id задан -> компенсация отменённого занятия (идемпотентна по lesson_id);
+// lesson_id пуст -> ручная коррекция преподавателя (всегда добавляется).
+struct CreateCorrectionRequest {
+  std::string teacher_id;
+  std::string student_id;
+  std::optional<std::string> lesson_id;
+  double amount{};
+  std::string currency{"RUB"};
+  std::string comment;
+};
+
+struct CreateCorrectionResult {
+  Transaction transaction;
+  bool created{};
+};
+
 userver::formats::json::Value ToJson(const Transaction &transaction);
 
 } // namespace tutorflow::finance

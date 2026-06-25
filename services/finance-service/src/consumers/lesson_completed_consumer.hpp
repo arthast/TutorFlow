@@ -1,8 +1,13 @@
 #pragma once
 
-// Kafka consumer of tutorflow.lesson.completed (Этап 5E). Creates a charge
-// IDEMPOTENTLY by lesson_id (existing unique on financial_transactions). A
-// duplicate event is a no-op. Idempotency lives in the domain/DB, not here.
+// Kafka consumer финансовых последствий жизненного цикла занятия:
+//   tutorflow.lesson.completed  -> charge (5E), идемпотентно по lesson_id;
+//   tutorflow.lesson.cancelled  -> компенсирующая correction при
+//     previous_status='completed' (5L.4), идемпотентно по event_id;
+//   tutorflow.lesson.restored   -> восстанавливающая correction(+price),
+//     идемпотентно по event_id.
+// Роутинг по event_type. Идемпотентность живёт в domain/DB (unique + inbox),
+// не здесь. Дубликат события — no-op.
 
 #include <string>
 #include <string_view>
@@ -30,8 +35,12 @@ public:
   void OnAllComponentsLoaded() override;
 
 private:
-  void OnLessonCompleted(const tutorflow::events::EventEnvelope& event,
-                         std::string_view key, const std::string& topic) const;
+  // Диспетчер по event_type.
+  void OnLessonEvent(const tutorflow::events::EventEnvelope& event,
+                     std::string_view key, const std::string& topic) const;
+  void OnLessonCompleted(const tutorflow::events::EventEnvelope& event) const;
+  void OnLessonCancelled(const tutorflow::events::EventEnvelope& event) const;
+  void OnLessonRestored(const tutorflow::events::EventEnvelope& event) const;
 
   const FinanceService& service_;
   const FinanceRepository& repository_;

@@ -40,6 +40,25 @@ paths:
       responses:
         "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Transaction" } } } } }
 
+  /internal/students/{studentId}/corrections:
+    post:
+      summary: >
+        Ручная корректировка баланса ученика преподавателем (5L.5; gRPC
+        CreateCorrection). append-only: добавляет строку type=correction (±amount),
+        НЕ привязана к занятию (lesson_id=null). Доступ: зовущий — teacher с
+        активной связью с учеником (identity check-access). amount=0 → 422.
+        Эмитит balance.changed (reason=correction.created).
+        ПРИМЕЧАНИЕ: компенсация при отмене ЗАВЕРШЁННОГО занятия (correction −price,
+        lesson_id заполнен) создаётся НЕ этим вызовом, а finance-консьюмером из
+        события lesson.cancelled (previous_status=completed), идемпотентно по
+        lesson_id. См. docs/event-contracts/lesson.cancelled.v1.json.
+      parameters: [ { $ref: "#/components/parameters/StudentId" }, { $ref: "#/components/parameters/XUserId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateCorrectionRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Transaction" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
   /internal/payment-receipts:
     post:
       summary: >
@@ -105,6 +124,13 @@ components:
         amount: { type: number }
         currency: { type: string, default: RUB }
         comment: { type: string }
+    CreateCorrectionRequest:
+      type: object
+      required: [amount, comment]
+      properties:
+        amount: { type: number, description: "± знак задаёт направление; 0 запрещён (422)" }
+        currency: { type: string, default: RUB }
+        comment: { type: string, description: "обязателен — причина коррекции" }
     Transaction:
       type: object
       properties:

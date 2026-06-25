@@ -190,4 +190,15 @@ FinanceGrpcService::RejectPaymentReceipt(CallContext &context,
   });
 }
 
+FinanceGrpcService::CreateCorrectionResult
+FinanceGrpcService::CreateCorrection(CallContext &context,
+                                     proto::CreateCorrectionRequest &&request) {
+  return InvokeServerUnary<proto::Transaction>([&] {
+    const auto auth = ResolveServerAuthContext(context, request.user());
+    return ToProto(service_.CreateCorrection(
+        auth, request.student_id(), request.amount(),
+        CurrencyOrDefault(request.currency()), request.comment()));
+  });
+}
+
 } // namespace tutorflow::finance

@@ -49,6 +49,49 @@ FinanceService::CreateCharge(const CreateChargeRequest &request) const {
   return repository_.CreateCharge(request);
 }
 
+Transaction FinanceService::CreateCorrection(
+    const tutorflow::common::AuthContext &auth, const std::string &student_id,
+    double amount, const std::string &currency,
+    const std::string &comment) const {
+  tutorflow::common::RequireTeacher(auth);
+  if (amount == 0.0) {
+    throw tutorflow::common::ServiceError::BusinessRule(
+        "correction amount must not be zero");
+  }
+  if (comment.empty()) {
+    throw tutorflow::common::ServiceError::Validation(
+        "correction comment is required");
+  }
+  ValidateCurrency(currency);
+  const auto access = identity_.CheckAccess(auth.user_id, student_id);
+  if (!access.allowed) {
+    throw tutorflow::common::ServiceError::Forbidden(
+        "not allowed to correct this student's balance");
+  }
+  return repository_.CreateCorrection(CreateCorrectionRequest{
+      .teacher_id = auth.user_id,
+      .student_id = student_id,
+      .lesson_id = std::nullopt,
+      .amount = amount,
+      .currency = currency,
+      .comment = comment,
+  });
+}
+
+bool FinanceService::CompensateCancelledLesson(
+    const CreateCorrectionRequest &request, const std::string &event_id,
+    const std::string &event_type) const {
+  // Внутренний путь (consumer lesson.cancelled): доверяем событию, без auth.
+  return repository_.CreateEventCorrection(request, event_id, event_type);
+}
+
+bool FinanceService::RestoreCancelledLesson(
+    const CreateCorrectionRequest &request, const std::string &event_id,
+    const std::string &event_type) const {
+  // Внутренний путь (consumer lesson.restored): доверяем событию, без auth.
+  return repository_.CreateEventCorrection(request, event_id, event_type);
+}
+
 void FinanceService::EnsureStudentAccess(
     const tutorflow::common::AuthContext &auth,
     const std::string &student_id) const {

@@ -246,3 +246,66 @@ def wait_for_lesson_charge(
         "last_balance": last_balance,
         "last_charges": last_charges,
     })
+
+
+def wait_for_lesson_correction(
+    student: Dict[str, Any],
+    lesson_id: str,
+    *,
+    amount: float = -LESSON_PRICE,
+    timeout: float = 15.0,
+) -> Any:
+    # Компенсация отменённого завершённого занятия создаётся consumer'ом из
+    # события lesson.cancelled — eventual, как charge.
+    deadline = time.monotonic() + timeout
+    last = []
+    while time.monotonic() < deadline:
+        last = [
+            tx for tx in transactions(student)
+            if tx["type"] == "correction" and tx.get("lesson_id") == lesson_id
+        ]
+        if (len(last) == 1
+                and round(float(last[0]["amount"]), 2) == round(float(amount), 2)):
+            return last
+        time.sleep(0.5)
+    raise AssertionError({
+        "lesson_id": lesson_id,
+        "expected_amount": amount,
+        "last_corrections": last,
+    })
+
+
+def wait_for_lesson_corrections(
+    student: Dict[str, Any],
+    lesson_id: str,
+    *,
+    amounts: list[float],
+    expected_balance: Optional[float] = None,
+    timeout: float = 15.0,
+) -> Any:
+    deadline = time.monotonic() + timeout
+    expected_amounts = sorted(round(float(value), 2) for value in amounts)
+    last_corrections = []
+    last_balance = None
+
+    while time.monotonic() < deadline:
+        last_corrections = [
+            tx for tx in transactions(student)
+            if tx["type"] == "correction" and tx.get("lesson_id") == lesson_id
+        ]
+        last_amounts = sorted(round(float(tx["amount"]), 2) for tx in last_corrections)
+        last_balance = balance(student)
+        if last_amounts == expected_amounts:
+            if expected_balance is None:
+                return last_corrections
+            if round(float(last_balance), 2) == round(float(expected_balance), 2):
+                return last_corrections
+        time.sleep(0.5)
+
+    raise AssertionError({
+        "lesson_id": lesson_id,
+        "expected_amounts": expected_amounts,
+        "expected_balance": expected_balance,
+        "last_balance": last_balance,
+        "last_corrections": last_corrections,
+    })

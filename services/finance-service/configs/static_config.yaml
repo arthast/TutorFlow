@@ -62,6 +62,13 @@ components_manager:
             group_id: finance-lesson-completed
             topics:
               - tutorflow.lesson.completed
+              - tutorflow.lesson.cancelled
+              - tutorflow.lesson.restored
+            # Топики создаются лениво (auto-create на первый publish). С дефолтным
+            # refresh (5 мин) консьюмер не подхватывает только что созданный
+            # tutorflow.lesson.cancelled вовремя -> компенсация задерживается.
+            # Частый refresh подхватывает новый топик за пару секунд.
+            topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1
             security_protocol: PLAINTEXT

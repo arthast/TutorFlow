@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "lesson.scheduled.v1",
-  "description": "Занятие стало запланированным. В текущей задаче событие эмитится только при восстановлении отменённого занятия (origin=reactivated). Consumers: notification-service, report-service.",
+  "description": "Занятие стало запланированным. Эмитится при создании занятия (origin=created) и при восстановлении отменённого незавершённого занятия (origin=reactivated). Consumers: notification-service, report-service.",
   "topic": "tutorflow.lesson.scheduled",
   "key": "lesson_id",
   "producer": "lesson-service",
@@ -42,7 +42,7 @@
       "starts_at": "2026-06-25T09:00:00Z",
       "ends_at": "2026-06-25T10:00:00Z",
       "scheduled_at": "2026-06-24T09:59:30Z",
-      "origin": "reactivated"
+      "origin": "created"
     }
   }
 }

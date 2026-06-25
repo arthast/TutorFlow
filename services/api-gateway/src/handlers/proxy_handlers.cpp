@@ -610,6 +610,21 @@ std::string PaymentReceiptRejectHandler::HandleRequestThrow(
   });
 }
 
+TUTORFLOW_GATEWAY_DEFINE_CTOR(StudentCorrectionsHandler)
+std::string StudentCorrectionsHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return JsonResponse(
+        request,
+        Finance().CreateCorrection(RequirePathArg(request, "studentId"),
+                                   tutorflow::common::ParseJsonBody(request),
+                                   BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kCreated);
+  });
+}
+
 TUTORFLOW_GATEWAY_DEFINE_CTOR(NotificationsHandler)
 std::string NotificationsHandler::HandleRequestThrow(
     const http::HttpRequest& request,

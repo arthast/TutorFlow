@@ -43,6 +43,10 @@ public:
   RejectReceipt(std::string_view receipt_id,
                 const userver::formats::json::Value &body,
                 const tutorflow::clients::GrpcCallContext &call_context) const;
+  userver::formats::json::Value
+  CreateCorrection(std::string_view student_id,
+                   const userver::formats::json::Value &body,
+                   const tutorflow::clients::GrpcCallContext &call_context) const;
 
   static userver::yaml_config::Schema GetStaticConfigSchema();
 

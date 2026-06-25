@@ -213,6 +213,71 @@ def wait_for_lesson_charge(step: str, token: str, student_id: str,
     )
 
 
+def corrections_for(step: str, token: str, student_id: str,
+                    lesson_id: str) -> List[Dict[str, Any]]:
+    return [
+        tx for tx in transactions_for(step, token, student_id)
+        if tx.get("type") == "correction" and tx.get("lesson_id") == lesson_id
+    ]
+
+
+def charges_for(step: str, token: str, student_id: str,
+                lesson_id: str) -> List[Dict[str, Any]]:
+    return [
+        tx for tx in transactions_for(step, token, student_id)
+        if tx.get("type") == "charge" and tx.get("lesson_id") == lesson_id
+    ]
+
+
+def wait_for_lesson_correction(step: str, token: str, student_id: str,
+                               lesson_id: str,
+                               timeout_seconds: float = 15.0) -> List[Dict[str, Any]]:
+    # Компенсация отменённого завершённого занятия создаётся consumer'ом
+    # из события lesson.cancelled — eventual, как и charge.
+    deadline = time.monotonic() + timeout_seconds
+    last: List[Dict[str, Any]] = []
+    while time.monotonic() < deadline:
+        last = corrections_for(step, token, student_id, lesson_id)
+        if len(last) == 1:
+            return last
+        time.sleep(0.5)
+    fail(
+        step,
+        "compensation correction did not become visible before timeout",
+        json.dumps({"corrections": last}, ensure_ascii=False),
+    )
+
+
+def wait_for_lesson_corrections(step: str, token: str, student_id: str,
+                                lesson_id: str, expected_amounts: List[float],
+                                expected_balance: float,
+                                timeout_seconds: float = 15.0) -> List[Dict[str, Any]]:
+    deadline = time.monotonic() + timeout_seconds
+    expected = sorted(round(float(amount), 2) for amount in expected_amounts)
+    last_corrections: List[Dict[str, Any]] = []
+    last_balance: Dict[str, Any] = {}
+    while time.monotonic() < deadline:
+        last_corrections = corrections_for(step, token, student_id, lesson_id)
+        actual = sorted(round(float(tx.get("amount")), 2)
+                        for tx in last_corrections)
+        last_balance = balance_for(step, token, student_id)
+        try:
+            balance_value = float(last_balance.get("balance"))
+        except (TypeError, ValueError):
+            balance_value = float("nan")
+        if actual == expected and abs(balance_value - expected_balance) <= 0.001:
+            return last_corrections
+        time.sleep(0.5)
+    fail(
+        step,
+        "expected corrections/balance did not become visible before timeout",
+        json.dumps(
+            {"corrections": last_corrections, "balance": last_balance},
+            ensure_ascii=False,
+        ),
+    )
+
+
 def main() -> int:
     run_id = f"{int(time.time())}-{uuid.uuid4().hex[:8]}"
     teacher_email = f"teacher-{run_id}@example.com"
@@ -498,6 +563,71 @@ def main() -> int:
         require_equal(step, final_balance.get("student_id"), student_id,
                       "balance student_id")
         require_money(step, final_balance.get("balance"), 0.0, "final balance")
+
+        # 5L.3-5L.4: отмена ЗАВЕРШЁННОГО занятия -> finance асинхронно добавляет
+        # компенсирующую correction(-price). charge НЕ удаляется (append-only),
+        # вклад занятия в баланс возвращается к 0. Ученик уже оплатил -> остаётся
+        # кредит (-price), что допустимо (design §3).
+        step = "16 cancel completed lesson"
+        cancelled_lesson = require_dict(
+            step,
+            post_json(step, f"/lessons/{lesson_id}/cancel", {}, [200], teacher_token),
+        )
+        require_equal(step, cancelled_lesson.get("status"), "cancelled",
+                      "lesson status after cancel")
+
+        step = "16 finance compensates charge eventually"
+        corrections = wait_for_lesson_correction(
+            step, teacher_token, student_id, lesson_id
+        )
+        require_money(step, corrections[0].get("amount"), -lesson_price,
+                      "compensation correction amount")
+        post_charges = charges_for(step, teacher_token, student_id, lesson_id)
+        require_equal(step, len(post_charges), 1,
+                      "charge still present after cancel (append-only)")
+        lesson_net = (float(post_charges[0].get("amount"))
+                      + float(corrections[0].get("amount")))
+        require_money(step, lesson_net, 0.0,
+                      "lesson net contribution after compensation")
+
+        step = "16 repeat cancel/replay does not double-compensate"
+        repeat_cancel = require_dict(
+            step,
+            post_json(step, f"/lessons/{lesson_id}/cancel", {}, [200], teacher_token),
+        )
+        require_equal(step, repeat_cancel.get("status"), "cancelled",
+                      "repeat cancel status")
+        time.sleep(2.0)
+        corrections_again = corrections_for(step, teacher_token, student_id, lesson_id)
+        require_equal(step, len(corrections_again), 1,
+                      "idempotent compensation correction count")
+
+        # 5L follow-up: восстановление ранее завершённого занятия возвращает его
+        # в completed и добавляет зеркальную correction(+price). Так как в smoke
+        # ученик уже оплатил чек, общий баланс после восстановления снова 0.
+        step = "17 reactivate completed lesson restores debt"
+        restored_lesson = require_dict(
+            step,
+            post_json(step, f"/lessons/{lesson_id}/reactivate", {}, [200],
+                      teacher_token),
+        )
+        require_equal(step, restored_lesson.get("status"), "completed",
+                      "restored lesson status")
+        restored_corrections = wait_for_lesson_corrections(
+            step,
+            teacher_token,
+            student_id,
+            lesson_id,
+            [-lesson_price, lesson_price],
+            0.0,
+        )
+        restored_amounts = sorted(float(tx.get("amount"))
+                                  for tx in restored_corrections)
+        require_equal(step, restored_amounts, [-lesson_price, lesson_price],
+                      "restored correction pair")
+        require_equal(step, len(charges_for(step, teacher_token, student_id,
+                                            lesson_id)), 1,
+                      "charge remains single after restore")
 
     except SmokeFailure:
         return 1

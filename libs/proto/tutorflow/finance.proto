@@ -14,6 +14,9 @@ service FinanceService {
   rpc ListPaymentReceipts(ListReceiptsRequest) returns (ListReceiptsResponse);
   rpc ConfirmPaymentReceipt(ConfirmReceiptRequest) returns (Receipt);
   rpc RejectPaymentReceipt(RejectReceiptRequest) returns (Receipt);
+  // Ручная корректировка баланса ученика преподавателем (5L.5).
+  // append-only: добавляет строку correction (±amount), не привязана к занятию.
+  rpc CreateCorrection(CreateCorrectionRequest) returns (Transaction);
 }
 
 message CreateChargeRequest {
@@ -97,6 +100,14 @@ message ListReceiptsResponse {
 message ConfirmReceiptRequest {
   tutorflow.common.v1.UserContext user = 1;
   string receipt_id = 2;
+}
+
+message CreateCorrectionRequest {
+  tutorflow.common.v1.UserContext user = 1;  // должен быть teacher
+  string student_id = 2;
+  double amount = 3;       // ± (знак задаёт направление коррекции)
+  string currency = 4;     // дефолт RUB
+  string comment = 5;
 }
 
 message RejectReceiptRequest {

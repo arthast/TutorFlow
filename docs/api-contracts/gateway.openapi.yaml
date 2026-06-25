@@ -105,6 +105,20 @@ paths:
       parameters: [ { $ref: "#/components/parameters/StudentId" } ]
       responses:
         "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Transaction" } } } } }
+  /students/{studentId}/corrections:
+    post:
+      summary: Ручная корректировка баланса ученика (teacher)
+      description: >-
+        Преподаватель добавляет корректирующую операцию correction (±amount) для
+        ученика. append-only: предыдущие операции не меняются. Доступ — только
+        преподавателю этого ученика (identity check-access). Эмитит balance.changed.
+      parameters: [ { $ref: "#/components/parameters/StudentId" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CreateCorrectionRequest" } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Transaction" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   # ---------- Availability + Lessons ----------
   /availability:
@@ -177,9 +191,19 @@ paths:
   /lessons/{lessonId}/cancel:
     post:
       summary: Отменить занятие (teacher)
+      description: >-
+        Допускается отмена как scheduled, так и completed занятия (5L.3).
+        При отмене completed занятия lesson публикует lesson.cancelled с
+        previous_status=completed и price; finance АСИНХРОННО добавляет
+        компенсирующую correction (−price) идемпотентно по lesson_id (charge
+        не удаляется — append-only), баланс возвращается eventual. Повтор для
+        уже cancelled занятия идемпотентно возвращает текущий Lesson.
       parameters: [ { $ref: "#/components/parameters/LessonId" } ]
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Lesson" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
 
   # ---------- Assignments ----------
   /assignments:
@@ -400,6 +424,13 @@ components:
         receipt_id: { type: string, format: uuid, nullable: true }
         comment: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
+    CreateCorrectionRequest:
+      type: object
+      required: [amount, comment]
+      properties:
+        amount: { type: number, description: "± знак задаёт направление коррекции; 0 запрещён (422)" }
+        currency: { type: string, description: "дефолт RUB" }
+        comment: { type: string, description: "обязателен — причина коррекции" }
     CreateSlotRequest:
       type: object
       required: [starts_at, ends_at]

@@ -234,9 +234,10 @@ lesson_files(id, lesson_id, file_id, created_at)
 Переходы статуса (Этап 5L, см. `docs/agent-lesson-lifecycle.md`):
 `scheduled → completed` (complete), `scheduled → cancelled` (cancel),
 `scheduled → scheduled` (reschedule — меняется только время/слот; внедрён 5L.1),
-`cancelled → scheduled` (reactivate), `completed → cancelled` (отмена завершённого
-+ компенсация в finance). Reschedule/reactivate финансов не касаются; отмена
-завершённого занятия порождает компенсирующую `correction` в finance (§8.4).
+`cancelled → scheduled` (reactivate незавершённого), `cancelled → completed`
+(reactivate ранее завершённого), `completed → cancelled` (отмена завершённого
++ компенсация в finance). Reschedule финансов не касается; cancel/reactivate
+ранее завершённого занятия порождают `correction`-пару в finance (§8.4).
 
 Цена: снимок `lessons.price` фиксируется при создании занятия (из
 `teacher_student_links.hourly_rate` или явно). При завершении (`complete`)
@@ -293,7 +294,16 @@ balance = sum(charge) - sum(payment) + sum(correction) - sum(refund)
 - Операции не редактируем — только добавляем `correction`/`refund`.
 - Отмена завершённого занятия (`completed → cancelled`, Этап 5L): finance-consumer
   на `lesson.cancelled` (`previous_status=completed`) добавляет компенсирующую
-  `correction` на `-price`, **идемпотентно по `lesson_id`**; charge не удаляется.
+  `correction` на `-price`; charge не удаляется.
+- Восстановление ранее завершённого занятия (`cancelled → completed`, Этап 5L):
+  finance-consumer на `lesson.restored` добавляет зеркальную `correction` на
+  `+price`; charge остаётся один на занятие.
+- Correction-пути из lesson events идемпотентны по `event_id` через atomic inbox
+  `processed_events`; это позволяет одному lesson иметь и `correction(-price)`,
+  и `correction(+price)` без повторного charge.
+- Ручная `correction` (Этап 5L, gRPC `CreateCorrection`): преподаватель добавляет
+  `correction(±amount)` ученику (без `lesson_id`); доступ — teacher с check-access,
+  `amount=0 → 422`, `comment` обязателен. Любая `correction` эмитит `balance.changed`.
 - Ручная коррекция (Этап 5L): преподаватель через `CreateCorrection` добавляет
   `correction(amount ±, comment)` для конкретного ученика (после `check-access`).
   Подробности и контракты — `docs/agent-lesson-lifecycle.md`.
@@ -472,7 +482,7 @@ Kafka-события (статус — см. roadmap Этап 5):
 ```text
 lesson.completed            ✅ ВНЕДРЕНО (outbox lesson -> Kafka -> finance charge)
 lesson.scheduled            ⬜ 5F-3 (нужен для reactivate, 5L)
-lesson.cancelled            ⬜ 5L  (contract готов; consumer finance — компенсация)
+lesson.cancelled            ✅ ВНЕДРЕНО (5L.3; consumer finance — компенсация, notification — уведомление)
 lesson.rescheduled          ✅ ВНЕДРЕНО (5L.1, ветка feat/lesson-reschedule; outbox lesson)
 assignment.created          ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
 submission.uploaded         ✅ ВНЕДРЕНО (outbox assignment -> Kafka)
@@ -497,14 +507,16 @@ file.uploaded               ⬜ optional later
 5F-0 event foundation hardening: naming, contracts, shared outbox, inbox/processed_events ✅
 5F-1 assignment.* events ✅
 5F-2 finance.* events ✅
-5F-3 дополнительные lesson.* events
+5F-3 дополнительные lesson.* events (lesson.scheduled origin=created/reactivated,
+     lesson.cancelled, lesson.rescheduled, lesson.restored)
 5G notification-service: Kafka consumers -> notifications_db -> gRPC list/mark-read ✅
 5H report-service: Kafka read-models -> dashboard summaries по gRPC
 5I MinIO/S3 для file-service без изменения внешнего API
 5J chat-service: messages, read status, attachments, message.* events
 5K production hardening: reverse proxy, CI/CD, readiness, logs/metrics, Kafka lag/DLQ
 5L lesson lifecycle + finance corrections: reschedule(✅ 5L.1)/reactivate/cancel-completed +
-   ручная correction; компенсация append-only идемпотентно по lesson_id
+   ручная correction; compensation/restored correction append-only идемпотентно
+   по event_id inbox
    (см. docs/agent-lesson-lifecycle.md)
 ```
 

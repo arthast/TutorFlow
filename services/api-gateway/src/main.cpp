@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::StudentHandler>()
           .Append<tutorflow::gateway::StudentBalanceHandler>()
           .Append<tutorflow::gateway::StudentTransactionsHandler>()
+          .Append<tutorflow::gateway::StudentCorrectionsHandler>()
           .Append<tutorflow::gateway::AvailabilityHandler>()
           .Append<tutorflow::gateway::LessonsHandler>()
           .Append<tutorflow::gateway::LessonHandler>()

@@ -48,3 +48,16 @@ def test_assignment_notification_and_mark_read(teacher, student):
     status, unread = api.get("/notifications?unread_only=true", token=student["token"])
     assert status == 200, unread
     assert notification["id"] not in {item["id"] for item in unread}
+
+
+def test_lesson_created_notification(teacher, student):
+    lesson = api.create_lesson(teacher["token"], student["user_id"])
+
+    notification = wait_for_notification(
+        student["token"],
+        "lesson_scheduled",
+        lambda item: item["payload"].get("lesson_id") == lesson["id"]
+        and item["payload"].get("origin") == "created",
+    )
+    assert notification["title"] == "Занятие назначено"
+    assert lesson["starts_at"] in notification["body"]

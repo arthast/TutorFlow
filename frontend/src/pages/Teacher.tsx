@@ -10,6 +10,7 @@ import {
   type Lesson,
   type Receipt,
   type StudentLink,
+  type Transaction,
 } from "../api";
 import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
@@ -158,9 +159,47 @@ function LessonsCard({
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [rStarts, setRStarts] = useState("");
+  const [rEnds, setREnds] = useState("");
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
+  }
+
+  async function reactivate(id: string) {
+    setError(null);
+    setNotice(null);
+    setActingId(id);
+    try {
+      await api.post(`/lessons/${id}/reactivate`);
+      setNotice("Занятие восстановлено.");
+      lessons.reload();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function reschedule(id: string, e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    setActingId(id);
+    try {
+      await api.post(`/lessons/${id}/reschedule`, {
+        new_starts_at: toIso(rStarts),
+        new_ends_at: toIso(rEnds),
+      });
+      setNotice("Занятие перенесено.");
+      setRescheduleId(null); setRStarts(""); setREnds("");
+      lessons.reload();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setActingId(null);
+    }
   }
 
   async function complete(id: string) {
@@ -228,18 +267,40 @@ function LessonsCard({
       {(lessons.data ?? []).map((l) => (
         <div key={l.id}>
           <div className="row">
-            <span>{nameOf(l.student_id)} · {fmtDate(l.starts_at)}{l.topic ? ` · ${l.topic}` : ""}</span>
-            {l.status === "scheduled" ? (
-              <span className="btn-group">
-                <button className="small" disabled={actingId === l.id} onClick={() => complete(l.id)}>
-                  {actingId === l.id ? "…" : "Завершить"}
-                </button>
-                <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отмена</button>
-              </span>
-            ) : (
-              <StatusPill status={l.status} />
-            )}
+            <span>
+              {nameOf(l.student_id)} · {fmtDate(l.starts_at)}{l.topic ? ` · ${l.topic}` : ""}
+              {" "}<StatusPill status={l.status} />
+            </span>
+            <span className="btn-group">
+              {l.status === "scheduled" && (
+                <>
+                  <button className="small" disabled={actingId === l.id} onClick={() => complete(l.id)}>
+                    {actingId === l.id ? "…" : "Завершить"}
+                  </button>
+                  <button className="small" disabled={actingId === l.id}
+                          onClick={() => { setRescheduleId(rescheduleId === l.id ? null : l.id); setRStarts(""); setREnds(""); }}>
+                    Перенести
+                  </button>
+                  <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отмена</button>
+                </>
+              )}
+              {l.status === "completed" && (
+                <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отменить</button>
+              )}
+              {l.status === "cancelled" && (
+                <button className="small" disabled={actingId === l.id} onClick={() => reactivate(l.id)}>Восстановить</button>
+              )}
+            </span>
           </div>
+          {rescheduleId === l.id && (
+            <form onSubmit={(e) => reschedule(l.id, e)} style={{ padding: "6px 0 10px" }}>
+              <div className="field field-row">
+                <label style={{ flex: 1 }}>Новое начало<input type="datetime-local" value={rStarts} onChange={(e) => setRStarts(e.target.value)} required /></label>
+                <label style={{ flex: 1 }}>Новый конец<input type="datetime-local" value={rEnds} onChange={(e) => setREnds(e.target.value)} required /></label>
+              </div>
+              <button className="primary small" type="submit" disabled={actingId === l.id}>Перенести занятие</button>
+            </form>
+          )}
           <FileChips fileIds={l.file_ids} label="Материалы урока" />
         </div>
       ))}
@@ -440,11 +501,47 @@ function FinanceCard({
   const [error, setError] = useState<string | null>(null);
   const [balStudent, setBalStudent] = useState("");
   const [balance, setBalance] = useState<Balance | null>(null);
+  const [txns, setTxns] = useState<Transaction[]>([]);
   const [balanceNotice, setBalanceNotice] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [corrAmount, setCorrAmount] = useState("");
+  const [corrComment, setCorrComment] = useState("");
+  const [corrBusy, setCorrBusy] = useState(false);
+  const [corrNotice, setCorrNotice] = useState<string | null>(null);
 
   function nameOf(id: string) {
     return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
+  }
+
+  async function loadJournal(id: string) {
+    if (!id) { setTxns([]); return; }
+    try {
+      setTxns(await api.get<Transaction[]>(`/students/${id}/transactions`));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  async function submitCorrection(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setCorrNotice(null);
+    if (!balStudent) { setError("Выберите ученика"); return; }
+    setCorrBusy(true);
+    try {
+      await api.post(`/students/${balStudent}/corrections`, {
+        amount: Number(corrAmount),
+        comment: corrComment,
+      });
+      setCorrNotice("Коррекция применена.");
+      setCorrAmount(""); setCorrComment("");
+      setBalance(await api.get<Balance>(`/students/${balStudent}/balance`));
+      loadJournal(balStudent);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCorrBusy(false);
+    }
   }
 
   async function act(id: string, path: string, body?: unknown) {
@@ -470,10 +567,13 @@ function FinanceCard({
   async function loadBalance(id: string) {
     setBalStudent(id);
     setBalanceNotice(null);
+    setCorrNotice(null);
     setBalance(null);
+    setTxns([]);
     if (!id) return;
     try {
       setBalance(await api.get<Balance>(`/students/${id}/balance`));
+      loadJournal(id);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -547,6 +647,29 @@ function FinanceCard({
           </p>
         )}
         {balanceNotice && <p className="hint">{balanceNotice}</p>}
+
+        {balStudent && (
+          <>
+            <p className="section-title" style={{ marginTop: 10 }}>Журнал операций</p>
+            {txns.map((t) => (
+              <div className="row" key={t.id}>
+                <span className="muted">{t.type}{t.comment ? ` · ${t.comment}` : ""}</span>
+                <span>{t.amount > 0 ? "+" : ""}{Math.round(t.amount)} {t.currency}</span>
+              </div>
+            ))}
+            {txns.length === 0 && <p className="hint">Операций пока нет.</p>}
+
+            <form onSubmit={submitCorrection} style={{ marginTop: 10 }}>
+              <p className="section-title">Скорректировать баланс</p>
+              <Notice text={corrNotice} />
+              <div className="field field-row">
+                <label style={{ width: 130 }}>Сумма ± ₽<input type="number" placeholder="напр. -500" value={corrAmount} onChange={(e) => setCorrAmount(e.target.value)} required /></label>
+                <label style={{ flex: 1 }}>Комментарий<input placeholder="причина" value={corrComment} onChange={(e) => setCorrComment(e.target.value)} required /></label>
+              </div>
+              <button className="primary small" type="submit" disabled={corrBusy}>{corrBusy ? "Применение…" : "Применить коррекцию"}</button>
+            </form>
+          </>
+        )}
       </div>
     </Card>
   );
