@@ -103,6 +103,8 @@ assignment/finance/lesson events --> Kafka --> notification-service --> notifica
 6. `finance-lesson-completed-consumer` создает `charge`.
 7. Идемпотентность держится в finance DB по `unique(lesson_id)`: повтор complete
    или replay события не создают второй charge.
+8. Отмена/восстановление завершенного занятия не трогают charge: finance добавляет
+   append-only `correction(-price/+price)`, защищенную atomic inbox по `event_id`.
 
 ## Быстрый Старт
 

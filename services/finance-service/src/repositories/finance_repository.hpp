@@ -24,11 +24,11 @@ public:
   CreateChargeResult CreateCharge(const CreateChargeRequest &request) const;
   // Ручная коррекция (lesson_id пуст): всегда добавляет строку correction.
   Transaction CreateCorrection(const CreateCorrectionRequest &request) const;
-  // Компенсация отменённого занятия (lesson_id задан): идемпотентна по lesson_id
-  // (partial unique on type='correction'); дубль -> created=false, без второй
-  // строки и без второго balance.changed.
-  CreateCorrectionResult
-  CreateCancellationCorrection(const CreateCorrectionRequest &request) const;
+  // Коррекция из доменного события lesson.*: идемпотентна атомарным inbox по
+  // event_id. Дубль события -> false, без второй correction и balance.changed.
+  bool CreateEventCorrection(const CreateCorrectionRequest &request,
+                             const std::string &event_id,
+                             const std::string &event_type) const;
   Balance GetBalance(const std::string &student_id) const;
   std::vector<Transaction>
   ListTransactions(const std::string &student_id) const;

@@ -29,6 +29,12 @@ std::string Money(const json::Value& payload) {
   return std::to_string(amount) + " " + currency;
 }
 
+std::string Price(const json::Value& payload) {
+  const auto amount = payload["price"].As<double>(0.0);
+  const auto currency = payload["currency"].As<std::string>("RUB");
+  return std::to_string(amount) + " " + currency;
+}
+
 std::string Delta(const json::Value& payload) {
   const auto delta = payload["delta"].As<double>(0.0);
   const auto currency = payload["currency"].As<std::string>("RUB");
@@ -111,23 +117,34 @@ std::optional<CreateNotificationRequest> BuildNotification(
   }
 
   if (event.event_type == "lesson.scheduled") {
-    // lesson.scheduled эмитится и при создании занятия (origin='created', 5F-3),
-    // и при восстановлении (origin='reactivated'). Уведомляем только о
-    // восстановлении; остальное пропускаем.
-    if (OptionalString(payload, "origin") != "reactivated") {
-      return std::nullopt;
+    const auto origin = OptionalString(payload, "origin");
+    if (origin == "created") {
+      return NotificationFor(
+          event, RequiredString(payload, "student_id"), "lesson_scheduled",
+          "Занятие назначено",
+          "Занятие назначено на " + RequiredString(payload, "starts_at"));
     }
-    return NotificationFor(
-        event, RequiredString(payload, "student_id"), "lesson_reactivated",
-        "Занятие снова в силе",
-        "Отменённое занятие восстановлено на " +
-            RequiredString(payload, "starts_at"));
+    if (origin == "reactivated") {
+      return NotificationFor(
+          event, RequiredString(payload, "student_id"), "lesson_reactivated",
+          "Занятие снова в силе",
+          "Отменённое занятие восстановлено на " +
+              RequiredString(payload, "starts_at"));
+    }
+    return std::nullopt;
   }
 
   if (event.event_type == "lesson.cancelled") {
     return NotificationFor(
         event, RequiredString(payload, "student_id"), "lesson_cancelled",
         "Занятие отменено", "Занятие отменено преподавателем");
+  }
+
+  if (event.event_type == "lesson.restored") {
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"), "lesson_restored",
+        "Занятие восстановлено",
+        "Занятие восстановлено, долг снова начислен: " + Price(payload));
   }
 
   if (event.event_type == "balance.changed") {

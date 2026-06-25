@@ -39,6 +39,11 @@ conandata.yml.lock
 vcpkg_installed/
 _deps/
 
+# === Python test artifacts ===
+__pycache__/
+**/__pycache__/
+*.pyc
+
 # === IDE / редакторы ===
 .idea/
 .vscode/

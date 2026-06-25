@@ -63,6 +63,7 @@ components_manager:
             topics:
               - tutorflow.lesson.completed
               - tutorflow.lesson.cancelled
+              - tutorflow.lesson.restored
             # Топики создаются лениво (auto-create на первый publish). С дефолтным
             # refresh (5 мин) консьюмер не подхватывает только что созданный
             # tutorflow.lesson.cancelled вовремя -> компенсация задерживается.

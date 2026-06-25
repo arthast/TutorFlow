@@ -199,7 +199,23 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
         "  FROM booked_slot "
         "  WHERE $5::timestamptz < $6::timestamptz "
         "  RETURNING " +
-            std::string{kLessonFields} + ") SELECT * FROM inserted",
+            std::string{kLessonFields} +
+            "), outbox AS ("
+            "  INSERT INTO outbox_events "
+            "    (aggregate_type, aggregate_id, event_type, event_version, "
+            "payload) "
+            "  SELECT 'lesson', id::uuid, 'lesson.scheduled', 1, "
+            "         jsonb_build_object("
+            "           'lesson_id', id, "
+            "           'teacher_id', teacher_id, "
+            "           'student_id', student_id, "
+            "           'starts_at', starts_at, "
+            "           'ends_at', ends_at, "
+            "           'scheduled_at', to_char(now() AT TIME ZONE 'UTC', "
+            "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), "
+            "           'origin', 'created') "
+            "  FROM inserted"
+            ") SELECT * FROM inserted",
         teacher_id, request.student_id, *request.price, *request.slot_id,
         request.starts_at, request.ends_at, request.topic, request.notes);
     if (result.IsEmpty()) {
@@ -214,13 +230,30 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
 
   const auto result = pg_->Execute(
       kMaster,
-      "INSERT INTO lessons (teacher_id, student_id, starts_at, ends_at, topic, "
-      "                     notes, price) "
-      "SELECT $1::uuid, $2::uuid, $3::timestamptz, $4::timestamptz, $5, $6, "
-      "       $7::numeric "
-      "WHERE $3::timestamptz < $4::timestamptz "
-      "RETURNING " +
-          std::string{kLessonFields},
+      "WITH inserted AS ("
+      "  INSERT INTO lessons (teacher_id, student_id, starts_at, ends_at, "
+      "                       topic, notes, price) "
+      "  SELECT $1::uuid, $2::uuid, $3::timestamptz, $4::timestamptz, $5, "
+      "         $6, $7::numeric "
+      "  WHERE $3::timestamptz < $4::timestamptz "
+      "  RETURNING " +
+          std::string{kLessonFields} +
+          "), outbox AS ("
+          "  INSERT INTO outbox_events "
+          "    (aggregate_type, aggregate_id, event_type, event_version, "
+          "payload) "
+          "  SELECT 'lesson', id::uuid, 'lesson.scheduled', 1, "
+          "         jsonb_build_object("
+          "           'lesson_id', id, "
+          "           'teacher_id', teacher_id, "
+          "           'student_id', student_id, "
+          "           'starts_at', starts_at, "
+          "           'ends_at', ends_at, "
+          "           'scheduled_at', to_char(now() AT TIME ZONE 'UTC', "
+          "               'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), "
+          "           'origin', 'created') "
+          "  FROM inserted"
+          ") SELECT * FROM inserted",
       teacher_id, request.student_id, request.starts_at, request.ends_at,
       request.topic, request.notes, *request.price);
   if (result.IsEmpty()) {
@@ -474,9 +507,11 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
   if (current->status == "scheduled") {
     return *current;
   }
-  if (current->status == "completed") {
-    throw tutorflow::common::ServiceError::Conflict(
-        "completed lesson cannot be reactivated");
+  const bool restore_completed = current->completed_at.has_value();
+  const std::string target_status =
+      restore_completed ? std::string{"completed"} : std::string{"scheduled"};
+  if (current->status == target_status) {
+    return *current;
   }
   if (current->status != "cancelled") {
     throw tutorflow::common::ServiceError::Conflict(
@@ -495,7 +530,7 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
              RETURNING id
            ), reactivated AS (
              UPDATE lessons
-             SET status = 'scheduled'
+             SET status = $4
              WHERE id = $1::uuid
                AND teacher_id = $2::uuid
                AND status = 'cancelled'
@@ -506,20 +541,38 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
            ), outbox AS (
              INSERT INTO outbox_events
                (aggregate_type, aggregate_id, event_type, event_version, payload)
-             SELECT 'lesson', id::uuid, 'lesson.scheduled', 1,
-                    jsonb_build_object(
-                      'lesson_id', id,
-                      'teacher_id', teacher_id,
-                      'student_id', student_id,
-                      'starts_at', starts_at,
-                      'ends_at', ends_at,
-                      'scheduled_at',
-                        to_char(now() AT TIME ZONE 'UTC',
-                                'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-                      'origin', 'reactivated')
+             SELECT 'lesson', id::uuid,
+                    CASE WHEN $4 = 'completed'
+                         THEN 'lesson.restored'
+                         ELSE 'lesson.scheduled'
+                    END,
+                    1,
+                    CASE WHEN $4 = 'completed' THEN
+                      jsonb_build_object(
+                        'lesson_id', id,
+                        'teacher_id', teacher_id,
+                        'student_id', student_id,
+                        'price', price,
+                        'currency', 'RUB',
+                        'restored_at',
+                          to_char(now() AT TIME ZONE 'UTC',
+                                  'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+                    ELSE
+                      jsonb_build_object(
+                        'lesson_id', id,
+                        'teacher_id', teacher_id,
+                        'student_id', student_id,
+                        'starts_at', starts_at,
+                        'ends_at', ends_at,
+                        'scheduled_at',
+                          to_char(now() AT TIME ZONE 'UTC',
+                                  'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                        'origin', 'reactivated')
+                    END
              FROM reactivated
            ) SELECT * FROM reactivated)";
-    const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id, slot_id);
+    const auto result =
+        pg_->Execute(kMaster, sql, lesson_id, teacher_id, slot_id, target_status);
     if (result.IsEmpty()) {
       throw tutorflow::common::ServiceError::Conflict(
           "lesson slot is not open or does not belong to teacher");
@@ -532,7 +585,7 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
   const std::string sql =
       R"(WITH reactivated AS (
            UPDATE lessons
-           SET status = 'scheduled'
+           SET status = $3
            WHERE id = $1::uuid
              AND teacher_id = $2::uuid
              AND status = 'cancelled'
@@ -542,20 +595,38 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
          ), outbox AS (
            INSERT INTO outbox_events
              (aggregate_type, aggregate_id, event_type, event_version, payload)
-           SELECT 'lesson', id::uuid, 'lesson.scheduled', 1,
-                  jsonb_build_object(
-                    'lesson_id', id,
-                    'teacher_id', teacher_id,
-                    'student_id', student_id,
-                    'starts_at', starts_at,
-                    'ends_at', ends_at,
-                    'scheduled_at',
-                      to_char(now() AT TIME ZONE 'UTC',
-                              'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-                    'origin', 'reactivated')
+           SELECT 'lesson', id::uuid,
+                  CASE WHEN $3 = 'completed'
+                       THEN 'lesson.restored'
+                       ELSE 'lesson.scheduled'
+                  END,
+                  1,
+                  CASE WHEN $3 = 'completed' THEN
+                    jsonb_build_object(
+                      'lesson_id', id,
+                      'teacher_id', teacher_id,
+                      'student_id', student_id,
+                      'price', price,
+                      'currency', 'RUB',
+                      'restored_at',
+                        to_char(now() AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+                  ELSE
+                    jsonb_build_object(
+                      'lesson_id', id,
+                      'teacher_id', teacher_id,
+                      'student_id', student_id,
+                      'starts_at', starts_at,
+                      'ends_at', ends_at,
+                      'scheduled_at',
+                        to_char(now() AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                      'origin', 'reactivated')
+                  END
            FROM reactivated
          ) SELECT * FROM reactivated)";
-  const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id);
+  const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id,
+                                   target_status);
   if (result.IsEmpty()) {
     throw tutorflow::common::ServiceError::Conflict(
         "only cancelled lesson can be reactivated");

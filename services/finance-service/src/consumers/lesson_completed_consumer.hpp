@@ -3,7 +3,9 @@
 // Kafka consumer финансовых последствий жизненного цикла занятия:
 //   tutorflow.lesson.completed  -> charge (5E), идемпотентно по lesson_id;
 //   tutorflow.lesson.cancelled  -> компенсирующая correction при
-//     previous_status='completed' (5L.4), идемпотентно по lesson_id.
+//     previous_status='completed' (5L.4), идемпотентно по event_id;
+//   tutorflow.lesson.restored   -> восстанавливающая correction(+price),
+//     идемпотентно по event_id.
 // Роутинг по event_type. Идемпотентность живёт в domain/DB (unique + inbox),
 // не здесь. Дубликат события — no-op.
 
@@ -38,6 +40,7 @@ private:
                      std::string_view key, const std::string& topic) const;
   void OnLessonCompleted(const tutorflow::events::EventEnvelope& event) const;
   void OnLessonCancelled(const tutorflow::events::EventEnvelope& event) const;
+  void OnLessonRestored(const tutorflow::events::EventEnvelope& event) const;
 
   const FinanceService& service_;
   const FinanceRepository& repository_;

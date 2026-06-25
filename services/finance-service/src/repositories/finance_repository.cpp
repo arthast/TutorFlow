@@ -199,26 +199,28 @@ FinanceRepository::CreateCorrection(const CreateCorrectionRequest &request) cons
   return RowToTransaction(result[0]);
 }
 
-CreateCorrectionResult FinanceRepository::CreateCancellationCorrection(
-    const CreateCorrectionRequest &request) const {
-  // Компенсация отменённого занятия: correction(-price) с lesson_id.
-  // Идемпотентна по lesson_id (partial unique on type='correction'). На дубле
-  // (replay события / повторная отмена / падение между INSERT и MarkEventProcessed)
-  // INSERT упирается в uq_correction_lesson -> inserted пуст, НО ветка existing
-  // возвращает уже существующую строку с created=false -> НЕ throw, второй
-  // balance.changed не пишется (он висит на SELECT FROM inserted). Это зеркало
-  // CreateCharge: консьюмер штатно идёт к MarkEventProcessed, poison-message нет.
+bool FinanceRepository::CreateEventCorrection(
+    const CreateCorrectionRequest &request, const std::string &event_id,
+    const std::string &event_type) const {
+  // Компенсация/восстановление из lesson lifecycle: processed_events,
+  // correction и balance.changed пишутся одним statement. Если event_id уже был
+  // принят, accepted_event пустой -> correction/outbox не создаются.
   const auto lesson_id = request.lesson_id.value_or("");
   const auto result = pg_->Execute(
       kMaster,
-      "WITH inserted AS ("
+      "WITH accepted_event AS ("
+      "  INSERT INTO processed_events (event_id, event_type) "
+      "  VALUES ($7::uuid, $8) "
+      "  ON CONFLICT (event_id) DO NOTHING "
+      "  RETURNING event_id"
+      "), inserted AS ("
       "  INSERT INTO financial_transactions "
       "    (teacher_id, student_id, type, amount, currency, lesson_id, comment) "
-      "  VALUES ($1::uuid, $2::uuid, 'correction', $3::numeric, $4, $5::uuid, $6) "
-      "  ON CONFLICT (lesson_id) WHERE type = 'correction' DO NOTHING "
+      "  SELECT $1::uuid, $2::uuid, 'correction', $3::numeric, $4, "
+      "         NULLIF($5, '')::uuid, $6 "
+      "  FROM accepted_event "
       "  RETURNING " +
           std::string{kTransactionFields} +
-          ", TRUE AS created"
           "), balance_outbox AS ("
           "  INSERT INTO outbox_events "
           "    (aggregate_type, aggregate_id, event_type, event_version, payload) "
@@ -232,26 +234,14 @@ CreateCorrectionResult FinanceRepository::CreateCancellationCorrection(
           "           'source_transaction_id', id, "
           "           'changed_at', created_at) "
           "  FROM inserted"
-          "), existing AS ("
-          "  SELECT " +
-          std::string{kTransactionFields} +
-          ", FALSE AS created "
-          "  FROM financial_transactions "
-          "  WHERE type = 'correction' AND lesson_id = $5::uuid"
-          ") SELECT * FROM inserted "
-          "UNION ALL "
-          "SELECT * FROM existing WHERE NOT EXISTS (SELECT 1 FROM inserted) "
-          "LIMIT 1",
+          ") SELECT EXISTS(SELECT 1 FROM inserted) AS created",
       request.teacher_id, request.student_id, request.amount, request.currency,
-      lesson_id, request.comment);
+      lesson_id, request.comment, event_id, event_type);
   if (result.IsEmpty()) {
-    // Недостижимо на пути дубля (existing вернёт строку). Срабатывает лишь при
-    // невозможном состоянии (нет ни inserted, ни existing) — fail loud, не молча.
     throw tutorflow::common::ServiceError::Internal(
-        "cancellation correction was not created");
+        "event correction result is missing");
   }
-  return {.transaction = RowToTransaction(result[0]),
-          .created = result[0]["created"].As<bool>()};
+  return result[0]["created"].As<bool>();
 }
 
 Balance FinanceRepository::GetBalance(const std::string &student_id) const {

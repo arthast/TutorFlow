@@ -114,11 +114,8 @@ Lesson LessonService::ReactivateLesson(
     throw tutorflow::common::ServiceError::Forbidden(
         "teacher does not own lesson");
   }
-  if (current->status == "completed") {
-    throw tutorflow::common::ServiceError::Conflict(
-        "completed lesson cannot be reactivated");
-  }
-  if (current->status != "cancelled" && current->status != "scheduled") {
+  if (current->status != "cancelled" && current->status != "scheduled" &&
+      current->status != "completed") {
     throw tutorflow::common::ServiceError::Conflict(
         "only cancelled lesson can be reactivated");
   }

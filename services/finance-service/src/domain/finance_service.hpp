@@ -38,10 +38,14 @@ public:
                                const std::string &currency,
                                const std::string &comment) const;
 
-  // 5L.4: компенсация отменённого завершённого занятия. Вызывается из консьюмера
-  // lesson.cancelled (внутренний путь, без auth). Идемпотентно по lesson_id.
-  CreateCorrectionResult
-  CompensateCancelledLesson(const CreateCorrectionRequest &request) const;
+  // Коррекции из lesson lifecycle events (внутренний путь, без auth).
+  // Идемпотентность обеспечивает atomic inbox по event_id.
+  bool CompensateCancelledLesson(const CreateCorrectionRequest &request,
+                                 const std::string &event_id,
+                                 const std::string &event_type) const;
+  bool RestoreCancelledLesson(const CreateCorrectionRequest &request,
+                              const std::string &event_id,
+                              const std::string &event_type) const;
 
   Balance GetBalance(const tutorflow::common::AuthContext &auth,
                      const std::string &student_id) const;

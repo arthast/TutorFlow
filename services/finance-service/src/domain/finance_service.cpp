@@ -78,11 +78,18 @@ Transaction FinanceService::CreateCorrection(
   });
 }
 
-CreateCorrectionResult FinanceService::CompensateCancelledLesson(
-    const CreateCorrectionRequest &request) const {
+bool FinanceService::CompensateCancelledLesson(
+    const CreateCorrectionRequest &request, const std::string &event_id,
+    const std::string &event_type) const {
   // Внутренний путь (consumer lesson.cancelled): доверяем событию, без auth.
-  // Идемпотентность обеспечивает репозиторий (unique по lesson_id).
-  return repository_.CreateCancellationCorrection(request);
+  return repository_.CreateEventCorrection(request, event_id, event_type);
+}
+
+bool FinanceService::RestoreCancelledLesson(
+    const CreateCorrectionRequest &request, const std::string &event_id,
+    const std::string &event_type) const {
+  // Внутренний путь (consumer lesson.restored): доверяем событию, без auth.
+  return repository_.CreateEventCorrection(request, event_id, event_type);
 }
 
 void FinanceService::EnsureStudentAccess(

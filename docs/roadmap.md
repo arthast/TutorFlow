@@ -477,6 +477,11 @@ lesson.rescheduled
 Слушатели: notification-service и report-service. Finance остаётся consumer только
 для `lesson.completed`.
 
+Follow-up 5L/5F-3: `lesson.scheduled(origin=created)` эмитится из `CreateLesson`
+в одной транзакции с insert занятия и используется notification-service для
+уведомления ученика «Занятие назначено». `origin=reactivated` остаётся для
+восстановления незавершённого отменённого занятия.
+
 **5F-later. Не первоочередно**
 `identity-service` events (`user.registered`, `student.created`,
 `teacher_student_link.created`, `password.changed`) и `file-service` events
@@ -574,15 +579,19 @@ backup/restore для Postgres и object storage
 
 Охват:
 - **reschedule** — перенос времени занятия (`scheduled`, новое время/слот; денег не касается);
-- **reactivate** — восстановление отменённого (`cancelled → scheduled`);
+- **reactivate** — восстановление отменённого (`cancelled → scheduled` или
+  `cancelled → completed`, если занятие было завершено до отмены);
 - **cancel completed** — отмена завершённого (`completed → cancelled`) с
   АВТОМАТИЧЕСКОЙ финансовой компенсацией;
 - **manual correction** — ручная корректировка баланса ученика преподавателем.
 
-Жёсткий инвариант: finance append-only — charge НЕ удаляем; откат = добавление
-компенсирующей `correction` (тип уже есть в модели). Компенсация идемпотентна по
-`lesson_id`. Принято product-решение: отмена оплаченного завершённого занятия может
-увести баланс в минус (кредит ученику) — это допустимо.
+Жёсткий инвариант: finance append-only — charge НЕ удаляем и НЕ создаём повторно
+(`uq_charge_lesson` остаётся); откат/восстановление долга = пара `correction`
+(-price/+price). Correction-пути (`lesson.cancelled`, `lesson.restored`)
+идемпотентны по `event_id` через атомарный inbox `processed_events`, а не по
+`lesson_id`, потому что у одного занятия может быть и отмена, и восстановление.
+Принято product-решение: отмена оплаченного завершённого занятия может увести
+баланс в минус (кредит ученику) — это допустимо.
 
 Под-задачи (порядок и зависимости — см. design-doc §7):
 ```text
@@ -591,20 +600,25 @@ backup/restore для Postgres и object storage
 5L.1 lesson: RescheduleLesson (+ слот, 409) + outbox lesson.rescheduled   ✅ СДЕЛАНО (feat/lesson-reschedule)
 5L.2 lesson: ReactivateLesson (cancelled→scheduled, ребронь слота, идемпотентно)   ✅ СДЕЛАНО
 5L.3 lesson: CancelLesson допускает completed→cancelled + outbox lesson.cancelled   ✅ СДЕЛАНО (feat/lesson-finance-corrections)
-5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по lesson_id)   ✅ СДЕЛАНО
+5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по event_id inbox)   ✅ СДЕЛАНО
 5L.5 finance: CreateCorrection (manual, ±amount + comment, check-access)   ✅ СДЕЛАНО
 5L.6 gateway: роуты reschedule(✅)/reactivate(✅)/cancel(✅)/corrections(✅)   ✅ СДЕЛАНО
 5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ✅ СДЕЛАНО
 5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ✅ СДЕЛАНО
 5L.9 tests + smoke: переходы, компенсация, идемпотентность, доступ   ✅ СДЕЛАНО (tests/test_corrections.py + smoke шаг 16)
+5L follow-up: lesson.scheduled(origin=created) из CreateLesson; ReactivateLesson
+для ранее completed занятия возвращает статус completed и эмитит lesson.restored;
+finance consumer делает correction(+price) атомарно с processed_events; миграция
+005 удаляет uq_correction_lesson; notification-service уведомляет lesson.created
+и lesson.restored; tests покрывают recharge-cycle и replay без дублей.
 ```
 
 5L.3-5L.6+5L.9 (feat/lesson-finance-corrections): CancelLesson разрешает
 `completed→cancelled`, эмитит `lesson.cancelled` (previous_status, price/currency
 только при completed) одной транзакцией; finance-консьюмер роутит по event_type и
 на `lesson.cancelled(previous_status=completed)` добавляет `correction(-price)`
-идемпотентно по `lesson_id` (миграция `004_correction_lesson_unique.sql`,
-partial unique on type='correction') + `balance.changed`; gRPC `CreateCorrection`
+идемпотентно по `event_id` atomic inbox + `balance.changed`; `lesson.restored`
+добавляет зеркальную `correction(+price)` тем же inbox-путём; gRPC `CreateCorrection`
 (teacher + check-access, amount=0→422, comment обязателен), gateway-роут
 `POST /students/{id}/corrections`. charge не удаляется (append-only).
 **Грабли (важно):** топики Kafka создаются лениво (auto-create на первый publish).
