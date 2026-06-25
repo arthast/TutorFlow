@@ -83,6 +83,10 @@ components_manager:
             path: /students/{studentId}/transactions
             method: GET,OPTIONS
             task_processor: main-task-processor
+        gateway-student-corrections-handler:
+            path: /students/{studentId}/corrections
+            method: POST,OPTIONS
+            task_processor: main-task-processor
         gateway-availability-handler:
             path: /availability
             method: GET,POST,OPTIONS

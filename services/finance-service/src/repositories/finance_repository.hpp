@@ -22,6 +22,13 @@ public:
                     const userver::components::ComponentContext &context);
 
   CreateChargeResult CreateCharge(const CreateChargeRequest &request) const;
+  // Ручная коррекция (lesson_id пуст): всегда добавляет строку correction.
+  Transaction CreateCorrection(const CreateCorrectionRequest &request) const;
+  // Компенсация отменённого занятия (lesson_id задан): идемпотентна по lesson_id
+  // (partial unique on type='correction'); дубль -> created=false, без второй
+  // строки и без второго balance.changed.
+  CreateCorrectionResult
+  CreateCancellationCorrection(const CreateCorrectionRequest &request) const;
   Balance GetBalance(const std::string &student_id) const;
   std::vector<Transaction>
   ListTransactions(const std::string &student_id) const;

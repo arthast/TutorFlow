@@ -35,6 +35,9 @@ public:
   RejectPaymentReceiptResult RejectPaymentReceipt(
       CallContext &context,
       tutorflow::finance::v1::RejectReceiptRequest &&request) override;
+  CreateCorrectionResult CreateCorrection(
+      CallContext &context,
+      tutorflow::finance::v1::CreateCorrectionRequest &&request) override;
 
 private:
   FinanceService &service_;

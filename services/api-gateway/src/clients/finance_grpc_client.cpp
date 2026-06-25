@@ -184,6 +184,22 @@ json::Value GrpcFinanceClient::RejectReceipt(
   }));
 }
 
+json::Value GrpcFinanceClient::CreateCorrection(
+    std::string_view student_id, const json::Value &body,
+    const tutorflow::clients::GrpcCallContext &call_context) const {
+  proto::CreateCorrectionRequest request;
+  tutorflow::clients::FillUserContext(*request.mutable_user(), call_context);
+  request.set_student_id(std::string{student_id});
+  request.set_amount(tutorflow::common::RequireDouble(body, "amount"));
+  request.set_currency(tutorflow::common::OptionalString(body, "currency")
+                           .value_or(std::string{kDefaultCurrency}));
+  request.set_comment(tutorflow::common::RequireString(body, "comment"));
+  return ToJson(tutorflow::clients::InvokeUnary([&] {
+    return client_.CreateCorrection(
+        request, tutorflow::clients::NonIdempotentCall(call_context, options_));
+  }));
+}
+
 userver::yaml_config::Schema GrpcFinanceClient::GetStaticConfigSchema() {
   return userver::yaml_config::MergeSchemas<
       userver::components::LoggableComponentBase>(R"(

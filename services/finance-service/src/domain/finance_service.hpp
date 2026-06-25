@@ -30,6 +30,19 @@ public:
                  const userver::components::ComponentContext &context);
 
   CreateChargeResult CreateCharge(const CreateChargeRequest &request) const;
+
+  // 5L.5: ручная коррекция баланса преподавателем. Доступ — teacher с активной
+  // связью с учеником (check-access); amount=0 -> 422; comment обязателен.
+  Transaction CreateCorrection(const tutorflow::common::AuthContext &auth,
+                               const std::string &student_id, double amount,
+                               const std::string &currency,
+                               const std::string &comment) const;
+
+  // 5L.4: компенсация отменённого завершённого занятия. Вызывается из консьюмера
+  // lesson.cancelled (внутренний путь, без auth). Идемпотентно по lesson_id.
+  CreateCorrectionResult
+  CompensateCancelledLesson(const CreateCorrectionRequest &request) const;
+
   Balance GetBalance(const tutorflow::common::AuthContext &auth,
                      const std::string &student_id) const;
   std::vector<Transaction>

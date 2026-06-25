@@ -568,7 +568,7 @@ Kafka lag/retry/DLQ monitoring
 backup/restore для Postgres и object storage
 ```
 
-### Этап 5L — lesson lifecycle + finance corrections  🔶 В РАБОТЕ (5L.1 сделан)
+### Этап 5L — lesson lifecycle + finance corrections  🔶 В РАБОТЕ (бэкенд 5L.1–5L.6+5L.9 готов; 5L.7/5L.8 — опц.)
 Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с
 человеком (2026-06-24). Расширяем жизненный цикл занятия и связь с финансами.
 
@@ -589,15 +589,30 @@ backup/restore для Postgres и object storage
 5L.0 контракты (координатор): proto lesson/finance + gateway/finance OpenAPI +
      event-contracts lesson.rescheduled/lesson.cancelled (JSON готовы)
 5L.1 lesson: RescheduleLesson (+ слот, 409) + outbox lesson.rescheduled   ✅ СДЕЛАНО (feat/lesson-reschedule)
-5L.2 lesson: ReactivateLesson (cancelled→scheduled, ребронь слота, идемпотентно)   ⬜
-5L.3 lesson: CancelLesson допускает completed→cancelled + outbox lesson.cancelled   ⬜
-5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по lesson_id)   ⬜
-5L.5 finance: CreateCorrection (manual, ±amount + comment, check-access)   ⬜
-5L.6 gateway: роуты reschedule(✅)/reactivate/cancel/corrections (тонко)
-5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ⬜
-5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ⬜
-5L.9 tests + smoke: переходы, компенсация, идемпотентность, доступ   ⬜
+5L.2 lesson: ReactivateLesson (cancelled→scheduled, ребронь слота, идемпотентно)   ✅ СДЕЛАНО
+5L.3 lesson: CancelLesson допускает completed→cancelled + outbox lesson.cancelled   ✅ СДЕЛАНО (feat/lesson-finance-corrections)
+5L.4 finance: consumer lesson.cancelled → компенсирующая correction (idempotent по lesson_id)   ✅ СДЕЛАНО
+5L.5 finance: CreateCorrection (manual, ±amount + comment, check-access)   ✅ СДЕЛАНО
+5L.6 gateway: роуты reschedule(✅)/reactivate(✅)/cancel(✅)/corrections(✅)   ✅ СДЕЛАНО
+5L.7 notification-service: подписать новые события (rescheduled/cancelled/balance.changed)   ⬜ (Phase G, опц.)
+5L.8 frontend: кнопки teacher (перенести/восстановить/отменить занятие, скорректировать баланс)   ⬜ (Phase H, опц.)
+5L.9 tests + smoke: переходы, компенсация, идемпотентность, доступ   ✅ СДЕЛАНО (tests/test_corrections.py + smoke шаг 16)
 ```
+
+5L.3-5L.6+5L.9 (feat/lesson-finance-corrections): CancelLesson разрешает
+`completed→cancelled`, эмитит `lesson.cancelled` (previous_status, price/currency
+только при completed) одной транзакцией; finance-консьюмер роутит по event_type и
+на `lesson.cancelled(previous_status=completed)` добавляет `correction(-price)`
+идемпотентно по `lesson_id` (миграция `004_correction_lesson_unique.sql`,
+partial unique on type='correction') + `balance.changed`; gRPC `CreateCorrection`
+(teacher + check-access, amount=0→422, comment обязателен), gateway-роут
+`POST /students/{id}/corrections`. charge не удаляется (append-only).
+**Грабли (важно):** топики Kafka создаются лениво (auto-create на первый publish).
+finance-консьюмер с дефолтным `topic_metadata_refresh_interval` (5 мин) не
+подхватывал только что созданный `tutorflow.lesson.cancelled` вовремя → компенсация
+задерживалась. Фикс: `topic_metadata_refresh_interval: 3s` в finance kafka-consumer.
+Контракты менялись (finance.proto + gateway/finance OpenAPI) → перед мержем
+PR/подтверждение координатора.
 5L.1 (feat/lesson-reschedule): RescheduleLesson — только teacher, только `scheduled`,
 ownership+check-access, атомарная ребронь слота (409 если занят), идемпотентный no-op,
 `lesson.rescheduled` в outbox одной транзакцией. Попутно фикс cast-бага

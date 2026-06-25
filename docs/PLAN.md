@@ -294,6 +294,9 @@ balance = sum(charge) - sum(payment) + sum(correction) - sum(refund)
 - Отмена завершённого занятия (`completed → cancelled`, Этап 5L): finance-consumer
   на `lesson.cancelled` (`previous_status=completed`) добавляет компенсирующую
   `correction` на `-price`, **идемпотентно по `lesson_id`**; charge не удаляется.
+- Ручная `correction` (Этап 5L, gRPC `CreateCorrection`): преподаватель добавляет
+  `correction(±amount)` ученику (без `lesson_id`); доступ — teacher с check-access,
+  `amount=0 → 422`, `comment` обязателен. Любая `correction` эмитит `balance.changed`.
 - Ручная коррекция (Этап 5L): преподаватель через `CreateCorrection` добавляет
   `correction(amount ±, comment)` для конкретного ученика (после `check-access`).
   Подробности и контракты — `docs/agent-lesson-lifecycle.md`.

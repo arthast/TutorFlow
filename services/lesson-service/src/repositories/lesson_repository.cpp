@@ -577,25 +577,49 @@ Lesson LessonRepository::CancelLesson(const std::string &lesson_id,
   }
   if (current->status == "cancelled")
     return *current;
-  if (current->status == "completed") {
+  // 5L.3: разрешаем отмену и scheduled, и completed. previous_status фиксируем
+  // из наблюдённого статуса ($3) — он же уходит в lesson.cancelled и задаёт,
+  // нужна ли финансовая компенсация (только при 'completed', с price/currency).
+  if (current->status != "scheduled" && current->status != "completed") {
     throw tutorflow::common::ServiceError::Conflict(
-        "completed lesson cannot be cancelled");
+        "lesson cannot be cancelled from its current status");
   }
 
+  // Transactional outbox: смена статуса + событие lesson.cancelled в ОДНОЙ
+  // транзакции (CTE). Слот, если был, освобождаем (open). price/currency в
+  // payload только при previous_status='completed' (нужны finance для
+  // компенсирующей correction); при 'scheduled' — null (charge не было).
+  const std::string sql =
+      R"(WITH cancelled AS (
+           UPDATE lessons SET status = 'cancelled'
+           WHERE id = $1::uuid AND teacher_id = $2::uuid AND status = $3
+           RETURNING )" +
+      std::string{kLessonFields} +
+      R"(
+         ), reopened AS (
+           UPDATE availability_slots SET status = 'open'
+           WHERE id IN (SELECT NULLIF(slot_id, '')::uuid
+                        FROM cancelled WHERE slot_id <> '')
+         ), outbox AS (
+           INSERT INTO outbox_events
+             (aggregate_type, aggregate_id, event_type, event_version, payload)
+           SELECT 'lesson', id::uuid, 'lesson.cancelled', 1,
+                  jsonb_build_object(
+                    'lesson_id', id,
+                    'teacher_id', teacher_id,
+                    'student_id', student_id,
+                    'previous_status', $3,
+                    'price', CASE WHEN $3 = 'completed'
+                                  THEN price::double precision ELSE NULL END,
+                    'currency', CASE WHEN $3 = 'completed'
+                                     THEN 'RUB' ELSE NULL END,
+                    'cancelled_at',
+                      to_char(now() AT TIME ZONE 'UTC',
+                              'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+           FROM cancelled
+         ) SELECT * FROM cancelled)";
   const auto result =
-      pg_->Execute(kMaster,
-                   "WITH cancelled AS ("
-                   "  UPDATE lessons SET status = 'cancelled' "
-                   "  WHERE id = $1::uuid AND teacher_id = $2::uuid AND status "
-                   "= 'scheduled' "
-                   "  RETURNING " +
-                       std::string{kLessonFields} +
-                       "), reopened AS ("
-                       "  UPDATE availability_slots SET status = 'open' "
-                       "  WHERE id IN (SELECT NULLIF(slot_id, '')::uuid "
-                       "               FROM cancelled WHERE slot_id <> '')"
-                       ") SELECT * FROM cancelled",
-                   lesson_id, teacher_id);
+      pg_->Execute(kMaster, sql, lesson_id, teacher_id, current->status);
   auto lesson = RequireSingleLesson(result, "lesson not found");
   AttachLessonFileIds(pg_, lesson);
   return lesson;

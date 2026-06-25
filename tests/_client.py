@@ -246,3 +246,30 @@ def wait_for_lesson_charge(
         "last_balance": last_balance,
         "last_charges": last_charges,
     })
+
+
+def wait_for_lesson_correction(
+    student: Dict[str, Any],
+    lesson_id: str,
+    *,
+    amount: float = -LESSON_PRICE,
+    timeout: float = 15.0,
+) -> Any:
+    # Компенсация отменённого завершённого занятия создаётся consumer'ом из
+    # события lesson.cancelled — eventual, как charge.
+    deadline = time.monotonic() + timeout
+    last = []
+    while time.monotonic() < deadline:
+        last = [
+            tx for tx in transactions(student)
+            if tx["type"] == "correction" and tx.get("lesson_id") == lesson_id
+        ]
+        if (len(last) == 1
+                and round(float(last[0]["amount"]), 2) == round(float(amount), 2)):
+            return last
+        time.sleep(0.5)
+    raise AssertionError({
+        "lesson_id": lesson_id,
+        "expected_amount": amount,
+        "last_corrections": last,
+    })

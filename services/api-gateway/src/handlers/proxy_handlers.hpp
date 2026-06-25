@@ -89,6 +89,8 @@ TUTORFLOW_GATEWAY_DECLARE_HANDLER(StudentBalanceHandler,
                                   "gateway-student-balance-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(StudentTransactionsHandler,
                                   "gateway-student-transactions-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(StudentCorrectionsHandler,
+                                  "gateway-student-corrections-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(AvailabilityHandler,
                                   "gateway-availability-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(LessonsHandler, "gateway-lessons-handler");
