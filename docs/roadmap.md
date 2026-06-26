@@ -25,12 +25,14 @@
 | lesson-service | реализован, в `main` |
 | assignment-service | реализован, в `main` |
 | finance-service | реализован, в `main` |
-| api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование), в `main`; в ветке 5G добавлены notification routes |
-| notification-service | реализуется в ветке `feat/notification-service`: Kafka consumer + gRPC list/mark-read |
+| api-gateway | **реализован** (JWT локально, срез/постановка X-User-*, проксирование, notification+dashboard routes), в `main` |
+| notification-service | **реализован** (Kafka consumer + gRPC list/mark-read), в `main` (5G) |
+| report-service | **реализован** (read-models из событий, dashboards по gRPC), в `main` (5H) |
 
-Ядро из 6 сервисов собрано и согласовано: REST снаружи через gateway, gRPC между
-сервисами, Kafka/outbox для первого бизнес-flow `lesson.completed -> charge`.
-Дальше — закрыть UI gaps и расширять event-driven слой вокруг уже работающего ядра.
+7 сервисов + gateway собраны и согласованы: REST снаружи через gateway, gRPC между
+сервисами, Kafka/outbox + consumer inbox для доменных событий (lesson/assignment/finance).
+Сделано: 5G notification, 5H report/dashboards, 5I MinIO/S3 для file-service, 5L lesson
+lifecycle + finance corrections. Осталось: 5J chat-service, 5K production hardening.
 
 ---
 
@@ -489,7 +491,7 @@ Follow-up 5L/5F-3: `lesson.scheduled(origin=created)` эмитится из `Cre
 consumer. Для текущего домена важнее бизнес-события assignment/finance, чем сам
 факт загрузки файла.
 
-### Этап 5G — notification-service  ✅ СДЕЛАНО В ВЕТКЕ `feat/notification-service`
+### Этап 5G — notification-service  ✅ СДЕЛАНО (в `main`)
 Первый полноценный Kafka consumer после расширения событий.
 
 Минимальная версия:
@@ -514,7 +516,7 @@ Gateway вызывает notification-service по gRPC, frontend показыв
 gateway endpoints `GET /notifications` и `POST /notifications/{notificationId}/read`.
 Frontend показывает in-app уведомления в кабинетах teacher/student.
 
-### Этап 5H — report-service / read-models  ✅ РЕАЛИЗОВАНО В `feat/report-service`
+### Этап 5H — report-service / read-models  ✅ СДЕЛАНО (в `main`)
 Полный спек и контракты: `docs/agent-report-service.md` (согласовано 2026-06-26).
 Ключевые решения: report — не source of truth и пересобираем; финансовую математику НЕ
 повторяет — finance публикует готовый абсолютный `balance_amount` в `balance.changed`
@@ -565,8 +567,8 @@ offset на earliest + перечитать Kafka) и сравнить dashboard
 `balance.changed.balance_amount` как абсолютное значение и атомарный inbox-тест
 на replay. На локальной рабочей БД destructive rebuild не гонялся.
 
-### Этап 5I — MinIO/S3 для file-service  ⬜ ОСТАЁТСЯ
-Заменить local volume на object storage без изменения внешнего API:
+### Этап 5I — MinIO/S3 для file-service  ✅ СДЕЛАНО
+Добавлено object storage без изменения внешнего API:
 ```text
 api-gateway -> file-service -> MinIO/S3
 file-service -> file_db metadata
@@ -575,19 +577,38 @@ file-service -> file_db metadata
 chat attachments. Метаданные остаются в `file_db`; сервисы по-прежнему хранят
 только `file_id`.
 
-### Этап 5J — chat-service  ⬜ ОСТАЁТСЯ
-Делать после notification/report, потому что чат тянет realtime и статусы чтения.
+Реализация: `IFileStorage` + `LocalFileStorage`/`S3FileStorage`, выбор через
+`FILE_STORAGE_BACKEND=local|s3` (default local). S3-клиент использует userver
+http-client и минимальную AWS SigV4 подпись; AWS SDK не добавлялся. MinIO
+поднимается в docker compose как внутренний сервис, bucket создаётся на старте
+file-service, S3 параметры приходят через secdist/env, внешний multipart API
+gateway -> file-service не менялся.
+
+### Этап 5J — chat-service  ⬜ ОСТАЁТСЯ (СПРОЕКТИРОВАНО)
+Полный спек и контракты: `docs/agent-chat-service.md`; event-контракты
+`docs/event-contracts/message.sent.v1.json` / `message.read.v1.json` (готовы).
+Делать после notification/report (готовы). Чат тянет realtime и статусы чтения, поэтому
+v1 — БЕЗ realtime (polling).
+
+Ключевые решения (design-doc): новый сервис `chat_db`, gRPC ChatService (CreateDialog
+find-or-create / ListDialogs / SendMessage / ListMessages / MarkRead); диалог строго между
+связанными teacher↔student (identity check-access); вложения через file-service
+(`purpose=chat_message` — добавить в enum миграцией file-service); read-маркер на участника
+(указатель «прочитано до», unread считаем запросом); события `message.sent`/`message.read`
+через outbox; notification слушает `message.sent` → уведомить получателя; chat в v1 только
+producer (inbox не нужен). Gateway: REST `POST/GET /chats`, `/chats/{id}/messages`,
+`/chats/{id}/read`. Фронт — polling.
 
 Минимальная версия без realtime:
 ```text
-chat-service
-  gRPC API: CreateChat, SendMessage, ListMessages, MarkRead
-  DB: dialogs, messages, message_attachments
-  file-service: attachments через file_id
-  Kafka: message.sent, message.read
+chat-service (chat_db)
+  gRPC: CreateDialog, ListDialogs, SendMessage, ListMessages, MarkRead
+  DB: dialogs, messages, message_attachments, read_markers, outbox_events
+  file-service: attachments через file_id (purpose=chat_message)
+  Kafka (outbox): message.sent, message.read
 ```
-Следующая итерация: WebSocket/SSE, Redis для online state/session routing,
-unread counters. `message.sent` слушает notification-service.
+Следующая итерация (5J-later/5K): WebSocket/SSE, Redis для online state/session routing,
+unread-кэш. `message.sent` слушает notification-service.
 
 ### Этап 5K — production hardening  ⬜ ОСТАЁТСЯ
 После расширения доменных возможностей:

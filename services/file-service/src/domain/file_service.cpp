@@ -1,12 +1,7 @@
 #include "domain/file_service.hpp"
 
-#include <filesystem>
-#include <fstream>
-#include <stdexcept>
-
 #include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
-#include <userver/engine/async.hpp>
 #include <userver/utils/uuid4.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
@@ -14,6 +9,7 @@
 #include <tutorflow/clients/identity_grpc_client.hpp>
 
 #include "repositories/file_repository.hpp"
+#include "storages/file_storage.hpp"
 
 namespace tutorflow::file {
 
@@ -22,8 +18,7 @@ FileService::FileService(const userver::components::ComponentConfig& config,
     : LoggableComponentBase(config, context),
       repository_(context.FindComponent<FileRepository>()),
       identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()),
-      fs_tp_(context.GetTaskProcessor("fs-task-processor")),
-      storage_dir_(config["storage-dir"].As<std::string>()),
+      storage_(context.FindComponent<FileStorageComponent>()),
       max_size_bytes_(config["max-size-bytes"].As<int64_t>(10 * 1024 * 1024)) {}
 
 // static
@@ -34,18 +29,11 @@ type: object
 description: file domain service
 additionalProperties: false
 properties:
-    storage-dir:
-        type: string
-        description: local directory for file storage (FILE_STORAGE_DIR)
     max-size-bytes:
         type: integer
         description: upload size limit in bytes
         defaultDescription: '10485760'
 )");
-}
-
-std::string FileService::StoragePath(const std::string& storage_key) const {
-    return storage_dir_ + "/" + storage_key;
 }
 
 FileMeta FileService::Upload(const std::string& owner_user_id,
@@ -61,18 +49,9 @@ FileMeta FileService::Upload(const std::string& owner_user_id,
     }
 
     const std::string storage_key = userver::utils::generators::GenerateUuid();
-    const std::string path        = StoragePath(storage_key);
     const int64_t data_size       = static_cast<int64_t>(data.size());
 
-    userver::engine::AsyncNoSpan(fs_tp_, [path, d = std::move(data)]() {
-        std::filesystem::create_directories(
-            std::filesystem::path(path).parent_path());
-        std::ofstream out(path, std::ios::binary | std::ios::trunc);
-        if (!out) {
-            throw std::runtime_error("cannot open file for writing: " + path);
-        }
-        out.write(d.data(), static_cast<std::streamsize>(d.size()));
-    }).Get();
+    storage_.Put(storage_key, std::move(data), content_type);
 
     return repository_.SaveFileMeta(
         owner_user_id, purpose, original_name, content_type,
@@ -109,16 +88,7 @@ std::pair<FileMeta, std::string> FileService::Download(
         }
     }
 
-    const std::string path = StoragePath(meta.storage_key);
-    std::string content = userver::engine::AsyncNoSpan(
-        fs_tp_, [path]() -> std::string {
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
-                throw std::runtime_error("file not found on disk: " + path);
-            }
-            return std::string((std::istreambuf_iterator<char>(in)),
-                               std::istreambuf_iterator<char>());
-        }).Get();
+    std::string content = storage_.Get(meta.storage_key);
 
     return {std::move(meta), std::move(content)};
 }

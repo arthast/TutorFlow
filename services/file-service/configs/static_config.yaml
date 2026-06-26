@@ -38,9 +38,17 @@ components_manager:
         identity-client:
             endpoint: dns:///identity-service:9081
             timeout-ms: 5000
-        file-domain-service:
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+            environment-secrets-key: FILE_SECDIST_CONFIG
+        file-storage:
+            backend#env: FILE_STORAGE_BACKEND
             storage-dir#env: FILE_STORAGE_DIR
-            max-size-bytes: 10485760
+            timeout-ms: 5000
+        file-domain-service:
+            max-size-bytes#env: FILE_MAX_SIZE_BYTES
         file-upload-handler:
             path: /internal/files
             method: POST

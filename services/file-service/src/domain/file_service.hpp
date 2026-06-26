@@ -7,7 +7,6 @@
 #include <userver/components/component_context.hpp>
 #include <userver/components/component_fwd.hpp>
 #include <userver/components/loggable_component_base.hpp>
-#include <userver/engine/task/task_processor_fwd.hpp>
 #include <userver/yaml_config/schema.hpp>
 
 #include "domain/models.hpp"
@@ -19,6 +18,7 @@ class IdentityClient;
 namespace tutorflow::file {
 
 class FileRepository;
+class IFileStorage;
 
 class FileService final
     : public userver::components::LoggableComponentBase {
@@ -45,12 +45,9 @@ public:
         bool requester_is_teacher) const;
 
 private:
-    std::string StoragePath(const std::string& storage_key) const;
-
     FileRepository& repository_;
     tutorflow::clients::IdentityClient& identity_;
-    userver::engine::TaskProcessor& fs_tp_;
-    std::string storage_dir_;
+    IFileStorage& storage_;
     int64_t max_size_bytes_{};
 };
 

@@ -12,15 +12,22 @@ TutorFlow — учебная платформа для связки «препо
 - Регистрация, логин, JWT-auth и смена пароля.
 - Роли `teacher` и `student`; внешний доступ только через gateway.
 - Создание ученика преподавателем и связь teacher-student.
-- Расписание, создание занятий, завершение и отмена занятий.
+- Расписание, создание занятий; полный жизненный цикл занятия: завершение, отмена
+  (в т.ч. завершённого), перенос времени (reschedule), восстановление (reactivate).
 - Материалы занятий: `lesson-service` хранит `file_id`, сами файлы лежат в `file-service`.
 - Домашние задания, файлы к ДЗ, сдача решения, review, комментарии.
-- Загрузка файлов и скачивание через gateway/file-service.
+- Загрузка файлов и скачивание через gateway/file-service. Хранилище переключаемое:
+  локальный том или MinIO/S3 (`FILE_STORAGE_BACKEND=local|s3`), внешний API не меняется.
 - Payment receipts: ученик загружает чек, преподаватель подтверждает или отклоняет.
-- Финансовый append-only журнал: `charge`, `payment`, корректирующие операции.
-- Асинхронное создание charge: `lesson.completed` через transactional outbox -> Kafka -> finance consumer.
+- Финансовый append-only журнал: `charge`, `payment`, `correction`, `refund`. Ручная
+  коррекция баланса преподавателем и авто-компенсация при отмене/восстановлении занятия
+  (charge не удаляется, добавляется корректировка; идемпотентность по event-id).
+- Асинхронные доменные события через transactional outbox + consumer inbox: lesson.*,
+  assignment.*, finance.* (charge/receipt/payment/balance.changed).
 - Notification-service: Kafka consumer создаёт in-app уведомления; frontend показывает список и mark-as-read.
-- React + TypeScript + Vite frontend для teacher/student demo-flow.
+- Report-service: строит read-models из событий; ролевые dashboards (teacher/student)
+  отдаются по gRPC через gateway (`GET /dashboard/teacher|student`, `/students/{id}/summary`).
+- React + TypeScript + Vite frontend для teacher/student demo-flow, включая dashboards.
 - Smoke и pytest e2e-проверки через внешний gateway.
 
 ## Архитектура
@@ -34,17 +41,20 @@ api-gateway :8080  -- единственный публичный backend endpoi
         |
         | gRPC для синхронных доменных вызовов
         v
-identity-service   :9081 / identity_db
-lesson-service     :9082 / lesson_db
-assignment-service :9083 / assignment_db
-finance-service    :9084 / finance_db
+identity-service     :9081 / identity_db
+lesson-service       :9082 / lesson_db
+assignment-service   :9083 / assignment_db
+finance-service      :9084 / finance_db
 notification-service :9086 / notification_db
+report-service       :9087 / report_db   (read-models для dashboards)
 
-api-gateway -- HTTP multipart --> file-service :8085 / file_db
+api-gateway -- HTTP multipart --> file-service :8085 / file_db (local volume | MinIO/S3)
 
 lesson-service -- transactional outbox --> Kafka topic tutorflow.lesson.completed
 Kafka --> finance-service consumer --> charge в finance_db
-assignment/finance/lesson events --> Kafka --> notification-service --> notifications
+lesson/assignment/finance events --> Kafka --> notification-service --> notifications
+lesson/assignment/finance events --> Kafka --> report-service --> dashboard read-models
+finance balance.changed (с абсолютным balance_amount) --> report-service
 ```
 
 Основные правила архитектуры:
@@ -71,8 +81,9 @@ assignment/finance/lesson events --> Kafka --> notification-service --> notifica
 | `lesson-service` | расписание, занятия, outbox `lesson.completed` | — | `9082` | `lesson_db` |
 | `assignment-service` | ДЗ, submissions, review, comments | — | `9083` | `assignment_db` |
 | `finance-service` | receipts, баланс, append-only ledger, Kafka consumer | — | `9084` | `finance_db` |
-| `file-service` | metadata + локальное хранение файлов | — | — | `file_db` |
+| `file-service` | metadata + хранение файлов (локальный том или MinIO/S3) | — | — | `file_db` |
 | `notification-service` | in-app уведомления из Kafka-событий | — | `9086` | `notification_db` |
+| `report-service` | read-models из событий, dashboards (teacher/student) | — | `9087` | `report_db` |
 
 ## Библиотеки
 
@@ -202,6 +213,8 @@ COMPOSE_PARALLEL_LIMIT=1 docker compose build lesson-service
 COMPOSE_PARALLEL_LIMIT=1 docker compose build assignment-service
 COMPOSE_PARALLEL_LIMIT=1 docker compose build finance-service
 COMPOSE_PARALLEL_LIMIT=1 docker compose build file-service
+COMPOSE_PARALLEL_LIMIT=1 docker compose build notification-service
+COMPOSE_PARALLEL_LIMIT=1 docker compose build report-service
 COMPOSE_PARALLEL_LIMIT=1 docker compose build api-gateway
 ```
 
@@ -216,6 +229,7 @@ services/                 C++ userver services
   finance-service/
   file-service/
   notification-service/
+  report-service/
 libs/
   common/                 common infra helpers
   clients/                shared gRPC clients
@@ -231,8 +245,10 @@ docs/                     architecture notes and contracts
 ## Что Не Входит Сейчас
 
 - Реальные платежные интеграции.
-- Redis, чат, report-service.
+- chat-service (5J — следующий запланированный этап), Redis, WebSocket/SSE realtime.
 - Email/Telegram/push-уведомления: сейчас есть только in-app notification-service.
-- S3/MinIO storage вместо локального file storage.
+- Production hardening (5K): reverse proxy, CI/CD, метрики, Kafka lag/DLQ, бэкапы.
 
-Эти направления оставлены как следующие этапы развития.
+Эти направления оставлены как следующие этапы развития. Уже сделано из ранее
+отложенного: notification-service, report-service/dashboards, MinIO/S3 для file-service,
+жизненный цикл занятия и финансовые корректировки.
