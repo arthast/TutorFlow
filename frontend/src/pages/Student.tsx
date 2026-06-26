@@ -2,28 +2,24 @@ import { useMemo, useState, type FormEvent } from "react";
 import {
   api,
   openFile,
+  reports,
   type Assignment,
   type AssignmentDetail,
-  type Balance,
   type FileMeta,
   type Lesson,
   type Receipt,
+  type StudentDashboard,
+  type StudentSummary,
 } from "../api";
-import { useAuth } from "../auth";
 import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
 export default function Student() {
-  const { user } = useAuth();
-  const studentId = user?.user_id ?? "";
+  const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
   const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
   const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
-  const balance = useAsync<Balance | null>(
-    () => (studentId ? api.get<Balance>(`/students/${studentId}/balance`) : Promise.resolve(null)),
-    [studentId],
-  );
 
   // teacher_id для чека берём из занятий/ДЗ ученика (баланса у ученика нет).
   const teacherIds = useMemo(() => {
@@ -34,22 +30,26 @@ export default function Student() {
   }, [lessons.data, assignments.data]);
 
   const toSubmit = (assignments.data ?? []).filter((a) => TO_SUBMIT.has(a.status)).length;
+  const report = dashboard.data;
+  const activity = sumActivity(report?.summaries ?? []);
 
   return (
     <>
       <TopBar />
       <div className="container">
         <div className="metrics">
-          <Metric label="Итого долг" value={balance.data ? `${Math.round(balance.data.balance)} ${balance.data.currency}` : "—"} />
-          <Metric label="Занятия" value={(lessons.data ?? []).length} />
-          <Metric label="ДЗ к сдаче" value={toSubmit} />
-          <Metric label="Мои чеки" value={(receipts.data ?? []).length} />
+          <Metric label="Долг" value={money(report?.total_debt_amount, currencyOf(report))} />
+          <Metric label="Переплата" value={money(report?.total_overpaid_amount, currencyOf(report))} />
+          <Metric label="Чеки на проверке" value={`${report?.pending_receipts_count ?? 0} / ${money(report?.pending_receipts_amount, currencyOf(report))}`} />
+          <Metric label="Ближайшие занятия" value={report ? activity.upcoming : (lessons.data ?? []).length} />
+          <Metric label="ДЗ к сдаче" value={report ? activity.submitted : toSubmit} />
         </div>
 
         <div className="grid">
+          <StudentDashboardCard dashboard={dashboard} lessons={lessons.data ?? []} />
           <NotificationsCard />
-          <AssignmentsCard assignments={assignments} />
-          <ReceiptCard teacherIds={teacherIds} onSent={() => receipts.reload()} />
+          <AssignmentsCard assignments={assignments} onChanged={dashboard.reload} />
+          <ReceiptCard teacherIds={teacherIds} onSent={() => { receipts.reload(); dashboard.reload(); }} />
           <ReceiptsListCard receipts={receipts} />
           <LessonsCard lessons={lessons} />
           <PasswordCard />
@@ -70,13 +70,123 @@ function Metric({ label, value }: { label: string; value: number | string }) {
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
 
+function money(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number") return "—";
+  return `${Math.round(value)} ${currency}`;
+}
+
+function lessonInterval(startsAt?: string, endsAt?: string): string {
+  if (!startsAt) return "—";
+  const start = fmtDate(startsAt);
+  if (!endsAt) return start;
+  const end = new Date(endsAt);
+  if (isNaN(end.getTime())) return `${start} - ${endsAt}`;
+  return `${start} - ${end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function currencyOf(dashboard: StudentDashboard | null): string {
+  return dashboard?.summaries.find((s) => s.finance.currency)?.finance.currency ?? "RUB";
+}
+
+function sumActivity(summaries: StudentSummary[]) {
+  return summaries.reduce(
+    (acc, item) => ({
+      upcoming: acc.upcoming + item.activity.upcoming_lessons_count,
+      completed: acc.completed + item.activity.completed_lessons_count,
+      cancelled: acc.cancelled + item.activity.cancelled_lessons_count,
+      activeAssignments: acc.activeAssignments + item.activity.active_assignments_count,
+      submitted: acc.submitted + item.activity.submitted_assignments_count,
+      reviewed: acc.reviewed + item.activity.reviewed_assignments_count,
+    }),
+    { upcoming: 0, completed: 0, cancelled: 0, activeAssignments: 0, submitted: 0, reviewed: 0 },
+  );
+}
+
+function StudentDashboardCard({
+  dashboard,
+  lessons,
+}: {
+  dashboard: Async<StudentDashboard>;
+  lessons: Lesson[];
+}) {
+  const data = dashboard.data;
+  const activity = sumActivity(data?.summaries ?? []);
+  const currency = currencyOf(data);
+  return (
+    <Card title="Мой dashboard">
+      <div className="card-tools">
+        <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
+          {dashboard.loading ? "Обновление…" : "Обновить"}
+        </button>
+        <span className="hint">Обновлено: {fmtDate(data?.updated_at) || "—"}</span>
+      </div>
+      {dashboard.error && <ErrorMsg error={dashboard.error} />}
+      {dashboard.loading && !data && <p className="hint">Загрузка…</p>}
+      {data && (
+        <>
+          <div className="summary-grid summary-grid-wide">
+            <span>Должен: <strong>{money(data.total_debt_amount, currency)}</strong></span>
+            <span>Переплата: <strong>{money(data.total_overpaid_amount, currency)}</strong></span>
+            <span>На проверке: {data.pending_receipts_count} чек(ов) / {money(data.pending_receipts_amount, currency)}</span>
+            <span>Ближайшие занятия: {activity.upcoming}</span>
+            <span>Проведённые занятия: {activity.completed}</span>
+            <span>Активные ДЗ: {activity.activeAssignments}</span>
+            <span>Сданные ДЗ: {activity.submitted}</span>
+            <span>Проверенные ДЗ: {activity.reviewed}</span>
+          </div>
+          {data.summaries.map((summary) => (
+            <StudentTeacherSummary
+              key={summary.teacher_id}
+              summary={summary}
+              lessons={lessons}
+            />
+          ))}
+          {data.summaries.length === 0 && <p className="hint">Dashboard пока пуст.</p>}
+        </>
+      )}
+    </Card>
+  );
+}
+
+function StudentTeacherSummary({
+  summary,
+  lessons,
+}: {
+  summary: StudentSummary;
+  lessons: Lesson[];
+}) {
+  const nextLesson = lessons.find(
+    (lesson) =>
+      lesson.teacher_id === summary.teacher_id &&
+      lesson.status === "scheduled" &&
+      lesson.starts_at === summary.activity.next_lesson_at,
+  );
+  const teacherName = summary.teacher_name || `Преподаватель ${summary.teacher_id.slice(0, 8)}`;
+  return (
+    <div className="summary-row">
+      <div>
+        <div className="summary-title">{teacherName}</div>
+        <div className="summary-grid">
+          <span>Долг: <strong>{money(summary.finance.debt_amount, summary.finance.currency)}</strong></span>
+          <span>Переплата: <strong>{money(summary.finance.overpaid_amount, summary.finance.currency)}</strong></span>
+          <span>Чеки: {summary.finance.pending_receipts_count} / {money(summary.finance.pending_receipts_amount, summary.finance.currency)}</span>
+          <span>Последняя оплата: {fmtDate(summary.finance.last_payment_at) || "—"}</span>
+          <span>Следующее занятие: {lessonInterval(summary.activity.next_lesson_at, nextLesson?.ends_at)}</span>
+          <span>Последнее занятие: {fmtDate(summary.activity.last_lesson_at) || "—"}</span>
+        </div>
+      </div>
+      <div className="hint">обн. {fmtDate(summary.updated_at) || "—"}</div>
+    </div>
+  );
+}
+
 function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
   return (
     <Card title="Мои занятия">
       {(lessons.data ?? []).map((l) => (
         <div key={l.id}>
           <div className="row">
-            <span>{l.topic || "Занятие"} · {fmtDate(l.starts_at)}</span>
+            <span>{l.topic || "Занятие"} · {lessonInterval(l.starts_at, l.ends_at)}</span>
             <span className="btn-group" style={{ alignItems: "center" }}>
               {typeof l.price === "number" && <span className="muted">{Math.round(l.price)} ₽</span>}
               <StatusPill status={l.status} />
@@ -90,7 +200,7 @@ function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
   );
 }
 
-function AssignmentsCard({ assignments }: { assignments: Async<Assignment[]> }) {
+function AssignmentsCard({ assignments, onChanged }: { assignments: Async<Assignment[]>; onChanged: () => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
   return (
     <Card title="Мои домашние задания">
@@ -102,7 +212,7 @@ function AssignmentsCard({ assignments }: { assignments: Async<Assignment[]> }) 
             </button>
             <StatusPill status={a.status} />
           </div>
-          {openId === a.id && <SubmitView id={a.id} onChange={() => assignments.reload()} />}
+          {openId === a.id && <SubmitView id={a.id} onChange={() => { assignments.reload(); onChanged(); }} />}
         </div>
       ))}
       <ListState query={assignments} empty="Заданий пока нет." />

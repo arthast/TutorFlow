@@ -179,6 +179,22 @@ bool ReportRepository::ApplyLessonEvent(const std::string& event_id,
           ends_at = COALESCE(EXCLUDED.ends_at, report_lessons.ends_at),
           event_at = EXCLUDED.event_at,
           updated_at = now()
+        WHERE report_lessons.event_at IS NULL
+           OR EXCLUDED.event_at > report_lessons.event_at
+           OR (
+             EXCLUDED.event_at = report_lessons.event_at
+             AND CASE EXCLUDED.status
+                   WHEN 'scheduled' THEN 1
+                   WHEN 'completed' THEN 2
+                   WHEN 'cancelled' THEN 3
+                   ELSE 0
+                 END >= CASE report_lessons.status
+                   WHEN 'scheduled' THEN 1
+                   WHEN 'completed' THEN 2
+                   WHEN 'cancelled' THEN 3
+                   ELSE 0
+                 END
+           )
         RETURNING lesson_id, teacher_id, student_id, status, starts_at, event_at
       ), lesson_state AS (
         SELECT status, starts_at, event_at
@@ -186,6 +202,12 @@ bool ReportRepository::ApplyLessonEvent(const std::string& event_id,
         WHERE teacher_id = $3::uuid AND student_id = $4::uuid AND lesson_id <> $5::uuid
         UNION ALL
         SELECT status, starts_at, event_at FROM upserted
+        UNION ALL
+        SELECT status, starts_at, event_at
+        FROM report_lessons
+        WHERE lesson_id = $5::uuid
+          AND NOT EXISTS(SELECT 1 FROM upserted)
+          AND EXISTS(SELECT 1 FROM accepted_event)
       ), refreshed AS (
         INSERT INTO student_activity_summary (
           teacher_id, student_id,
@@ -244,6 +266,28 @@ bool ReportRepository::ApplyAssignmentEvent(
           status = EXCLUDED.status,
           event_at = EXCLUDED.event_at,
           updated_at = now()
+        WHERE report_assignments.event_at IS NULL
+           OR EXCLUDED.event_at > report_assignments.event_at
+           OR (
+             EXCLUDED.event_at = report_assignments.event_at
+             AND CASE EXCLUDED.status
+                   WHEN 'assigned' THEN 1
+                   WHEN 'submitted' THEN 2
+                   WHEN 'needs_fix' THEN 3
+                   WHEN 'reviewed' THEN 3
+                   WHEN 'accepted' THEN 3
+                   WHEN 'done' THEN 3
+                   ELSE 0
+                 END >= CASE report_assignments.status
+                   WHEN 'assigned' THEN 1
+                   WHEN 'submitted' THEN 2
+                   WHEN 'needs_fix' THEN 3
+                   WHEN 'reviewed' THEN 3
+                   WHEN 'accepted' THEN 3
+                   WHEN 'done' THEN 3
+                   ELSE 0
+                 END
+           )
         RETURNING assignment_id, status
       ), assignment_state AS (
         SELECT status
@@ -252,6 +296,12 @@ bool ReportRepository::ApplyAssignmentEvent(
           AND assignment_id <> $5::uuid
         UNION ALL
         SELECT status FROM upserted
+        UNION ALL
+        SELECT status
+        FROM report_assignments
+        WHERE assignment_id = $5::uuid
+          AND NOT EXISTS(SELECT 1 FROM upserted)
+          AND EXISTS(SELECT 1 FROM accepted_event)
       ), refreshed AS (
         INSERT INTO student_activity_summary (
           teacher_id, student_id,
@@ -347,6 +397,22 @@ bool ReportRepository::ApplyReceiptEvent(const std::string& event_id,
           currency = EXCLUDED.currency,
           event_at = EXCLUDED.event_at,
           updated_at = now()
+        WHERE report_receipts.event_at IS NULL
+           OR EXCLUDED.event_at > report_receipts.event_at
+           OR (
+             EXCLUDED.event_at = report_receipts.event_at
+             AND CASE EXCLUDED.status
+                   WHEN 'pending_review' THEN 1
+                   WHEN 'confirmed' THEN 2
+                   WHEN 'rejected' THEN 2
+                   ELSE 0
+                 END >= CASE report_receipts.status
+                   WHEN 'pending_review' THEN 1
+                   WHEN 'confirmed' THEN 2
+                   WHEN 'rejected' THEN 2
+                   ELSE 0
+                 END
+           )
         RETURNING receipt_id, status, amount, event_at
       ), receipt_state AS (
         SELECT status, amount, event_at
@@ -355,6 +421,12 @@ bool ReportRepository::ApplyReceiptEvent(const std::string& event_id,
           AND receipt_id <> $5::uuid
         UNION ALL
         SELECT status, amount, event_at FROM upserted
+        UNION ALL
+        SELECT status, amount, event_at
+        FROM report_receipts
+        WHERE receipt_id = $5::uuid
+          AND NOT EXISTS(SELECT 1 FROM upserted)
+          AND EXISTS(SELECT 1 FROM accepted_event)
       ), refreshed AS (
         INSERT INTO student_finance_summary (
           teacher_id, student_id, currency,

@@ -12,6 +12,7 @@
 #include <userver/clients/http/component.hpp>
 #include <userver/clients/http/error.hpp>
 #include <userver/clients/http/response.hpp>
+#include <userver/formats/common/type.hpp>
 #include <userver/formats/json/serialize.hpp>
 #include <userver/http/common_headers.hpp>
 #include <userver/server/http/http_request.hpp>
@@ -36,6 +37,7 @@ namespace tutorflow::gateway {
 namespace {
 
 namespace http = userver::server::http;
+namespace common_formats = userver::formats::common;
 namespace json = userver::formats::json;
 using tutorflow::common::ServiceError;
 
@@ -158,6 +160,48 @@ std::unordered_map<std::string, std::string> StudentNamesById(
     names[student_id] = student["display_name"].As<std::string>("");
   }
   return names;
+}
+
+json::Value EnrichStudentDashboardTeacherNames(
+    const json::Value& dashboard,
+    const std::function<std::string(const std::string&)>& teacher_name_by_id) {
+  json::ValueBuilder body;
+  body["student_id"] = dashboard["student_id"].As<std::string>("");
+  body["total_debt_amount"] = dashboard["total_debt_amount"].As<double>(0.0);
+  body["total_overpaid_amount"] =
+      dashboard["total_overpaid_amount"].As<double>(0.0);
+  body["pending_receipts_count"] =
+      dashboard["pending_receipts_count"].As<int>(0);
+  body["pending_receipts_amount"] =
+      dashboard["pending_receipts_amount"].As<double>(0.0);
+  body["updated_at"] = dashboard["updated_at"].As<std::string>("");
+
+  std::unordered_map<std::string, std::string> teacher_names;
+  json::ValueBuilder summaries(common_formats::Type::kArray);
+  for (const auto& summary : dashboard["summaries"]) {
+    const auto teacher_id = summary["teacher_id"].As<std::string>("");
+    auto teacher_name = std::string{};
+    if (!teacher_id.empty()) {
+      auto found = teacher_names.find(teacher_id);
+      if (found == teacher_names.end()) {
+        found = teacher_names.emplace(teacher_id, teacher_name_by_id(teacher_id))
+                    .first;
+      }
+      teacher_name = found->second;
+    }
+
+    json::ValueBuilder item;
+    item["teacher_id"] = teacher_id;
+    item["teacher_name"] = teacher_name;
+    item["student_id"] = summary["student_id"].As<std::string>("");
+    item["student_name"] = summary["student_name"].As<std::string>("");
+    item["finance"] = summary["finance"];
+    item["activity"] = summary["activity"];
+    item["updated_at"] = summary["updated_at"].As<std::string>("");
+    summaries.PushBack(item.ExtractValue());
+  }
+  body["summaries"] = summaries.ExtractValue();
+  return body.ExtractValue();
 }
 
 std::string BuildUrl(const GatewaySettings& settings, UpstreamService service,
@@ -688,8 +732,15 @@ std::string StudentDashboardHandler::HandleRequestThrow(
   return HandleGatewayErrors(request, [&] {
     const auto auth = Authenticate(request);
     const auto ctx = BuildGrpcCallContext(request, auth);
-    return JsonResponse(request, Report().GetStudentDashboard(ctx),
-                        http::HttpStatus::kOk);
+    auto dashboard = Report().GetStudentDashboard(ctx);
+    return JsonResponse(
+        request,
+        EnrichStudentDashboardTeacherNames(
+            dashboard, [&](const std::string& teacher_id) {
+              const auto teacher = Identity().GetUser(teacher_id, ctx);
+              return teacher["display_name"].As<std::string>("");
+            }),
+        http::HttpStatus::kOk);
   });
 }
 

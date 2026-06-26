@@ -650,6 +650,7 @@ components:
       type: object
       properties:
         teacher_id: { type: string, format: uuid }
+        teacher_name: { type: string, description: "Имя преподавателя, добавляется gateway для student dashboard" }
         student_id: { type: string, format: uuid }
         student_name: { type: string }
         finance: { $ref: "#/components/schemas/FinanceSummary" }
