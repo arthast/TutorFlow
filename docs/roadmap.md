@@ -514,9 +514,24 @@ Gateway вызывает notification-service по gRPC, frontend показыв
 gateway endpoints `GET /notifications` и `POST /notifications/{notificationId}/read`.
 Frontend показывает in-app уведомления в кабинетах teacher/student.
 
-### Этап 5H — report-service / read-models  ⬜ ОСТАЁТСЯ
+### Этап 5H — report-service / read-models  ✅ РЕАЛИЗОВАНО В `feat/report-service`
+Полный спек и контракты: `docs/agent-report-service.md` (согласовано 2026-06-26).
+Ключевые решения: report — не source of truth и пересобираем; финансовую математику НЕ
+повторяет — finance публикует готовый абсолютный `balance_amount` в `balance.changed`
+(контракт расширен), report хранит last-write по `student_id`; долг/переплата = знак
+balance_amount; чеки на проверке считаются отдельно и НЕ уменьшают долг до
+`payment.confirmed`; teacher-агрегаты по `Σ debt_amount`, не по `Σ balance`. Идемпотентность
+— `report_processed_events`; cold-start — consumer с earliest offset; имена ученика — из
+identity по gRPC (identity-события не вводим). Пререквизит 5H-0: finance дополняет
+`balance.changed` полем `balance_amount`. v1 gRPC: GetTeacherDashboard / GetStudentDashboard
+/ GetStudentSummary (Progress/FinanceSummary — v2).
+
 После notification-service. Цель — не собирать dashboard синхронными запросами к
-4 сервисам, а строить read-models из событий.
+4 сервисам, а строить read-models из событий. Реализация: `report-service` с
+собственной `report_db`, Kafka consumer с atomic inbox `report_processed_events`,
+gRPC `ReportService`, gateway routes `/dashboard/teacher`, `/dashboard/student`,
+`/students/{studentId}/summary`. 5H-0 выполнен: finance публикует абсолютный
+`balance_amount` во всех `balance.changed`.
 
 Минимальная версия:
 ```text
@@ -533,9 +548,22 @@ report-service
 ```
 Gateway читает готовые dashboard по gRPC:
 ```text
-api-gateway -> report-service: GetTeacherDashboard / GetStudentDashboard
+api-gateway -> report-service: GetTeacherDashboard / GetStudentDashboard / GetStudentSummary
 ```
 Read-model не источник истины; при расхождении истина остаётся в доменных сервисах.
+Имена учеников gateway подтягивает из identity по gRPC на чтении; report read-model
+имена не хранит. Отложено на v2: GetStudentProgress/FinanceSummary как отдельные
+ручки, более глубокая аналитика и admin rebuild endpoint.
+Frontend 5H выполнен: Teacher/Student dashboard читают новые gateway endpoints,
+деньги показываются раздельно (`debt_amount`, `overpaid_amount`, pending receipts),
+action-flow старых экранов сохранён, добавлен ручной refresh/updated_at.
+
+Остаточный non-blocking чек перед 5K/production hardening: один раз прогнать живой
+rebuild read-model на подготовленной среде (`truncate report_*` + reset consumer
+offset на earliest + перечитать Kafka) и сравнить dashboard-значения до/после.
+Архитектурная поддержка есть: state tables per entity, consumer `earliest`,
+`balance.changed.balance_amount` как абсолютное значение и атомарный inbox-тест
+на replay. На локальной рабочей БД destructive rebuild не гонялся.
 
 ### Этап 5I — MinIO/S3 для file-service  ⬜ ОСТАЁТСЯ
 Заменить local volume на object storage без изменения внешнего API:
@@ -572,6 +600,11 @@ metrics
 Kafka lag/retry/DLQ monitoring
 backup/restore для Postgres и object storage
 ```
+
+Pre-5K checklist:
+- report-service: выполнить живой rebuild-прогон read-model (`truncate + reset
+  offset -> replay`) на подготовленной среде и зафиксировать, что значения
+  dashboard совпадают с baseline.
 
 ### Этап 5L — lesson lifecycle + finance corrections  ✅ СДЕЛАНО (5L.1–5L.9)
 Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с

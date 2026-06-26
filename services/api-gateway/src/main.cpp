@@ -11,6 +11,7 @@
 #include "clients/identity_grpc_client.hpp"
 #include "clients/lesson_grpc_client.hpp"
 #include "clients/notification_grpc_client.hpp"
+#include "clients/report_grpc_client.hpp"
 #include "gateway_settings.hpp"
 #include "handlers/health_handler.hpp"
 #include "handlers/proxy_handlers.hpp"
@@ -28,6 +29,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::GrpcAssignmentClient>()
           .Append<tutorflow::gateway::GrpcFinanceClient>()
           .Append<tutorflow::gateway::GrpcNotificationClient>()
+          .Append<tutorflow::gateway::GrpcReportClient>()
           .Append<tutorflow::gateway::GatewaySettings>()
           .Append<tutorflow::gateway::HealthHandler>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()
@@ -56,6 +58,9 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::PaymentReceiptRejectHandler>()
           .Append<tutorflow::gateway::NotificationsHandler>()
           .Append<tutorflow::gateway::NotificationReadHandler>()
+          .Append<tutorflow::gateway::TeacherDashboardHandler>()
+          .Append<tutorflow::gateway::StudentDashboardHandler>()
+          .Append<tutorflow::gateway::StudentSummaryHandler>()
           .Append<tutorflow::gateway::FilesHandler>()
           .Append<tutorflow::gateway::FileMetaHandler>()
           .Append<tutorflow::gateway::FileDownloadHandler>();

@@ -86,6 +86,13 @@ export const api = {
   getBlob: (path: string) => requestBlob(path),
 };
 
+export const reports = {
+  teacherDashboard: () => api.get<TeacherDashboard>("/dashboard/teacher"),
+  studentDashboard: () => api.get<StudentDashboard>("/dashboard/student"),
+  studentSummary: (studentId: string) =>
+    api.get<StudentSummary>(`/students/${studentId}/summary`),
+};
+
 // Открыть файл (чек/вложение) в новой вкладке с авторизацией.
 export async function openFile(fileId: string): Promise<void> {
   const blob = await api.getBlob(`/files/${fileId}/download`);
@@ -180,6 +187,58 @@ export interface Balance {
   student_id: string;
   currency: string;
   balance: number;
+}
+export interface FinanceSummary {
+  balance_amount: number;
+  debt_amount: number;
+  overpaid_amount: number;
+  currency: string;
+  pending_receipts_count: number;
+  pending_receipts_amount: number;
+  last_payment_at?: string;
+  updated_at?: string;
+}
+export interface ActivitySummary {
+  upcoming_lessons_count: number;
+  completed_lessons_count: number;
+  cancelled_lessons_count: number;
+  active_assignments_count: number;
+  submitted_assignments_count: number;
+  reviewed_assignments_count: number;
+  last_lesson_at?: string;
+  next_lesson_at?: string;
+  updated_at?: string;
+}
+export interface StudentSummary {
+  teacher_id: string;
+  teacher_name?: string;
+  student_id: string;
+  student_name?: string;
+  finance: FinanceSummary;
+  activity: ActivitySummary;
+  updated_at?: string;
+}
+export interface TeacherDashboard {
+  teacher_id: string;
+  students_count: number;
+  upcoming_lessons_count: number;
+  pending_submissions_count: number;
+  pending_receipts_count: number;
+  pending_receipts_amount: number;
+  total_debt_amount: number;
+  total_overpaid_amount: number;
+  students_with_debt_count: number;
+  students: StudentSummary[];
+  updated_at?: string;
+}
+export interface StudentDashboard {
+  student_id: string;
+  total_debt_amount: number;
+  total_overpaid_amount: number;
+  pending_receipts_count: number;
+  pending_receipts_amount: number;
+  summaries: StudentSummary[];
+  updated_at?: string;
 }
 export interface Transaction {
   id: string;

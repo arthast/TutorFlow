@@ -293,6 +293,30 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  # ---------- Dashboards / reports ----------
+  /dashboard/teacher:
+    get:
+      summary: Dashboard преподавателя из report read-model
+      description: >-
+        Агрегаты строятся report-service из Kafka events. Имена учеников
+        подтягиваются gateway из identity по gRPC на чтении.
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/TeacherDashboard" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /dashboard/student:
+    get:
+      summary: Dashboard текущего ученика из report read-model
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StudentDashboard" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /students/{studentId}/summary:
+    get:
+      summary: Сводка по ученику для преподавателя из report read-model
+      parameters: [ { $ref: "#/components/parameters/StudentId" } ]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StudentSummary" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+
   # ---------- Files ----------
   /files:
     post:
@@ -599,6 +623,63 @@ components:
         payload: { type: object, additionalProperties: true }
         is_read: { type: boolean }
         created_at: { type: string, format: date-time }
+    FinanceSummary:
+      type: object
+      properties:
+        balance_amount: { type: number, description: "signed абсолютный баланс: >0 долг, <0 переплата" }
+        debt_amount: { type: number }
+        overpaid_amount: { type: number }
+        currency: { type: string, example: RUB }
+        pending_receipts_count: { type: integer }
+        pending_receipts_amount: { type: number }
+        last_payment_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ActivitySummary:
+      type: object
+      properties:
+        upcoming_lessons_count: { type: integer }
+        completed_lessons_count: { type: integer }
+        cancelled_lessons_count: { type: integer }
+        active_assignments_count: { type: integer }
+        submitted_assignments_count: { type: integer }
+        reviewed_assignments_count: { type: integer }
+        last_lesson_at: { type: string, format: date-time }
+        next_lesson_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    StudentSummary:
+      type: object
+      properties:
+        teacher_id: { type: string, format: uuid }
+        teacher_name: { type: string, description: "Имя преподавателя, добавляется gateway для student dashboard" }
+        student_id: { type: string, format: uuid }
+        student_name: { type: string }
+        finance: { $ref: "#/components/schemas/FinanceSummary" }
+        activity: { $ref: "#/components/schemas/ActivitySummary" }
+        updated_at: { type: string, format: date-time }
+    TeacherDashboard:
+      type: object
+      properties:
+        teacher_id: { type: string, format: uuid }
+        students_count: { type: integer }
+        upcoming_lessons_count: { type: integer }
+        pending_submissions_count: { type: integer }
+        pending_receipts_count: { type: integer }
+        pending_receipts_amount: { type: number }
+        total_debt_amount: { type: number, description: "Σ debt_amount, не signed balance" }
+        total_overpaid_amount: { type: number }
+        students_with_debt_count: { type: integer }
+        students: { type: array, items: { $ref: "#/components/schemas/StudentSummary" } }
+        updated_at: { type: string, format: date-time }
+    StudentDashboard:
+      type: object
+      properties:
+        student_id: { type: string, format: uuid }
+        total_debt_amount: { type: number }
+        total_overpaid_amount: { type: number }
+        pending_receipts_count: { type: integer }
+        pending_receipts_amount: { type: number }
+        summaries: { type: array, items: { $ref: "#/components/schemas/StudentSummary" } }
+        updated_at: { type: string, format: date-time }
     FileMeta:
       type: object
       properties:

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   api,
   openFile,
+  reports,
   type Assignment,
   type AssignmentDetail,
   type Balance,
@@ -10,6 +11,8 @@ import {
   type Lesson,
   type Receipt,
   type StudentLink,
+  type StudentSummary,
+  type TeacherDashboard,
   type Transaction,
 } from "../api";
 import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
@@ -27,6 +30,7 @@ async function uploadAll(files: File[], purpose: string): Promise<string[]> {
 }
 
 export default function Teacher() {
+  const dashboard = useAsync<TeacherDashboard>(() => reports.teacherDashboard(), []);
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
   const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
@@ -38,34 +42,46 @@ export default function Teacher() {
 
   const studentList = students.data ?? [];
   const scheduled = (lessons.data ?? []).filter((l) => l.status === "scheduled").length;
+  const report = dashboard.data;
 
   return (
     <>
       <TopBar />
       <div className="container">
         <div className="metrics">
-          <Metric label="Ученики" value={studentList.length} />
-          <Metric label="Занятия (запланировано)" value={scheduled} />
-          <Metric label="Чеки на проверку" value={(receipts.data ?? []).length} />
+          <Metric label="Ученики" value={report?.students_count ?? studentList.length} />
+          <Metric label="Ближайшие занятия" value={report?.upcoming_lessons_count ?? scheduled} />
+          <Metric label="ДЗ на проверке" value={report?.pending_submissions_count ?? "—"} />
+          <Metric label="Чеки на проверку" value={report?.pending_receipts_count ?? (receipts.data ?? []).length} />
+          <Metric label="Общий долг" value={money(report?.total_debt_amount, "RUB")} />
+          <Metric label="Переплаты" value={money(report?.total_overpaid_amount, "RUB")} />
+          <Metric label="Должников" value={report?.students_with_debt_count ?? "—"} />
         </div>
 
         <div className="grid">
+          <TeacherDashboardCard dashboard={dashboard} />
           <NotificationsCard />
-          <StudentsCard students={students} />
+          <StudentsCard students={students} onChanged={dashboard.reload} />
           <LessonsCard
             lessons={lessons}
             students={studentList}
             onChargePending={(studentId) => setChargeRefresh({ studentId, seq: Date.now() })}
+            onChanged={dashboard.reload}
           />
-          <AssignmentsCard assignments={assignments} students={studentList} />
-          <FinanceCard receipts={receipts} students={studentList} chargeRefresh={chargeRefresh} />
+          <AssignmentsCard assignments={assignments} students={studentList} onChanged={dashboard.reload} />
+          <FinanceCard
+            receipts={receipts}
+            students={studentList}
+            chargeRefresh={chargeRefresh}
+            onChanged={dashboard.reload}
+          />
         </div>
       </div>
     </>
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="metric">
       <div className="label">{label}</div>
@@ -76,7 +92,52 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
 
-function StudentsCard({ students }: { students: Async<StudentLink[]> }) {
+function money(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number") return "—";
+  return `${Math.round(value)} ${currency}`;
+}
+
+function TeacherDashboardCard({ dashboard }: { dashboard: Async<TeacherDashboard> }) {
+  const data = dashboard.data;
+  return (
+    <Card title="Сводка по ученикам">
+      <div className="card-tools">
+        <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
+          {dashboard.loading ? "Обновление…" : "Обновить"}
+        </button>
+        <span className="hint">Обновлено: {fmtDate(data?.updated_at) || "—"}</span>
+      </div>
+      {dashboard.error && <ErrorMsg error={dashboard.error} />}
+      {dashboard.loading && !data && <p className="hint">Загрузка…</p>}
+      {(data?.students ?? []).map((summary) => (
+        <StudentSummaryRow key={summary.student_id} summary={summary} />
+      ))}
+      {data && data.students.length === 0 && <p className="hint">Пока нет данных по ученикам.</p>}
+    </Card>
+  );
+}
+
+function StudentSummaryRow({ summary }: { summary: StudentSummary }) {
+  const finance = summary.finance;
+  const activity = summary.activity;
+  return (
+    <div className="summary-row">
+      <div>
+        <div className="summary-title">{summary.student_name || summary.student_id.slice(0, 8)}</div>
+        <div className="summary-grid">
+          <span>Долг: <strong>{money(finance.debt_amount, finance.currency)}</strong></span>
+          <span>Переплата: <strong>{money(finance.overpaid_amount, finance.currency)}</strong></span>
+          <span>Чеки: {finance.pending_receipts_count} / {money(finance.pending_receipts_amount, finance.currency)}</span>
+          <span>Занятия: {activity.upcoming_lessons_count} ближайш. / {activity.completed_lessons_count} провед.</span>
+          <span>ДЗ: {activity.active_assignments_count} активн. / {activity.submitted_assignments_count} сдано / {activity.reviewed_assignments_count} провер.</span>
+        </div>
+      </div>
+      <div className="hint">обн. {fmtDate(summary.updated_at) || "—"}</div>
+    </div>
+  );
+}
+
+function StudentsCard({ students, onChanged }: { students: Async<StudentLink[]>; onChanged: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -102,6 +163,7 @@ function StudentsCard({ students }: { students: Async<StudentLink[]> }) {
       setNotice(`Ученик «${name}» создан. Передайте ему email и временный пароль.`);
       setEmail(""); setPassword(""); setName(""); setSubject(""); setRate("");
       students.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -144,10 +206,12 @@ function LessonsCard({
   lessons,
   students,
   onChargePending,
+  onChanged,
 }: {
   lessons: Async<Lesson[]>;
   students: StudentLink[];
   onChargePending: (studentId: string) => void;
+  onChanged: () => void;
 }) {
   const [studentId, setStudentId] = useState("");
   const [starts, setStarts] = useState("");
@@ -175,6 +239,7 @@ function LessonsCard({
       await api.post(`/lessons/${id}/reactivate`);
       setNotice("Занятие восстановлено.");
       lessons.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -195,6 +260,7 @@ function LessonsCard({
       setNotice("Занятие перенесено.");
       setRescheduleId(null); setRStarts(""); setREnds("");
       lessons.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -209,6 +275,7 @@ function LessonsCard({
     try {
       const result = await api.post<CompleteLessonResponse>(`/lessons/${id}/complete`);
       lessons.reload();
+      onChanged();
       if (result.charge_status === "pending") {
         setNotice("Занятие завершено. Начисление создаётся — баланс ученика обновится через пару секунд.");
         onChargePending(result.lesson.student_id);
@@ -230,6 +297,7 @@ function LessonsCard({
     try {
       await api.post(`/lessons/${id}/cancel`);
       lessons.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -255,6 +323,7 @@ function LessonsCard({
       setNotice("Занятие создано.");
       setStarts(""); setEnds(""); setTopic(""); setPrice(""); setFiles([]);
       lessons.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -335,7 +404,15 @@ function LessonsCard({
   );
 }
 
-function AssignmentsCard({ assignments, students }: { assignments: Async<Assignment[]>; students: StudentLink[] }) {
+function AssignmentsCard({
+  assignments,
+  students,
+  onChanged,
+}: {
+  assignments: Async<Assignment[]>;
+  students: StudentLink[];
+  onChanged: () => void;
+}) {
   const [studentId, setStudentId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -361,6 +438,7 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
       setNotice("ДЗ создано.");
       setTitle(""); setDescription(""); setFiles([]);
       assignments.reload();
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -378,7 +456,7 @@ function AssignmentsCard({ assignments, students }: { assignments: Async<Assignm
             </button>
             <StatusPill status={a.status} />
           </div>
-          {openId === a.id && <AssignmentDetailView id={a.id} onChange={() => assignments.reload()} />}
+          {openId === a.id && <AssignmentDetailView id={a.id} onChange={() => { assignments.reload(); onChanged(); }} />}
         </div>
       ))}
       <ListState query={assignments} empty="Заданий пока нет." />
@@ -493,10 +571,12 @@ function FinanceCard({
   receipts,
   students,
   chargeRefresh,
+  onChanged,
 }: {
   receipts: Async<Receipt[]>;
   students: StudentLink[];
   chargeRefresh: { studentId: string; seq: number } | null;
+  onChanged: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [balStudent, setBalStudent] = useState("");
@@ -537,6 +617,7 @@ function FinanceCard({
       setCorrAmount(""); setCorrComment("");
       setBalance(await api.get<Balance>(`/students/${balStudent}/balance`));
       loadJournal(balStudent);
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -551,6 +632,7 @@ function FinanceCard({
       await api.post(path, body);
       receipts.reload();
       if (balStudent) loadBalance(balStudent);
+      onChanged();
     } catch (err) {
       setError((err as Error).message);
     } finally {
