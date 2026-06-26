@@ -130,8 +130,10 @@ services/<svc>/src/
 | finance-service | 8084 | 9084 | нет | `finance_db` |
 | file-service | 8085 | — | нет | `file_db` |
 | notification-service | 8086 | 9086 | нет | `notification_db` |
+| report-service | 8087 | 9087 | нет | `report_db` |
 | postgres | 5432 | — | нет | (все базы) |
 | kafka | 9092 | — | нет | — |
+| minio (S3, опц.) | 9000 | — | нет | — (том `miniodata`) |
 
 Снаружи доступен только gateway. Внутренние синхронные доменные вызовы идут по
 gRPC; file upload/download остаётся HTTP multipart.

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "message.read.v1",
+  "description": "Участник диалога отметил сообщения прочитанными до up_to_message_id (chat-service, через outbox). В v1 потребителей-бизнес-логики нет; событие задел под read-models/unread-счётчики и опциональную очистку уведомлений. Источник истины по прочитанности — read-маркер в chat_db.",
+  "topic": "tutorflow.message.read",
+  "key": "dialog_id",
+  "producer": "chat-service",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "message.read" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "chat-service" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["dialog_id", "reader_id", "up_to_message_id", "read_at"],
+      "properties": {
+        "dialog_id": { "type": "string", "format": "uuid" },
+        "reader_id": { "type": "string", "format": "uuid" },
+        "up_to_message_id": { "type": "string", "format": "uuid" },
+        "read_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "example": {
+    "event_id": "b2c3d4e5-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+    "event_type": "message.read",
+    "event_version": 1,
+    "occurred_at": "2026-06-26T13:05:00Z",
+    "producer": "chat-service",
+    "trace_id": "req-chat-2",
+    "payload": {
+      "dialog_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+      "reader_id": "33333333-3333-3333-3333-333333333333",
+      "up_to_message_id": "mmmmmmmm-mmmm-mmmm-mmmm-mmmmmmmmmmmm",
+      "read_at": "2026-06-26T13:04:50Z"
+    }
+  }
+}
