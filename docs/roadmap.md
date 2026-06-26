@@ -565,8 +565,8 @@ offset на earliest + перечитать Kafka) и сравнить dashboard
 `balance.changed.balance_amount` как абсолютное значение и атомарный inbox-тест
 на replay. На локальной рабочей БД destructive rebuild не гонялся.
 
-### Этап 5I — MinIO/S3 для file-service  ⬜ ОСТАЁТСЯ
-Заменить local volume на object storage без изменения внешнего API:
+### Этап 5I — MinIO/S3 для file-service  ✅ СДЕЛАНО
+Добавлено object storage без изменения внешнего API:
 ```text
 api-gateway -> file-service -> MinIO/S3
 file-service -> file_db metadata
@@ -574,6 +574,13 @@ file-service -> file_db metadata
 Нужно для lesson materials, assignment files, submission files, receipts и будущих
 chat attachments. Метаданные остаются в `file_db`; сервисы по-прежнему хранят
 только `file_id`.
+
+Реализация: `IFileStorage` + `LocalFileStorage`/`S3FileStorage`, выбор через
+`FILE_STORAGE_BACKEND=local|s3` (default local). S3-клиент использует userver
+http-client и минимальную AWS SigV4 подпись; AWS SDK не добавлялся. MinIO
+поднимается в docker compose как внутренний сервис, bucket создаётся на старте
+file-service, S3 параметры приходят через secdist/env, внешний multipart API
+gateway -> file-service не менялся.
 
 ### Этап 5J — chat-service  ⬜ ОСТАЁТСЯ
 Делать после notification/report, потому что чат тянет realtime и статусы чтения.
