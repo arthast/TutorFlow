@@ -5,14 +5,23 @@
 > Личное назначение и заметки агента — в `AGENTS.local.md` (НЕ коммитится).
 
 ## Стек
-C++20 + userver, PostgreSQL (одна БД на сервис), Docker Compose.
-Коммуникации (внедрено, Этап 5 roadmap): **REST** — только снаружи (frontend →
+C++20 + userver, PostgreSQL (одна БД на сервис), Docker Compose. **7 сервисов** +
+gateway. Коммуникации (внедрено, Этап 5 roadmap): **REST** — только снаружи (frontend →
 api-gateway) и файлы (gateway → file-service, multipart). **gRPC** — синхронные
 внутренние вызовы (gateway → сервисы; lesson/assignment/finance/file → identity
-check-access). **Kafka** — асинхронные события; внедрён первый flow
-`lesson.completed` (outbox в lesson → Kafka → finance создаёт charge идемпотентно).
-Ещё НЕ в MVP: остальные доменные события (5F), notification-service (5G),
-report-service (5H), MinIO/S3 (5I), chat-service (5J), Redis, реальные платежи.
+check-access; gateway → notification/report). **Kafka** — асинхронные доменные события
+через transactional outbox + consumer inbox (идемпотентность): lesson.* (scheduled/
+completed/rescheduled/cancelled/restored), assignment.* (created/uploaded/reviewed),
+finance.* (charge.created/payment_receipt.uploaded/payment.confirmed/payment.rejected/
+balance.changed). Потребители: finance (lesson.completed → charge; lesson.cancelled/
+restored → correction), notification-service, report-service (read-models для dashboards).
+
+Сделано (Этап 5): 5A–5F gRPC+Kafka foundation; **5G** notification-service; **5H**
+report-service + dashboards; **5I** MinIO/S3 для file-service (через `IFileStorage`,
+переключатель `FILE_STORAGE_BACKEND=local|s3`); **5L** lesson lifecycle + finance
+corrections (reschedule/reactivate/cancel-completed + ручная/авто correction, append-only).
+Ещё НЕ в MVP: **5J** chat-service, **5K** production hardening, Redis, реальные платежи,
+email/Telegram/push.
 
 ## Роли и распределение задач
 - **Координатор — Claude.** Владеет контрактами и `docs/PLAN.md`, ревьюит и
@@ -141,19 +150,24 @@ Already implemented in the current architecture:
 
 * api-gateway REST facade
 * gRPC between gateway/domain services
-* Kafka foundation
-* transactional outbox for `lesson.completed`
-* React/Vite frontend MVP
+* Kafka foundation + transactional outbox + consumer inbox idempotency
+* domain events across lesson / assignment / finance
+* lesson lifecycle: reschedule / reactivate / cancel-completed
+* finance corrections: manual + auto-compensation on cancel/restore (append-only)
+* notification-service (in-app notifications from Kafka events)
+* report-service + dashboards (read-models from events)
+* MinIO/S3 storage option for file-service (IFileStorage, FILE_STORAGE_BACKEND=local|s3)
+* React/Vite frontend MVP (incl. dashboards)
 
 Do not implement yet unless explicitly asked:
 
 * Redis
-* chat-service
-* notification-service
-* report-service
+* chat-service (5J — next planned)
+* WebSocket/SSE realtime
 * Telegram bot
 * Google Calendar
 * real payment integrations
+* email/Telegram/push notifications
 
 Important architecture rules:
 
