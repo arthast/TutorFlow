@@ -34,11 +34,12 @@ db_for() {
     finance)    echo "${FINANCE_DB:-finance_db}" ;;
     file)       echo "${FILE_DB:-file_db}" ;;
     notification) echo "${NOTIFICATION_DB:-notification_db}" ;;
+    report) echo "${REPORT_DB:-report_db}" ;;
     *) echo "" ;;
   esac
 }
 
-ALL_SERVICES=(identity lesson assignment finance file notification)
+ALL_SERVICES=(identity lesson assignment finance file notification report)
 
 DC="docker compose"
 $DC version >/dev/null 2>&1 || DC="docker-compose"

@@ -46,6 +46,9 @@ components_manager:
         gateway-notification-grpc-client:
             endpoint: dns:///notification-service:9086
             timeout-ms: 5000
+        gateway-report-grpc-client:
+            endpoint: dns:///report-service:9087
+            timeout-ms: 5000
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN
@@ -154,6 +157,18 @@ components_manager:
         gateway-notification-read-handler:
             path: /notifications/{notificationId}/read
             method: POST,OPTIONS
+            task_processor: main-task-processor
+        gateway-teacher-dashboard-handler:
+            path: /dashboard/teacher
+            method: GET,OPTIONS
+            task_processor: main-task-processor
+        gateway-student-dashboard-handler:
+            path: /dashboard/student
+            method: GET,OPTIONS
+            task_processor: main-task-processor
+        gateway-student-summary-handler:
+            path: /students/{studentId}/summary
+            method: GET,OPTIONS
             task_processor: main-task-processor
         gateway-files-handler:
             path: /files

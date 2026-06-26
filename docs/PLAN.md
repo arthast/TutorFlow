@@ -31,7 +31,7 @@
 | Finance | **журнал операций** (append-only): `financial_transactions` + `payment_receipts` (см. §8.4) |
 | Charge при завершении занятия | `lesson-service` фиксирует `lesson.completed` в outbox; `finance-service` consumer создаёт `charge` из Kafka идемпотентно `unique(lesson_id)` (см. §8.2, §10, roadmap 5E) |
 | Координация | один репозиторий, одна рабочая папка; агенты включаются **поочерёдно** (по одному за раз), задачу на сессию назначает человек |
-| Старт | MVP-ядро собрано; текущий фокус — notification-service (roadmap 5G), затем report-service/read-models |
+| Старт | MVP-ядро собрано; текущий фокус — report-service/read-models (roadmap 5H) |
 | Git-политика | в git: исходники, миграции, CMake/Docker/config, README, .env.example, .gitignore; локальны: docs/, AGENTS*.md, .env, *.local.md |
 | Роли | **Координатор — Claude** (контракты, PLAN, ревью, интеграция). Привязки «сервис → агент» нет: исполнителя на каждую задачу выбирает человек, оба агента взаимозаменяемы (см. §14) |
 

@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include <userver/clients/http/component.hpp>
 #include <userver/clients/http/error.hpp>
@@ -28,6 +29,7 @@
 #include "clients/identity_grpc_client.hpp"
 #include "clients/lesson_grpc_client.hpp"
 #include "clients/notification_grpc_client.hpp"
+#include "clients/report_grpc_client.hpp"
 #include "cors.hpp"
 
 namespace tutorflow::gateway {
@@ -147,6 +149,17 @@ tutorflow::clients::GrpcCallContext BuildGrpcCallContext(
   return context;
 }
 
+std::unordered_map<std::string, std::string> StudentNamesById(
+    const json::Value& students) {
+  std::unordered_map<std::string, std::string> names;
+  for (const auto& student : students) {
+    const auto student_id = student["student_id"].As<std::string>("");
+    if (student_id.empty()) continue;
+    names[student_id] = student["display_name"].As<std::string>("");
+  }
+  return names;
+}
+
 std::string BuildUrl(const GatewaySettings& settings, UpstreamService service,
                      std::string internal_path) {
   if (internal_path.empty() || internal_path.front() != '/') {
@@ -174,7 +187,8 @@ ProxyHandlerBase::ProxyHandlerBase(
       lesson_client_(context.FindComponent<GrpcLessonClient>()),
       assignment_client_(context.FindComponent<GrpcAssignmentClient>()),
       finance_client_(context.FindComponent<GrpcFinanceClient>()),
-      notification_client_(context.FindComponent<GrpcNotificationClient>()) {}
+      notification_client_(context.FindComponent<GrpcNotificationClient>()),
+      report_client_(context.FindComponent<GrpcReportClient>()) {}
 
 AuthInfo ProxyHandlerBase::Authenticate(const http::HttpRequest& request) const {
   const auto& header = request.GetHeader(userver::http::headers::kAuthorization);
@@ -650,6 +664,47 @@ std::string NotificationReadHandler::HandleRequestThrow(
         request,
         Notification().MarkAsRead(RequirePathArg(request, "notificationId"),
                                   BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(TeacherDashboardHandler)
+std::string TeacherDashboardHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    const auto student_names = StudentNamesById(Identity().ListStudents(ctx));
+    return JsonResponse(request, Report().GetTeacherDashboard(ctx, student_names),
+                        http::HttpStatus::kOk);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(StudentDashboardHandler)
+std::string StudentDashboardHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    return JsonResponse(request, Report().GetStudentDashboard(ctx),
+                        http::HttpStatus::kOk);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(StudentSummaryHandler)
+std::string StudentSummaryHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    const auto student_id = RequirePathArg(request, "studentId");
+    const auto student = Identity().GetStudent(student_id, ctx);
+    const auto student_name = student["display_name"].As<std::string>("");
+    return JsonResponse(
+        request, Report().GetStudentSummary(student_id, ctx, student_name),
         http::HttpStatus::kOk);
   });
 }

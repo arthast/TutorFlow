@@ -1,6 +1,8 @@
 #include "repositories/finance_repository.hpp"
 
 #include <optional>
+#include <string>
+#include <string_view>
 
 #include <userver/components/component_context.hpp>
 #include <userver/storages/postgres/component.hpp>
@@ -46,6 +48,20 @@ std::optional<std::string> EmptyToNull(std::string value) {
   if (value.empty())
     return std::nullopt;
   return value;
+}
+
+std::string BalanceBeforeExpr(std::string_view row_alias) {
+  return "SELECT COALESCE(SUM(CASE type "
+         "  WHEN 'charge' THEN amount "
+         "  WHEN 'payment' THEN -amount "
+         "  WHEN 'correction' THEN amount "
+         "  WHEN 'refund' THEN -amount "
+         "  ELSE 0 END), 0) "
+         "FROM financial_transactions ft "
+         "WHERE ft.student_id = " +
+         std::string{row_alias} +
+         ".student_id::uuid AND ft.currency = " + std::string{row_alias} +
+         ".currency";
 }
 
 Transaction RowToTransaction(const pg::Row &row) {
@@ -140,6 +156,9 @@ FinanceRepository::CreateCharge(const CreateChargeRequest &request) const {
           "           'student_id', student_id, "
           "           'teacher_id', teacher_id, "
           "           'delta', amount, "
+          "           'balance_amount', ((" +
+          BalanceBeforeExpr("inserted") +
+          ") + inserted.amount::numeric)::double precision, "
           "           'currency', currency, "
           "           'reason', 'charge.created', "
           "           'source_transaction_id', id, "
@@ -185,6 +204,9 @@ FinanceRepository::CreateCorrection(const CreateCorrectionRequest &request) cons
           "           'student_id', student_id, "
           "           'teacher_id', teacher_id, "
           "           'delta', amount, "
+          "           'balance_amount', ((" +
+          BalanceBeforeExpr("inserted") +
+          ") + inserted.amount::numeric)::double precision, "
           "           'currency', currency, "
           "           'reason', 'correction.created', "
           "           'source_transaction_id', id, "
@@ -229,6 +251,9 @@ bool FinanceRepository::CreateEventCorrection(
           "           'student_id', student_id, "
           "           'teacher_id', teacher_id, "
           "           'delta', amount, "
+          "           'balance_amount', ((" +
+          BalanceBeforeExpr("inserted") +
+          ") + inserted.amount::numeric)::double precision, "
           "           'currency', currency, "
           "           'reason', 'correction.created', "
           "           'source_transaction_id', id, "
@@ -387,6 +412,9 @@ Receipt FinanceRepository::ConfirmReceipt(const std::string &receipt_id,
           "           'student_id', student_id, "
           "           'teacher_id', teacher_id, "
           "           'delta', -amount, "
+          "           'balance_amount', ((" +
+          BalanceBeforeExpr("payment") +
+          ") - payment.amount::numeric)::double precision, "
           "           'currency', currency, "
           "           'reason', 'payment.confirmed', "
           "           'source_transaction_id', id, "

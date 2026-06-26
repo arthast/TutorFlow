@@ -1,0 +1,67 @@
+# report-service — dashboard read-models from Kafka events.
+components_manager:
+    task_processors:
+        main-task-processor:
+            worker_threads: 4
+        fs-task-processor:
+            worker_threads: 2
+        consumer-task-processor:
+            thread_name: kafka-cons
+            worker_threads: 1
+        consumer-blocking-task-processor:
+            thread_name: kafka-cblk
+            worker_threads: 1
+    default_task_processor: main-task-processor
+    components:
+        server:
+            listener:
+                port: 8087
+                task_processor: main-task-processor
+        grpc-server:
+            port: 9087
+            completion-queue-count: 2
+        grpc-health:
+            task-processor: main-task-processor
+        logging:
+            loggers:
+                default:
+                    file_path: '@stderr'
+                    level: info
+                    overflow_behavior: discard
+        health-handler:
+            path: /health
+            method: GET
+            task_processor: main-task-processor
+        testsuite-support: {}
+        dns-client: {}
+        report-db:
+            dbconnection#env: REPORT_DATABASE_URL
+            blocking_task_processor: fs-task-processor
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+        kafka-consumer:
+            group_id: report-domain-events
+            topics:
+              - tutorflow.lesson.scheduled
+              - tutorflow.lesson.completed
+              - tutorflow.lesson.cancelled
+              - tutorflow.lesson.rescheduled
+              - tutorflow.lesson.restored
+              - tutorflow.assignment.created
+              - tutorflow.submission.uploaded
+              - tutorflow.assignment.reviewed
+              - tutorflow.balance.changed
+              - tutorflow.payment_receipt.uploaded
+              - tutorflow.payment.confirmed
+              - tutorflow.payment.rejected
+            topic_metadata_refresh_interval: 3s
+            auto_offset_reset: smallest
+            max_batch_size: 1
+            security_protocol: PLAINTEXT
+        report-repository: {}
+        report-domain-service: {}
+        report-grpc-service:
+            task-processor: main-task-processor
+        report-domain-event-consumer: {}

@@ -46,7 +46,7 @@ services:
       - sh
       - -ec
       - |
-        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db; do
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db; do
           svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
           createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
           for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
@@ -134,6 +134,7 @@ services:
       - finance-service
       - file-service
       - notification-service
+      - report-service
     networks: [tutorflow]
 
   identity-service:
@@ -254,6 +255,24 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  report-service:
+    build:
+      context: .
+      dockerfile: services/report-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+    environment:
+      REPORT_DATABASE_URL: ${REPORT_DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy

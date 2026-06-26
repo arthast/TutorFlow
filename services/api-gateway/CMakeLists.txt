@@ -6,6 +6,7 @@ add_executable(api-gateway
   src/clients/identity_grpc_client.cpp
   src/clients/lesson_grpc_client.cpp
   src/clients/notification_grpc_client.cpp
+  src/clients/report_grpc_client.cpp
   src/cors.cpp
   src/gateway_settings.cpp
   src/handlers/health_handler.cpp

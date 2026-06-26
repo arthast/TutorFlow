@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package tutorflow.report.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+service ReportService {
+  rpc GetTeacherDashboard(GetTeacherDashboardRequest) returns (TeacherDashboard);
+  rpc GetStudentDashboard(GetStudentDashboardRequest) returns (StudentDashboard);
+  rpc GetStudentSummary(GetStudentSummaryRequest) returns (StudentSummary);
+}
+
+message FinanceSummary {
+  double balance_amount = 1;
+  double debt_amount = 2;
+  double overpaid_amount = 3;
+  string currency = 4;
+  int32 pending_receipts_count = 5;
+  double pending_receipts_amount = 6;
+  string last_payment_at = 7;
+  string updated_at = 8;
+}
+
+message ActivitySummary {
+  int32 upcoming_lessons_count = 1;
+  int32 completed_lessons_count = 2;
+  int32 cancelled_lessons_count = 3;
+  int32 active_assignments_count = 4;
+  int32 submitted_assignments_count = 5;
+  int32 reviewed_assignments_count = 6;
+  string last_lesson_at = 7;
+  string next_lesson_at = 8;
+  string updated_at = 9;
+}
+
+message StudentSummary {
+  string teacher_id = 1;
+  string student_id = 2;
+  string student_name = 3;
+  FinanceSummary finance = 4;
+  ActivitySummary activity = 5;
+  string updated_at = 6;
+}
+
+message TeacherDashboard {
+  string teacher_id = 1;
+  int32 students_count = 2;
+  int32 upcoming_lessons_count = 3;
+  int32 pending_submissions_count = 4;
+  int32 pending_receipts_count = 5;
+  double pending_receipts_amount = 6;
+  double total_debt_amount = 7;
+  double total_overpaid_amount = 8;
+  int32 students_with_debt_count = 9;
+  repeated StudentSummary students = 10;
+  string updated_at = 11;
+}
+
+message StudentDashboard {
+  string student_id = 1;
+  double total_debt_amount = 2;
+  double total_overpaid_amount = 3;
+  int32 pending_receipts_count = 4;
+  double pending_receipts_amount = 5;
+  repeated StudentSummary summaries = 6;
+  string updated_at = 7;
+}
+
+message GetTeacherDashboardRequest {
+  tutorflow.common.v1.UserContext user = 1;
+}
+
+message GetStudentDashboardRequest {
+  tutorflow.common.v1.UserContext user = 1;
+}
+
+message GetStudentSummaryRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string student_id = 2;
+}
