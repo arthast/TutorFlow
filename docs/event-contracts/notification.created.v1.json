@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "notification.created.v1",
+  "description": "notification-service создал in-app уведомление. Событие нужно realtime-service, чтобы пушить уведомления клиенту без дублирования маппинга доменных событий.",
+  "topic": "tutorflow.notification.created",
+  "key": "user_id",
+  "producer": "notification-service",
+  "type": "object",
+  "required": ["event_id", "event_type", "event_version", "occurred_at", "producer", "payload"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "const": "notification.created" },
+    "event_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "notification-service" },
+    "trace_id": { "type": "string" },
+    "payload": {
+      "type": "object",
+      "required": ["user_id", "notification_id", "type", "title", "body", "created_at"],
+      "properties": {
+        "user_id": { "type": "string", "format": "uuid" },
+        "notification_id": { "type": "string", "format": "uuid" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "example": {
+    "event_id": "c3d4e5f6-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+    "event_type": "notification.created",
+    "event_version": 1,
+    "occurred_at": "2026-06-27T10:00:00Z",
+    "producer": "notification-service",
+    "trace_id": "",
+    "payload": {
+      "user_id": "33333333-3333-3333-3333-333333333333",
+      "notification_id": "99999999-9999-9999-9999-999999999999",
+      "type": "message_sent",
+      "title": "Новое сообщение",
+      "body": "Привет!",
+      "created_at": "2026-06-27T09:59:59Z"
+    }
+  }
+}

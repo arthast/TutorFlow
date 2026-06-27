@@ -1,0 +1,56 @@
+# realtime-service — public WebSocket push channel.
+components_manager:
+    task_processors:
+        main-task-processor:
+            worker_threads: 4
+        fs-task-processor:
+            worker_threads: 2
+        consumer-task-processor:
+            thread_name: kafka-cons
+            worker_threads: 1
+        consumer-blocking-task-processor:
+            thread_name: kafka-cblk
+            worker_threads: 1
+    default_task_processor: main-task-processor
+    components:
+        server:
+            listener:
+                port: 8089
+                task_processor: main-task-processor
+        logging:
+            loggers:
+                default:
+                    file_path: '@stderr'
+                    level: info
+                    overflow_behavior: discard
+        health-handler:
+            path: /health
+            method: GET
+            task_processor: main-task-processor
+        testsuite-support: {}
+        dns-client: {}
+        secdist:
+            provider: default-secdist-provider
+        default-secdist-provider:
+            config: /app/configs/secdist.json
+        kafka-consumer:
+            group_id: realtime-domain-events
+            topics:
+              - tutorflow.message.sent
+              - tutorflow.message.read
+              - tutorflow.notification.created
+            topic_metadata_refresh_interval: 3s
+            auto_offset_reset: smallest
+            max_batch_size: 1
+            security_protocol: PLAINTEXT
+        realtime-connections: {}
+        realtime-redis:
+            url#env: REDIS_URL
+            presence-ttl-seconds: 45
+        realtime-event-consumer: {}
+        realtime-ws-handler:
+            path: /ws
+            method: GET
+            task_processor: main-task-processor
+            jwt-secret#env: JWT_SECRET
+            max-remote-payload: 65536

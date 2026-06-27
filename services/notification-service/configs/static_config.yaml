@@ -11,6 +11,9 @@ components_manager:
         consumer-blocking-task-processor:
             thread_name: kafka-cblk
             worker_threads: 1
+        producer-task-processor:
+            thread_name: kafka-prod
+            worker_threads: 1
     default_task_processor: main-task-processor
     components:
         server:
@@ -63,8 +66,14 @@ components_manager:
             auto_offset_reset: smallest
             max_batch_size: 1
             security_protocol: PLAINTEXT
+        kafka-producer:
+            security_protocol: PLAINTEXT
+            enable_idempotence: true
+            delivery_timeout: 5s
+            queue_buffering_max: 100ms
         notification-repository: {}
         notification-domain-service: {}
         notification-grpc-service:
             task-processor: main-task-processor
         notification-domain-event-consumer: {}
+        notification-outbox-publisher: {}

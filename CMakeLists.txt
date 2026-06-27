@@ -41,6 +41,7 @@ set(TUTORFLOW_SERVICES
     notification-service
     report-service
     chat-service
+    realtime-service
 )
 foreach(svc ${TUTORFLOW_SERVICES})
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/services/${svc}/CMakeLists.txt")

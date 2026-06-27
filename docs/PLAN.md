@@ -10,8 +10,9 @@
 > `AGENTS*.md`, `*.local.md` (см. `.gitignore` и локальный `AGENTS.md`).
 
 Статус: **MVP-ядро реализовано: 6 доменных сервисов + gateway + frontend, gRPC
-между сервисами, Kafka/outbox для `lesson.completed -> charge`; добавляется
-`notification-service` как первый consumer расширенных доменных событий.**
+между сервисами, Kafka/outbox для доменных событий; добавляется realtime-слой
+для чата и уведомлений (`realtime-service` WebSocket + Redis) как push-канал
+"вниз" к клиенту.**
 Модель координации: агенты включаются поочерёдно, задачи назначает человек (см. §13–§14).
 Дата: 2026-06-24.
 
@@ -26,7 +27,7 @@
 | База данных | один контейнер PostgreSQL, **отдельная БД на сервис** + отдельная роль |
 | Auth | identity подписывает JWT; **gateway валидирует JWT локально** общим секретом; per-request validate-token НЕ зовём (см. §5) |
 | Роли | в MVP у пользователя **ровно одна роль**; в JWT `roles: [...]`, заголовок `X-User-Roles` (задел под мультироль) |
-| Внутренние сервисы | наружу не торчат; снаружи доступен только gateway |
+| Внутренние сервисы | наружу не торчат; снаружи доступны gateway и realtime-service (WebSocket exception) |
 | Формат ошибок | единый envelope во всех сервисах (см. §6) |
 | Finance | **журнал операций** (append-only): `financial_transactions` + `payment_receipts` (см. §8.4) |
 | Charge при завершении занятия | `lesson-service` фиксирует `lesson.completed` в outbox; `finance-service` consumer создаёт `charge` из Kafka идемпотентно `unique(lesson_id)` (см. §8.2, §10, roadmap 5E) |
@@ -132,12 +133,19 @@ services/<svc>/src/
 | notification-service | 8086 | 9086 | нет | `notification_db` |
 | report-service | 8087 | 9087 | нет | `report_db` |
 | chat-service | 8088 | 9088 | нет | `chat_db` |
+| realtime-service | 8089 | — | **да** | — (Redis + память) |
 | postgres | 5432 | — | нет | (все базы) |
 | kafka | 9092 | — | нет | — |
 | minio (S3, опц.) | 9000 | — | нет | — (том `miniodata`) |
+| redis | 6379 | — | нет | том `redisdata` |
 
-Снаружи доступен только gateway. Внутренние синхронные доменные вызовы идут по
-gRPC; file upload/download остаётся HTTP multipart.
+Снаружи доступны gateway (8080) и realtime-service (8089). Realtime-service —
+осознанное исключение из правила "наружу только gateway": WebSocket-соединения
+stateful и держатся отдельным сервисом. Он не принимает доменные команды и не
+меняет состояние чата/уведомлений; отправка сообщений остаётся REST -> gateway
+-> chat-service, а realtime только пушит события клиентам. Внутренние
+синхронные доменные вызовы идут по gRPC; file upload/download остаётся HTTP
+multipart.
 
 ---
 
@@ -387,7 +395,7 @@ charge, не меняет статусы доменных сущностей и 
 Цель: ~30–60 минут, после чего оба агента ветвятся и пилят параллельно.
 
 1. Дерево каталогов из §3 (пустые сервисы с `/health`).
-2. `docker-compose.yml`: postgres + 6 сервисов, сеть, тома, наружу только gateway.
+2. `docker-compose.yml`: postgres + сервисы, сеть, тома, наружу gateway + realtime-service.
 3. `libs/common` (§7) — рабочий каркас errors/auth_context/http_client_base.
 4. Шаблон `CMakeLists.txt` + `Dockerfile` сервиса (эталон, остальные копируют).
 5. `migrations/<svc>/001_init.sql` (первичные схемы из §8) + `scripts/migrate.sh`.
@@ -451,7 +459,7 @@ gRPC foundation и Kafka/outbox flow реализованы. Полный спи
 2. Миграции применяются из чистой БД.
 3. Основные эндпоинты проходят smoke-тест (happy-path из §2).
 4. Ошибки — в едином envelope (§6).
-5. Порт наружу не публикуется (кроме gateway).
+5. Порт наружу не публикуется (кроме gateway и realtime-service).
 
 ---
 
@@ -497,8 +505,9 @@ payment.confirmed           ✅ ВНЕДРЕНО (outbox finance -> Kafka)
 payment.rejected            ✅ ВНЕДРЕНО (outbox finance -> Kafka)
 charge.created              ✅ ВНЕДРЕНО (outbox finance -> Kafka)
 balance.changed             ✅ ВНЕДРЕНО (outbox finance -> Kafka)
-message.sent                ⬜ 5J
-message.read                ⬜ 5J
+message.sent                ✅ ВНЕДРЕНО (chat outbox -> Kafka)
+message.read                ✅ ВНЕДРЕНО (chat outbox -> Kafka)
+notification.created        ✅ ВНЕДРЯЕТСЯ (notification outbox -> Kafka -> realtime)
 user.registered             ⬜ later
 student.created             ⬜ later
 teacher_student_link.created ⬜ later
@@ -516,6 +525,7 @@ file.uploaded               ⬜ optional later
 5H report-service: Kafka read-models -> dashboard summaries по gRPC
 5I MinIO/S3 для file-service без изменения внешнего API
 5J chat-service: messages, read status, attachments, message.* events
+5J-later realtime-service: WebSocket push channel + Redis presence/unread/pubsub
 5K production hardening: reverse proxy, CI/CD, readiness, logs/metrics, Kafka lag/DLQ
 5L lesson lifecycle + finance corrections: reschedule(✅ 5L.1)/reactivate/cancel-completed +
    ручная correction; compensation/restored correction append-only идемпотентно
@@ -523,7 +533,6 @@ file.uploaded               ⬜ optional later
    (см. docs/agent-lesson-lifecycle.md)
 ```
 
-Не делаем сейчас: Redis/WebSocket до chat-service, email/Telegram/push до
-notification MVP, реальные платежи, YDB/перенос всех БД, родительский аккаунт,
-повторяющиеся занятия. Комментарии к ДЗ в MVP — внутри assignment-service
-(это не chat-service).
+Не делаем сейчас: email/Telegram/push, реальные платежи, YDB/перенос всех БД,
+родительский аккаунт, повторяющиеся занятия. Комментарии к ДЗ в MVP — внутри
+assignment-service (это не chat-service).

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, openFile, type AppNotification, type FileMeta } from "./api";
 import { useAuth } from "./auth";
+import { useRealtimeEvent } from "./realtime";
 
 export function TopBar() {
   const { user, role, logout } = useAuth();
@@ -88,6 +89,10 @@ export function NotificationsCard() {
   const [actingId, setActingId] = useState<string | null>(null);
   const items = notifications.data ?? [];
   const unread = items.filter((n) => !n.is_read).length;
+
+  useRealtimeEvent((event) => {
+    if (event.type === "notification") notifications.reload();
+  }, [notifications.reload]);
 
   async function markRead(id: string) {
     setError(null);

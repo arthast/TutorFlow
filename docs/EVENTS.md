@@ -42,7 +42,7 @@ Kafka используется для **асинхронных доменных 
    агрегаты пересчитываются `SUM/COUNT` (а не инкрементами) → устойчиво к replay;
    notification: inbox + `unique(user_id, source_event_id)`.
 
-## Каталог событий (15)
+## Каталог событий (16)
 
 | Событие | Producer | Consumers | Назначение |
 |---|---|---|---|
@@ -60,7 +60,8 @@ Kafka используется для **асинхронных доменных 
 | `payment.rejected` | finance | notification, report | чек отклонён |
 | `balance.changed` | finance | **report** (абс. balance_amount), notification (reason=correction.created) | баланс изменился |
 | `message.sent` | chat | notification (recipient) | новое сообщение в диалоге |
-| `message.read` | chat | — (задел под read-models) | сообщения прочитаны |
+| `message.read` | chat | realtime | сообщения прочитаны |
+| `notification.created` | notification | realtime | in-app уведомление создано и готово к push |
 
 Полужирным — потребители с бизнес-эффектом. `balance.changed` несёт **абсолютный**
 `balance_amount` (см. `docs/FINANCE_MODEL.md`), report хранит готовое значение и сам
@@ -78,4 +79,4 @@ Kafka используется для **асинхронных доменных 
 `assignment.deadline_expired` (нужен deadline-worker), identity-события
 (`user.registered`, `student.created`, `teacher_student_link.created`,
 `password.changed`), `file.uploaded/deleted` — добавлять только под конкретного
-потребителя. Реалтайм-эффекты чата (`message.read` → unread/read-models) — позже.
+потребителя.
