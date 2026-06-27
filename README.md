@@ -37,7 +37,8 @@ frontend (React/Vite)
         |
         | REST/JSON + multipart
         v
-api-gateway :8080  -- единственный публичный backend endpoint
+api-gateway :8080  -- публичный REST endpoint
+realtime-service :8089 -- публичный WebSocket push endpoint
         |
         | gRPC для синхронных доменных вызовов
         v

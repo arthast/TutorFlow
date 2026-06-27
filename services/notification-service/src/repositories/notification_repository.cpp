@@ -105,11 +105,32 @@ void NotificationRepository::CreateFromEvent(
           $6::uuid, $7
         )
         ON CONFLICT (user_id, source_event_id) DO NOTHING
-        RETURNING id
+        RETURNING id, user_id, type, title, body, created_at
       ), inserted_event AS (
         INSERT INTO processed_events (event_id, event_type)
         VALUES ($6::uuid, $7)
         ON CONFLICT (event_id) DO NOTHING
+      ), inserted_outbox AS (
+        INSERT INTO outbox_events (
+          aggregate_type, aggregate_id, event_type, event_version, payload
+        )
+        SELECT
+          'notification',
+          inserted_notification.user_id,
+          'notification.created',
+          1,
+          jsonb_build_object(
+            'user_id', inserted_notification.user_id::text,
+            'notification_id', inserted_notification.id::text,
+            'type', inserted_notification.type,
+            'title', inserted_notification.title,
+            'body', inserted_notification.body,
+            'created_at', to_char(
+              inserted_notification.created_at AT TIME ZONE 'UTC',
+              'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+            )
+          )
+        FROM inserted_notification
       )
       SELECT 1
       )",

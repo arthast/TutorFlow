@@ -1,5 +1,6 @@
 # TutorFlow — dev-стек (PLAN §4, §12).
-# Один контейнер postgres + 6 сервисов. Наружу публикуется ТОЛЬКО api-gateway.
+# Один контейнер postgres + сервисы. Наружу публикуются api-gateway и
+# realtime-service (осознанное исключение для stateful WebSocket).
 # Все внутренние сервисы доступны лишь по docker-сети (по имени сервиса).
 #
 #   cp .env.example .env   # заполнить секреты
@@ -108,6 +109,18 @@ services:
         condition: service_healthy
     networks: [tutorflow]
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [tutorflow]
+
   # Object storage for file-service (Этап 5I). S3 API stays internal on the
   # docker network; file upload/download still goes through api-gateway ->
   # file-service over HTTP multipart.
@@ -144,7 +157,7 @@ services:
       # ходит только в file-service (multipart upload/download).
       FILE_SERVICE_URL: http://file-service:8085
     ports:
-      - "${GATEWAY_PORT:-8080}:8080"   # ЕДИНСТВЕННЫЙ публичный порт
+      - "${GATEWAY_PORT:-8080}:8080"   # публичный REST порт
     depends_on:
       - identity-service
       - lesson-service
@@ -154,6 +167,7 @@ services:
       - notification-service
       - report-service
       - chat-service
+      - realtime-service
     networks: [tutorflow]
 
   identity-service:
@@ -326,6 +340,29 @@ services:
         condition: service_healthy
     networks: [tutorflow]
 
+  # realtime-service (Этап 5J-later): WebSocket push для чата и уведомлений.
+  # Публичный порт 8089 — исключение из "наружу только gateway"; доменные
+  # команды по-прежнему идут только через gateway REST.
+  realtime-service:
+    build:
+      context: .
+      dockerfile: services/realtime-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+    environment:
+      REALTIME_PORT: ${REALTIME_PORT:-8089}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "${REALTIME_PORT:-8089}:8089"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
 networks:
   tutorflow:
     driver: bridge
@@ -335,3 +372,4 @@ volumes:
   filestorage:
   kafkadata:
   miniodata:
+  redisdata:

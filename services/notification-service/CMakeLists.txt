@@ -4,6 +4,7 @@ add_executable(notification-service
     src/consumers/domain_event_consumer.cpp
     src/domain/notification_service.cpp
     src/grpc/notification_grpc_service.cpp
+    src/outbox/outbox_publisher.cpp
     src/repositories/notification_repository.cpp
 )
 

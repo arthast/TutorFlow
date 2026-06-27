@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { api, chat, type ChatDialog, type ChatMessage, type FileMeta } from "./api";
 import { useAuth } from "./auth";
+import { useOnlineStatus, useRealtimeEvent } from "./realtime";
 import { Card, ErrorMsg, FileChips, fmtDate } from "./ui";
 
 export interface ChatContact {
@@ -16,9 +17,8 @@ async function uploadOne(file: File): Promise<string> {
   return meta.id;
 }
 
-// Личная переписка teacher<->student. Без realtime: список диалогов и окно
-// сообщений обновляются периодическим polling (5с / 3с). mark-read при
-// открытии и при новом входящем.
+// Личная переписка teacher<->student. Отправка остаётся REST; realtime только
+// ускоряет обновление списка/открытого окна поверх polling fallback.
 export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
   const { user } = useAuth();
   const selfId = user?.user_id ?? "";
@@ -86,6 +86,15 @@ export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
     return () => clearInterval(t);
   }, [selectedId, loadMessages]);
 
+  useRealtimeEvent((event) => {
+    if (event.type !== "chat.message" && event.type !== "chat.read") return;
+    loadDialogs();
+    const dialogId = String(event.payload.dialog_id ?? "");
+    if (selectedId && dialogId === selectedId) {
+      loadMessages(selectedId);
+    }
+  }, [selectedId, loadDialogs, loadMessages]);
+
   function openDialog(id: string) {
     setSelectedId(id);
     setMessages([]);
@@ -148,17 +157,14 @@ export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
             <button className="small" type="submit" disabled={busy || !newContact}>Открыть</button>
           </form>
           {dialogs.map((d) => (
-            <button
+            <DialogItem
               key={d.id}
-              className={"chat-dialog-item" + (selectedId === d.id ? " active" : "")}
-              onClick={() => openDialog(d.id)}
-            >
-              <span className="chat-dialog-name">{nameById(otherId(d))}</span>
-              {d.unread_count > 0 && <span className="chat-unread">{d.unread_count}</span>}
-              <span className="hint chat-dialog-preview">
-                {d.last_message?.text || (d.last_message ? "вложение" : "")}
-              </span>
-            </button>
+              dialog={d}
+              active={selectedId === d.id}
+              peerId={otherId(d)}
+              peerName={nameById(otherId(d))}
+              onOpen={() => openDialog(d.id)}
+            />
           ))}
           {dialogs.length === 0 && <p className="hint">Диалогов пока нет.</p>}
         </div>
@@ -186,5 +192,33 @@ export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
         </div>
       </div>
     </Card>
+  );
+}
+
+function DialogItem({
+  dialog,
+  active,
+  peerId,
+  peerName,
+  onOpen,
+}: {
+  dialog: ChatDialog;
+  active: boolean;
+  peerId: string;
+  peerName: string;
+  onOpen: () => void;
+}) {
+  const online = useOnlineStatus(peerId);
+  return (
+    <button
+      className={"chat-dialog-item" + (active ? " active" : "")}
+      onClick={onOpen}
+    >
+      <span className={"chat-dialog-name" + (online ? " online" : "")}>{peerName}</span>
+      {dialog.unread_count > 0 && <span className="chat-unread">{dialog.unread_count}</span>}
+      <span className="hint chat-dialog-preview">
+        {dialog.last_message?.text || (dialog.last_message ? "вложение" : "")}
+      </span>
+    </button>
   );
 }
