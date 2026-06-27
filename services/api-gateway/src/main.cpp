@@ -7,6 +7,7 @@
 #include <userver/utils/daemon_run.hpp>
 
 #include "clients/assignment_grpc_client.hpp"
+#include "clients/chat_grpc_client.hpp"
 #include "clients/finance_grpc_client.hpp"
 #include "clients/identity_grpc_client.hpp"
 #include "clients/lesson_grpc_client.hpp"
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::GrpcFinanceClient>()
           .Append<tutorflow::gateway::GrpcNotificationClient>()
           .Append<tutorflow::gateway::GrpcReportClient>()
+          .Append<tutorflow::gateway::GrpcChatClient>()
           .Append<tutorflow::gateway::GatewaySettings>()
           .Append<tutorflow::gateway::HealthHandler>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()
@@ -63,6 +65,9 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::StudentSummaryHandler>()
           .Append<tutorflow::gateway::FilesHandler>()
           .Append<tutorflow::gateway::FileMetaHandler>()
-          .Append<tutorflow::gateway::FileDownloadHandler>();
+          .Append<tutorflow::gateway::FileDownloadHandler>()
+          .Append<tutorflow::gateway::ChatsHandler>()
+          .Append<tutorflow::gateway::ChatMessagesHandler>()
+          .Append<tutorflow::gateway::ChatReadHandler>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

@@ -2,6 +2,7 @@
 add_executable(api-gateway
   src/main.cpp
   src/clients/assignment_grpc_client.cpp
+  src/clients/chat_grpc_client.cpp
   src/clients/finance_grpc_client.cpp
   src/clients/identity_grpc_client.cpp
   src/clients/lesson_grpc_client.cpp

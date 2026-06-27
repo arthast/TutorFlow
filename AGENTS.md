@@ -157,7 +157,8 @@ Already implemented in the current architecture:
 * notification-service (in-app notifications from Kafka events)
 * report-service + dashboards (read-models from events)
 * MinIO/S3 storage option for file-service (IFileStorage, FILE_STORAGE_BACKEND=local|s3)
-* React/Vite frontend MVP (incl. dashboards)
+* chat-service: личная переписка teacher↔student (диалоги/сообщения/чтение, без realtime)
+* React/Vite frontend MVP (incl. dashboards, chat)
 
 Do not implement yet unless explicitly asked:
 

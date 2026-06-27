@@ -26,6 +26,7 @@
 #include <tutorflow/common/request_context.hpp>
 
 #include "clients/assignment_grpc_client.hpp"
+#include "clients/chat_grpc_client.hpp"
 #include "clients/finance_grpc_client.hpp"
 #include "clients/identity_grpc_client.hpp"
 #include "clients/lesson_grpc_client.hpp"
@@ -232,7 +233,8 @@ ProxyHandlerBase::ProxyHandlerBase(
       assignment_client_(context.FindComponent<GrpcAssignmentClient>()),
       finance_client_(context.FindComponent<GrpcFinanceClient>()),
       notification_client_(context.FindComponent<GrpcNotificationClient>()),
-      report_client_(context.FindComponent<GrpcReportClient>()) {}
+      report_client_(context.FindComponent<GrpcReportClient>()),
+      chat_client_(context.FindComponent<GrpcChatClient>()) {}
 
 AuthInfo ProxyHandlerBase::Authenticate(const http::HttpRequest& request) const {
   const auto& header = request.GetHeader(userver::http::headers::kAuthorization);
@@ -793,6 +795,66 @@ std::string FileDownloadHandler::HandleRequestThrow(
                            "/internal/files/" + RequirePathArg(request, "fileId") +
                                "/download",
                            auth);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(ChatsHandler)
+std::string ChatsHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    if (request.GetMethodStr() == "GET") {
+      return JsonResponse(request, Chat().ListDialogs(ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Chat().CreateDialog(tutorflow::common::ParseJsonBody(request), ctx),
+        http::HttpStatus::kCreated);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(ChatMessagesHandler)
+std::string ChatMessagesHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    const auto ctx = BuildGrpcCallContext(request, auth);
+    const auto dialog_id = RequirePathArg(request, "dialogId");
+    if (request.GetMethodStr() == "GET") {
+      const auto& before_arg = request.GetArg("before");
+      const auto& limit_arg = request.GetArg("limit");
+      std::optional<std::string> before;
+      if (!before_arg.empty()) before = before_arg;
+      std::optional<std::string> limit;
+      if (!limit_arg.empty()) limit = limit_arg;
+      return JsonResponse(request,
+                          Chat().ListMessages(dialog_id, before, limit, ctx),
+                          http::HttpStatus::kOk);
+    }
+    return JsonResponse(
+        request,
+        Chat().SendMessage(dialog_id, tutorflow::common::ParseJsonBody(request),
+                           ctx),
+        http::HttpStatus::kCreated);
+  });
+}
+
+TUTORFLOW_GATEWAY_DEFINE_CTOR(ChatReadHandler)
+std::string ChatReadHandler::HandleRequestThrow(
+    const http::HttpRequest& request,
+    userver::server::request::RequestContext&) const {
+  return HandleGatewayErrors(request, [&] {
+    const auto auth = Authenticate(request);
+    return JsonResponse(
+        request,
+        Chat().MarkRead(RequirePathArg(request, "dialogId"),
+                        tutorflow::common::ParseJsonBody(request),
+                        BuildGrpcCallContext(request, auth)),
+        http::HttpStatus::kOk);
   });
 }
 

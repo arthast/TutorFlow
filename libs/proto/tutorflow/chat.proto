@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package tutorflow.chat.v1;
+
+import "tutorflow/common.proto";
+
+option cc_enable_arenas = true;
+
+// Личная переписка teacher <-> student (Этап 5J). Без realtime: gateway отдаёт
+// REST поверх этого gRPC, фронт обновляется через polling. chat в v1 только
+// producer событий (message.sent / message.read через outbox).
+service ChatService {
+  // find-or-create по паре (teacher,student); идемпотентно (UNIQUE по паре).
+  rpc CreateDialog(CreateDialogRequest) returns (Dialog);
+  // диалоги звонящего + last_message + unread_count.
+  rpc ListDialogs(ListDialogsRequest) returns (ListDialogsResponse);
+  // text + file_ids[]; только участник диалога.
+  rpc SendMessage(SendMessageRequest) returns (Message);
+  // пагинация по created_at (before? — keyset назад); только участник.
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  // сдвинуть указатель прочитанного до up_to_message_id (только вперёд).
+  rpc MarkRead(MarkReadRequest) returns (ReadMarker);
+}
+
+message Message {
+  string id = 1;
+  string dialog_id = 2;
+  string sender_id = 3;
+  string text = 4;
+  repeated string file_ids = 5;  // вложения (file-service, purpose=chat_message)
+  string created_at = 6;
+}
+
+message Dialog {
+  string id = 1;
+  string teacher_id = 2;
+  string student_id = 3;
+  string created_at = 4;
+  string last_message_at = 5;        // пусто, если сообщений ещё не было
+  int32 unread_count = 6;            // для звонящего участника
+  optional Message last_message = 7; // последнее сообщение диалога (если есть)
+}
+
+message ReadMarker {
+  string dialog_id = 1;
+  string user_id = 2;
+  string last_read_message_id = 3;
+  string last_read_at = 4;
+}
+
+message CreateDialogRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string other_user_id = 2;  // собеседник; роль звонящего определяет teacher/student
+}
+
+message ListDialogsRequest {
+  tutorflow.common.v1.UserContext user = 1;
+}
+
+message ListDialogsResponse {
+  repeated Dialog dialogs = 1;
+}
+
+message SendMessageRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string dialog_id = 2;
+  string text = 3;
+  repeated string file_ids = 4;
+}
+
+message ListMessagesRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string dialog_id = 2;
+  optional string before = 3;  // message_id-курсор: отдать сообщения старше него
+  int32 limit = 4;             // дефолт/максимум применяет сервис
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1;  // по возрастанию created_at
+}
+
+message MarkReadRequest {
+  tutorflow.common.v1.UserContext user = 1;
+  string dialog_id = 2;
+  string up_to_message_id = 3;
+}

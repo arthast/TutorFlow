@@ -47,14 +47,17 @@ assignment-service   :9083 / assignment_db
 finance-service      :9084 / finance_db
 notification-service :9086 / notification_db
 report-service       :9087 / report_db   (read-models для dashboards)
+chat-service         :9088 / chat_db     (личная переписка teacher↔student)
 
 api-gateway -- HTTP multipart --> file-service :8085 / file_db (local volume | MinIO/S3)
 
 lesson-service -- transactional outbox --> Kafka topic tutorflow.lesson.completed
 Kafka --> finance-service consumer --> charge в finance_db
 lesson/assignment/finance events --> Kafka --> notification-service --> notifications
+lesson/assignment/finance/chat events --> Kafka --> notification-service --> notifications
 lesson/assignment/finance events --> Kafka --> report-service --> dashboard read-models
 finance balance.changed (с абсолютным balance_amount) --> report-service
+chat-service -- transactional outbox --> Kafka tutorflow.message.sent/read
 ```
 
 Основные правила архитектуры:
@@ -84,6 +87,16 @@ finance balance.changed (с абсолютным balance_amount) --> report-serv
 | `file-service` | metadata + хранение файлов (локальный том или MinIO/S3) | — | — | `file_db` |
 | `notification-service` | in-app уведомления из Kafka-событий | — | `9086` | `notification_db` |
 | `report-service` | read-models из событий, dashboards (teacher/student) | — | `9087` | `report_db` |
+| `chat-service` | личная переписка teacher↔student (диалоги/сообщения/чтение) | — | `9088` | `chat_db` |
+
+## Документация
+
+- `docs/architecture.md` — обзор архитектуры (компоненты, транспорт, auth, принципы).
+- `docs/FINANCE_MODEL.md` — append-only журнал, charge/payment/correction, идемпотентность.
+- `docs/EVENTS.md` — событийная модель: envelope, outbox/inbox, каталог 15 событий.
+- `docs/adr/` — architecture decision records (напр. почему identity = auth + user).
+- `docs/PLAN.md` — домен/решения; `docs/roadmap.md` — очередь работ;
+  `docs/event-contracts/*` и `docs/api-contracts/*` — контракты (источник правды).
 
 ## Библиотеки
 

@@ -147,6 +147,21 @@ std::optional<CreateNotificationRequest> BuildNotification(
         "Занятие восстановлено, долг снова начислен: " + Price(payload));
   }
 
+  if (event.event_type == "message.sent") {
+    // Уведомляем получателя (recipient_id). Полного текста в событии нет —
+    // только опциональный короткий preview.
+    const auto preview = OptionalString(payload, "preview");
+    const auto has_attachments = payload["has_attachments"].As<bool>(false);
+    std::string body = "У вас новое сообщение";
+    if (!preview.empty()) {
+      body = preview;
+    } else if (has_attachments) {
+      body = "Вложение";
+    }
+    return NotificationFor(event, RequiredString(payload, "recipient_id"),
+                           "message_sent", "Новое сообщение", body);
+  }
+
   if (event.event_type == "balance.changed") {
     // balance.changed эмитится на ЛЮБУЮ операцию (charge/payment/correction).
     // Чтобы не дублировать уже существующие уведомления (lesson.completed /

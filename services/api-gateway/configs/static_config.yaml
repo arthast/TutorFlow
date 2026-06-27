@@ -49,6 +49,9 @@ components_manager:
         gateway-report-grpc-client:
             endpoint: dns:///report-service:9087
             timeout-ms: 5000
+        gateway-chat-grpc-client:
+            endpoint: dns:///chat-service:9088
+            timeout-ms: 5000
         gateway-settings:
             jwt-secret#env: JWT_SECRET
             cors-origin#env: GATEWAY_CORS_ORIGIN
@@ -181,4 +184,16 @@ components_manager:
         gateway-file-download-handler:
             path: /files/{fileId}/download
             method: GET,OPTIONS
+            task_processor: main-task-processor
+        gateway-chats-handler:
+            path: /chats
+            method: GET,POST,OPTIONS
+            task_processor: main-task-processor
+        gateway-chat-messages-handler:
+            path: /chats/{dialogId}/messages
+            method: GET,POST,OPTIONS
+            task_processor: main-task-processor
+        gateway-chat-read-handler:
+            path: /chats/{dialogId}/read
+            method: POST,OPTIONS
             task_processor: main-task-processor

@@ -131,6 +131,7 @@ services/<svc>/src/
 | file-service | 8085 | — | нет | `file_db` |
 | notification-service | 8086 | 9086 | нет | `notification_db` |
 | report-service | 8087 | 9087 | нет | `report_db` |
+| chat-service | 8088 | 9088 | нет | `chat_db` |
 | postgres | 5432 | — | нет | (все базы) |
 | kafka | 9092 | — | нет | — |
 | minio (S3, опц.) | 9000 | — | нет | — (том `miniodata`) |
@@ -320,7 +321,7 @@ files(id, owner_user_id, purpose, original_name, content_type,
 ```
 
 `purpose`: `assignment_attachment | submission_file | payment_receipt |
-lesson_material` (`chat_message` — позже).
+lesson_material | chat_message`.
 
 Ограничения: `FILE_MAX_SIZE_BYTES` (по умолчанию 10 МБ), белый список
 content-type (изображения + pdf для чеков; уточним в контракте).

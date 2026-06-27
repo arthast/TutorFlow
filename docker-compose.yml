@@ -46,7 +46,7 @@ services:
       - sh
       - -ec
       - |
-        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db; do
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db; do
           svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
           createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
           for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
@@ -153,6 +153,7 @@ services:
       - file-service
       - notification-service
       - report-service
+      - chat-service
     networks: [tutorflow]
 
   identity-service:
@@ -296,6 +297,26 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       REPORT_DATABASE_URL: ${REPORT_DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  # chat-service (Этап 5J): личная переписка teacher<->student. Producer
+  # событий message.sent/message.read (outbox). Наружу НЕ публикуется.
+  chat-service:
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+      args:
+        USERVER_IMAGE: *userver-image
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+    environment:
+      CHAT_DATABASE_URL: ${CHAT_DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy

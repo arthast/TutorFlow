@@ -9,6 +9,7 @@ set(TUTORFLOW_PROTO_FILES
     tutorflow/finance.proto
     tutorflow/notification.proto
     tutorflow/report.proto
+    tutorflow/chat.proto
 )
 
 userver_add_grpc_library(tutorflow_proto
