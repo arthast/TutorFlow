@@ -89,6 +89,15 @@ chat-service -- transactional outbox --> Kafka tutorflow.message.sent/read
 | `report-service` | read-models из событий, dashboards (teacher/student) | — | `9087` | `report_db` |
 | `chat-service` | личная переписка teacher↔student (диалоги/сообщения/чтение) | — | `9088` | `chat_db` |
 
+## Документация
+
+- `docs/architecture.md` — обзор архитектуры (компоненты, транспорт, auth, принципы).
+- `docs/FINANCE_MODEL.md` — append-only журнал, charge/payment/correction, идемпотентность.
+- `docs/EVENTS.md` — событийная модель: envelope, outbox/inbox, каталог 15 событий.
+- `docs/adr/` — architecture decision records (напр. почему identity = auth + user).
+- `docs/PLAN.md` — домен/решения; `docs/roadmap.md` — очередь работ;
+  `docs/event-contracts/*` и `docs/api-contracts/*` — контракты (источник правды).
+
 ## Библиотеки
 
 - `libs/common` — инфраструктура: ошибки, auth context, JWT, HTTP helpers, handler helpers.
