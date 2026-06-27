@@ -649,7 +649,7 @@ Pre-5K checklist:
   offset -> replay`) на подготовленной среде и зафиксировать, что значения
   dashboard совпадают с baseline.
 
-### Этап 5L — lesson lifecycle + finance corrections  ✅ СДЕЛАНО (5L.1–5L.9)
+### Этап 5L — lesson lifecycle + finance corrections  ✅ СДЕЛАНО (5L.1–5L.10)
 Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с
 человеком (2026-06-24). Расширяем жизненный цикл занятия и связь с финансами.
 
@@ -688,6 +688,20 @@ finance consumer делает correction(+price) атомарно с processed_e
 005 удаляет uq_correction_lesson; notification-service уведомляет lesson.created
 и lesson.restored; tests покрывают recharge-cycle и replay без дублей.
 ```
+
+5L.10 no-overlap guard (feat/lesson-feautures): запрет пересекающихся занятий
+преподавателя на уровне БД (correctness-фикс против double-booking и гонки
+конкурентных create/reschedule). Миграция `004_no_overlap.sql` (идемпотентная,
+DO-блок + `pg_constraint`): `CREATE EXTENSION btree_gist` + `EXCLUDE USING gist
+(teacher_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE status='scheduled'`.
+Диапазон `[)` — смежные занятия (back-to-back) не пересекаются; гард только для
+`scheduled`, поэтому cancelled/completed освобождают время. Репозиторий ловит
+`pg::ExclusionViolation`(23P01) от `no_overlap_teacher` на Create/Reschedule/
+Reactivate → 409 envelope «lesson time overlaps another scheduled lesson»;
+атомарность даёт сам constraint. Только teacher (по student не ограничиваем).
+Тесты `tests/test_overlap.py` (create/reschedule/reactivate→409, back-to-back ок,
+cancelled не блокирует, конкурентный create — один проходит). Миграция/поведение
+— PR/подтверждение координатора.
 
 5L.3-5L.6+5L.9 (feat/lesson-finance-corrections): CancelLesson разрешает
 `completed→cancelled`, эмитит `lesson.cancelled` (previous_status, price/currency

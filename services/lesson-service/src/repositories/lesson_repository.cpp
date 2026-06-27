@@ -4,6 +4,7 @@
 
 #include <userver/components/component_context.hpp>
 #include <userver/storages/postgres/component.hpp>
+#include <userver/storages/postgres/exceptions.hpp>
 #include <userver/storages/postgres/io/chrono.hpp>
 #include <userver/storages/postgres/result_set.hpp>
 
@@ -15,6 +16,27 @@ namespace pg = userver::storages::postgres;
 
 constexpr auto kMaster = pg::ClusterHostType::kMaster;
 constexpr auto kSlave = pg::ClusterHostType::kSlave;
+
+// EXCLUDE-constraint из миграции 004: запрещает пересечение по времени двух
+// scheduled-занятий одного преподавателя. Именно он атомарно закрывает гонку
+// конкурентных create/reschedule (code-level проверки недостаточно).
+constexpr std::string_view kNoOverlapConstraint = "no_overlap_teacher";
+
+// Выполняет мутацию и переводит exclusion_violation (SQLSTATE 23P01) от
+// no_overlap_teacher в 409 Conflict (единый envelope). Прочие нарушения
+// пробрасываем как есть.
+template <typename Fn>
+auto WithOverlapGuard(Fn &&fn) -> decltype(fn()) {
+  try {
+    return fn();
+  } catch (const pg::ExclusionViolation &e) {
+    if (e.GetConstraint() == kNoOverlapConstraint) {
+      throw tutorflow::common::ServiceError::Conflict(
+          "lesson time overlaps another scheduled lesson");
+    }
+    throw;
+  }
+}
 
 constexpr std::string_view kSlotFields = R"(
   id::text,
@@ -184,7 +206,8 @@ Lesson
 LessonRepository::CreateLesson(const std::string &teacher_id,
                                const CreateLessonRequest &request) const {
   if (request.slot_id.has_value()) {
-    const auto result = pg_->Execute(
+    const auto result = WithOverlapGuard([&] {
+      return pg_->Execute(
         kMaster,
         "WITH booked_slot AS ("
         "  UPDATE availability_slots "
@@ -218,6 +241,7 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
             ") SELECT * FROM inserted",
         teacher_id, request.student_id, *request.price, *request.slot_id,
         request.starts_at, request.ends_at, request.topic, request.notes);
+    });
     if (result.IsEmpty()) {
       throw tutorflow::common::ServiceError::Conflict(
           "slot is not open or does not belong to teacher");
@@ -228,7 +252,8 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
     return lesson;
   }
 
-  const auto result = pg_->Execute(
+  const auto result = WithOverlapGuard([&] {
+    return pg_->Execute(
       kMaster,
       "WITH inserted AS ("
       "  INSERT INTO lessons (teacher_id, student_id, starts_at, ends_at, "
@@ -256,6 +281,7 @@ LessonRepository::CreateLesson(const std::string &teacher_id,
           ") SELECT * FROM inserted",
       teacher_id, request.student_id, request.starts_at, request.ends_at,
       request.topic, request.notes, *request.price);
+  });
   if (result.IsEmpty()) {
     throw tutorflow::common::ServiceError::Validation(
         "starts_at must be earlier than ends_at");
@@ -430,11 +456,12 @@ Lesson LessonRepository::RescheduleLesson(
                                 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
              FROM updated
            ) SELECT * FROM updated)";
-    const auto result =
-        pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
-                     request.new_starts_at, request.new_ends_at,
-                     requested_slot_id, old_slot_id, current->starts_at,
-                     current->ends_at);
+    const auto result = WithOverlapGuard([&] {
+      return pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
+                          request.new_starts_at, request.new_ends_at,
+                          requested_slot_id, old_slot_id, current->starts_at,
+                          current->ends_at);
+    });
     if (result.IsEmpty()) {
       throw tutorflow::common::ServiceError::Conflict(
           "new slot is not open or does not belong to teacher");
@@ -481,10 +508,11 @@ Lesson LessonRepository::RescheduleLesson(
                               'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
            FROM updated
          ) SELECT * FROM updated)";
-  const auto result =
-      pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
-                   request.new_starts_at, request.new_ends_at, next_slot_id,
-                   old_slot_id, current->starts_at, current->ends_at);
+  const auto result = WithOverlapGuard([&] {
+    return pg_->Execute(kMaster, sql, request.lesson_id, teacher_id,
+                        request.new_starts_at, request.new_ends_at, next_slot_id,
+                        old_slot_id, current->starts_at, current->ends_at);
+  });
   if (result.IsEmpty()) {
     throw tutorflow::common::ServiceError::Conflict(
         "only scheduled lesson can be rescheduled");
@@ -571,8 +599,10 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
                     END
              FROM reactivated
            ) SELECT * FROM reactivated)";
-    const auto result =
-        pg_->Execute(kMaster, sql, lesson_id, teacher_id, slot_id, target_status);
+    const auto result = WithOverlapGuard([&] {
+      return pg_->Execute(kMaster, sql, lesson_id, teacher_id, slot_id,
+                          target_status);
+    });
     if (result.IsEmpty()) {
       throw tutorflow::common::ServiceError::Conflict(
           "lesson slot is not open or does not belong to teacher");
@@ -625,8 +655,9 @@ Lesson LessonRepository::ReactivateLesson(const std::string &lesson_id,
                   END
            FROM reactivated
          ) SELECT * FROM reactivated)";
-  const auto result = pg_->Execute(kMaster, sql, lesson_id, teacher_id,
-                                   target_status);
+  const auto result = WithOverlapGuard([&] {
+    return pg_->Execute(kMaster, sql, lesson_id, teacher_id, target_status);
+  });
   if (result.IsEmpty()) {
     throw tutorflow::common::ServiceError::Conflict(
         "only cancelled lesson can be reactivated");
