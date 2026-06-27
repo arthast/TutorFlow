@@ -453,9 +453,9 @@ assignment.created       -> notification-service, report-service
 submission.uploaded      -> notification-service, report-service
 assignment.reviewed      -> notification-service, report-service
 ```
-Опционально позже: `assignment.needs_fix`, `assignment.done`,
-`assignment.deadline_expired`. Эти события не должны менять бизнес-поведение
-assignment-service; это факты после успешной команды.
+Опционально позже: `assignment.needs_fix`, `assignment.done`. Эти события не
+должны менять бизнес-поведение assignment-service; это факты после успешной
+команды. `assignment.deadline_expired` — ✅ СДЕЛАНО (см. ниже, deadline-worker).
 
 **5F-2. `finance-service -> Kafka` — ✅ СДЕЛАНО**
 Через outbox публиковать:
@@ -688,6 +688,24 @@ finance consumer делает correction(+price) атомарно с processed_e
 005 удаляет uq_correction_lesson; notification-service уведомляет lesson.created
 и lesson.restored; tests покрывают recharge-cycle и replay без дублей.
 ```
+
+5M deadline-worker (feat/lesson-feautures): авто-просрочка ДЗ — закрыта последняя
+доменная дыра. Статус 'expired' уже был в схеме и submit/review его блокировали,
+но ничто не переводило ДЗ в expired. PeriodicTask `assignment-deadline-worker`
+(`services/assignment-service/src/workers/deadline_worker.{hpp,cpp}`, интервал из
+конфига `period-ms`, дефолт 60s; в dev/тестах короткий через
+`ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS`) одной транзакцией переводит ДЗ со статусом
+`assigned`/`needs_fix` и `due_at < now()` в `expired` и пишет
+`assignment.deadline_expired` в outbox (payload строго по
+`docs/event-contracts/assignment.deadline_expired.v1.json`: assignment_id,
+teacher_id, student_id, title, due_at, previous_status, expired_at). Идемпотентно
+(после перехода строка уже не в выборке; событие — одно на переход);
+single-instance + non-overlapping task → без гонок. submitted/reviewed/done не
+трогаются, due_at IS NULL не просрочивается. Consumers: notification-service
+(уведомление студенту «Дедлайн ДЗ истёк»), report-service (read-model: статус
+ДЗ → expired, active_assignments_count убывает). EVENTS.md: событие перенесено из
+«отложенных» в каталог (17 событий). Тесты `tests/test_deadline.py`. Новое событие
++ кросс-сервисные кейсы — PR/подтверждение координатора.
 
 5L.10 no-overlap guard (feat/lesson-feautures): запрет пересекающихся занятий
 преподавателя на уровне БД (correctness-фикс против double-booking и гонки

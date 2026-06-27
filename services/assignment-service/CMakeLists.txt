@@ -5,6 +5,7 @@ add_executable(assignment-service
     src/grpc/assignment_grpc_service.cpp
     src/outbox/outbox_publisher.cpp
     src/repositories/assignment_repository.cpp
+    src/workers/deadline_worker.cpp
 )
 
 target_include_directories(assignment-service PRIVATE src)

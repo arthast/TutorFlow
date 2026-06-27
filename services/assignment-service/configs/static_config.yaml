@@ -59,3 +59,8 @@ components_manager:
         assignment-grpc-service:
             task-processor: main-task-processor
         assignment-outbox-publisher: {}
+        assignment-deadline-worker:
+            # Интервал тика. Дефолт 60s; в dev/тестах задаётся короткий через
+            # ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS (docker-compose).
+            period-ms#env: ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS
+            period-ms#fallback: 60000

@@ -42,7 +42,7 @@ Kafka используется для **асинхронных доменных 
    агрегаты пересчитываются `SUM/COUNT` (а не инкрементами) → устойчиво к replay;
    notification: inbox + `unique(user_id, source_event_id)`.
 
-## Каталог событий (16)
+## Каталог событий (17)
 
 | Событие | Producer | Consumers | Назначение |
 |---|---|---|---|
@@ -54,6 +54,7 @@ Kafka используется для **асинхронных доменных 
 | `assignment.created` | assignment | notification, report | выдано ДЗ |
 | `submission.uploaded` | assignment | notification, report | ученик сдал решение |
 | `assignment.reviewed` | assignment | notification, report | проверено |
+| `assignment.deadline_expired` | assignment | notification, report | дедлайн истёк, ДЗ авто-просрочено (deadline-worker; previous_status=assigned/needs_fix) |
 | `charge.created` | finance | report | начисление (read-model/audit) |
 | `payment_receipt.uploaded` | finance | notification, report | чек загружен |
 | `payment.confirmed` | finance | notification, report | оплата подтверждена |
@@ -76,7 +77,6 @@ Kafka используется для **асинхронных доменных 
 
 ## Отложенные события
 
-`assignment.deadline_expired` (нужен deadline-worker), identity-события
-(`user.registered`, `student.created`, `teacher_student_link.created`,
-`password.changed`), `file.uploaded/deleted` — добавлять только под конкретного
-потребителя.
+identity-события (`user.registered`, `student.created`,
+`teacher_student_link.created`, `password.changed`), `file.uploaded/deleted` —
+добавлять только под конкретного потребителя.

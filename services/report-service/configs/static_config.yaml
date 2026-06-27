@@ -52,6 +52,7 @@ components_manager:
               - tutorflow.assignment.created
               - tutorflow.submission.uploaded
               - tutorflow.assignment.reviewed
+              - tutorflow.assignment.deadline_expired
               - tutorflow.balance.changed
               - tutorflow.payment_receipt.uploaded
               - tutorflow.payment.confirmed
