@@ -16,6 +16,7 @@ import {
   type Transaction,
 } from "../api";
 import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { ChatCard } from "../chat";
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   const ids: string[] = [];
@@ -74,6 +75,9 @@ export default function Teacher() {
             students={studentList}
             chargeRefresh={chargeRefresh}
             onChanged={dashboard.reload}
+          />
+          <ChatCard
+            contacts={studentList.map((s) => ({ id: s.student_id, name: s.display_name }))}
           />
         </div>
       </div>

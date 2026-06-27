@@ -329,7 +329,7 @@ paths:
               type: object
               properties:
                 file: { type: string, format: binary }
-                purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+                purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt, lesson_material, chat_message] }
       responses:
         "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/FileMeta" } } } }
         "413": { $ref: "#/components/responses/Error" }
@@ -349,6 +349,68 @@ paths:
         "200": { description: binary, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
         "403": { $ref: "#/components/responses/Error" }
 
+  # ---------- Chat (5J) ----------
+  /chats:
+    get:
+      summary: Список диалогов звонящего (+ last_message, unread_count)
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Dialog" } } } } }
+    post:
+      summary: Создать (или найти) диалог с собеседником. Идемпотентно по паре.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [other_user_id]
+              properties:
+                other_user_id: { type: string, format: uuid }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Dialog" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /chats/{dialogId}/messages:
+    get:
+      summary: Сообщения диалога (пагинация назад через before)
+      parameters:
+        - { $ref: "#/components/parameters/DialogId" }
+        - { name: before, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, required: false, schema: { type: integer } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Message" } } } } }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Отправить сообщение (text + опц. file_ids)
+      parameters: [ { $ref: "#/components/parameters/DialogId" } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string }
+                file_ids: { type: array, items: { type: string, format: uuid } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Message" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+  /chats/{dialogId}/read:
+    post:
+      summary: Отметить прочитанным до up_to_message_id (только вперёд)
+      parameters: [ { $ref: "#/components/parameters/DialogId" } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [up_to_message_id]
+              properties:
+                up_to_message_id: { type: string, format: uuid }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/ReadMarker" } } } }
+        "403": { $ref: "#/components/responses/Error" }
+
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
@@ -359,6 +421,7 @@ components:
     ReceiptId: { name: receiptId, in: path, required: true, schema: { type: string, format: uuid } }
     FileId: { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
     NotificationId: { name: notificationId, in: path, required: true, schema: { type: string, format: uuid } }
+    DialogId: { name: dialogId, in: path, required: true, schema: { type: string, format: uuid } }
   responses:
     Health:
       description: ok
@@ -685,8 +748,34 @@ components:
       properties:
         id: { type: string, format: uuid }
         owner_user_id: { type: string, format: uuid }
-        purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt] }
+        purpose: { type: string, enum: [assignment_attachment, submission_file, payment_receipt, lesson_material, chat_message] }
         original_name: { type: string }
         content_type: { type: string }
         size_bytes: { type: integer }
         created_at: { type: string, format: date-time }
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        dialog_id: { type: string, format: uuid }
+        sender_id: { type: string, format: uuid }
+        text: { type: string }
+        file_ids: { type: array, items: { type: string, format: uuid } }
+        created_at: { type: string, format: date-time }
+    Dialog:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        last_message_at: { type: string, format: date-time, nullable: true }
+        unread_count: { type: integer }
+        last_message: { allOf: [ { $ref: "#/components/schemas/Message" } ], nullable: true }
+    ReadMarker:
+      type: object
+      properties:
+        dialog_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        last_read_message_id: { type: string, format: uuid }
+        last_read_at: { type: string, format: date-time }

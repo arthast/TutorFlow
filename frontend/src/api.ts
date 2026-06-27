@@ -93,6 +93,24 @@ export const reports = {
     api.get<StudentSummary>(`/students/${studentId}/summary`),
 };
 
+// Чат (5J): личная переписка teacher<->student, без realtime (polling).
+export const chat = {
+  listDialogs: () => api.get<ChatDialog[]>("/chats"),
+  createDialog: (otherUserId: string) =>
+    api.post<ChatDialog>("/chats", { other_user_id: otherUserId }),
+  listMessages: (dialogId: string) =>
+    api.get<ChatMessage[]>(`/chats/${dialogId}/messages`),
+  sendMessage: (dialogId: string, text: string, fileIds?: string[]) =>
+    api.post<ChatMessage>(`/chats/${dialogId}/messages`, {
+      text,
+      file_ids: fileIds && fileIds.length ? fileIds : undefined,
+    }),
+  markRead: (dialogId: string, upToMessageId: string) =>
+    api.post<ChatReadMarker>(`/chats/${dialogId}/read`, {
+      up_to_message_id: upToMessageId,
+    }),
+};
+
 // Открыть файл (чек/вложение) в новой вкладке с авторизацией.
 export async function openFile(fileId: string): Promise<void> {
   const blob = await api.getBlob(`/files/${fileId}/download`);
@@ -267,4 +285,27 @@ export interface AppNotification {
   payload?: Record<string, unknown>;
   is_read: boolean;
   created_at?: string;
+}
+export interface ChatMessage {
+  id: string;
+  dialog_id: string;
+  sender_id: string;
+  text: string;
+  file_ids?: string[];
+  created_at?: string;
+}
+export interface ChatDialog {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  created_at?: string;
+  last_message_at?: string | null;
+  unread_count: number;
+  last_message?: ChatMessage | null;
+}
+export interface ChatReadMarker {
+  dialog_id: string;
+  user_id: string;
+  last_read_message_id: string;
+  last_read_at: string;
 }

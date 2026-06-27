@@ -191,7 +191,7 @@ ParsedUpload ParseUploadRequest(const http::HttpRequest& req) {
     }
     static constexpr std::string_view kValidPurposes[] = {
         "assignment_attachment", "submission_file", "payment_receipt",
-        "lesson_material"};
+        "lesson_material", "chat_message"};
     bool valid_purpose = false;
     for (auto p : kValidPurposes) {
         if (result.purpose == p) { valid_purpose = true; break; }

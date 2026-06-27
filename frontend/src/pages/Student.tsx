@@ -12,6 +12,7 @@ import {
   type StudentSummary,
 } from "../api";
 import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { ChatCard } from "../chat";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
@@ -33,6 +34,16 @@ export default function Student() {
   const report = dashboard.data;
   const activity = sumActivity(report?.summaries ?? []);
 
+  // Контакты для чата: преподаватели ученика (имя — из summaries дашборда).
+  const teacherContacts = useMemo(() => {
+    const names = new Map<string, string>();
+    (report?.summaries ?? []).forEach((s) => {
+      if (s.teacher_id) names.set(s.teacher_id, s.teacher_name || s.teacher_id.slice(0, 8));
+    });
+    teacherIds.forEach((id) => { if (!names.has(id)) names.set(id, id.slice(0, 8)); });
+    return [...names].map(([id, name]) => ({ id, name }));
+  }, [report?.summaries, teacherIds]);
+
   return (
     <>
       <TopBar />
@@ -52,6 +63,7 @@ export default function Student() {
           <ReceiptCard teacherIds={teacherIds} onSent={() => { receipts.reload(); dashboard.reload(); }} />
           <ReceiptsListCard receipts={receipts} />
           <LessonsCard lessons={lessons} />
+          <ChatCard contacts={teacherContacts} />
           <PasswordCard />
         </div>
       </div>

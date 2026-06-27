@@ -21,6 +21,7 @@ class GrpcAssignmentClient;
 class GrpcFinanceClient;
 class GrpcNotificationClient;
 class GrpcReportClient;
+class GrpcChatClient;
 
 struct AuthInfo {
   std::string user_id;
@@ -55,6 +56,7 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
     return notification_client_;
   }
   GrpcReportClient& Report() const noexcept { return report_client_; }
+  GrpcChatClient& Chat() const noexcept { return chat_client_; }
 
  private:
   const GatewaySettings& settings_;
@@ -65,6 +67,7 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
   GrpcFinanceClient& finance_client_;
   GrpcNotificationClient& notification_client_;
   GrpcReportClient& report_client_;
+  GrpcChatClient& chat_client_;
 };
 
 #define TUTORFLOW_GATEWAY_DECLARE_HANDLER(ClassName, NameValue)              \
@@ -137,6 +140,10 @@ TUTORFLOW_GATEWAY_DECLARE_HANDLER(FileMetaHandler,
                                   "gateway-file-meta-handler");
 TUTORFLOW_GATEWAY_DECLARE_HANDLER(FileDownloadHandler,
                                   "gateway-file-download-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(ChatsHandler, "gateway-chats-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(ChatMessagesHandler,
+                                  "gateway-chat-messages-handler");
+TUTORFLOW_GATEWAY_DECLARE_HANDLER(ChatReadHandler, "gateway-chat-read-handler");
 
 #undef TUTORFLOW_GATEWAY_DECLARE_HANDLER
 

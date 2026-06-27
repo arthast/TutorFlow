@@ -35,11 +35,12 @@ db_for() {
     file)       echo "${FILE_DB:-file_db}" ;;
     notification) echo "${NOTIFICATION_DB:-notification_db}" ;;
     report) echo "${REPORT_DB:-report_db}" ;;
+    chat) echo "${CHAT_DB:-chat_db}" ;;
     *) echo "" ;;
   esac
 }
 
-ALL_SERVICES=(identity lesson assignment finance file notification report)
+ALL_SERVICES=(identity lesson assignment finance file notification report chat)
 
 DC="docker compose"
 $DC version >/dev/null 2>&1 || DC="docker-compose"

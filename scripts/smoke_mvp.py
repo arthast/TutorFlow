@@ -46,6 +46,7 @@ def http_request(
     json_body: Optional[Dict[str, Any]] = None,
     raw_body: Optional[bytes] = None,
     content_type: Optional[str] = None,
+    parse_json: bool = True,
 ) -> Tuple[int, Any]:
     headers = {"Accept": "application/json"}
     data = None
@@ -70,11 +71,12 @@ def http_request(
     except URLError as exc:
         fail(step, f"request failed: {exc}")
 
-    parsed = decode_json(step, body_bytes)
     if status not in set(expected):
         fail(step, f"{method} {path} expected {list(expected)}, got {status}",
              body_bytes.decode("utf-8", errors="replace"))
-    return status, parsed
+    if not parse_json:
+        return status, body_bytes
+    return status, decode_json(step, body_bytes)
 
 
 def post_json(step: str, path: str, body: Dict[str, Any], expected: Iterable[int],
@@ -276,6 +278,21 @@ def wait_for_lesson_corrections(step: str, token: str, student_id: str,
             ensure_ascii=False,
         ),
     )
+
+
+def wait_for_notification(step: str, token: str, ntype: str, predicate,
+                          timeout_seconds: float = 10.0) -> Dict[str, Any]:
+    deadline = time.monotonic() + timeout_seconds
+    last: List[Any] = []
+    while time.monotonic() < deadline:
+        last = require_list(step, get_json(step, "/notifications", [200], token))
+        for item in last:
+            obj = require_dict(step, item)
+            if obj.get("type") == ntype and predicate(obj):
+                return obj
+        time.sleep(0.5)
+    fail(step, f"notification {ntype} not received",
+         json.dumps(last, ensure_ascii=False))
 
 
 def main() -> int:
@@ -628,6 +645,127 @@ def main() -> int:
         require_equal(step, len(charges_for(step, teacher_token, student_id,
                                             lesson_id)), 1,
                       "charge remains single after restore")
+
+        # 5J chat: личная переписка teacher<->student (+ message.sent -> notification).
+        step = "18 teacher opens dialog with student"
+        dialog = require_dict(
+            step,
+            post_json(step, "/chats", {"other_user_id": student_id}, [201],
+                      teacher_token),
+        )
+        dialog_id = require_field(step, dialog, "id")
+        require_equal(step, dialog.get("teacher_id"), teacher_id, "dialog teacher")
+        require_equal(step, dialog.get("student_id"), student_id, "dialog student")
+
+        step = "18 create dialog is idempotent"
+        dialog_again = require_dict(
+            step,
+            post_json(step, "/chats", {"other_user_id": student_id}, [201],
+                      teacher_token),
+        )
+        require_equal(step, dialog_again.get("id"), dialog_id, "idempotent dialog id")
+
+        step = "18 student sees the same dialog from their side"
+        student_dialog = require_dict(
+            step,
+            post_json(step, "/chats", {"other_user_id": teacher_id}, [201],
+                      student_token),
+        )
+        require_equal(step, student_dialog.get("id"), dialog_id, "shared dialog id")
+
+        step = "19 teacher sends a text message"
+        message = require_dict(
+            step,
+            post_json(step, f"/chats/{dialog_id}/messages",
+                      {"text": "Привет из smoke"}, [201], teacher_token),
+        )
+        message_id = require_field(step, message, "id")
+        require_equal(step, message.get("sender_id"), teacher_id, "message sender")
+
+        step = "19 student uploads chat attachment and replies"
+        content_type, multipart_body = make_multipart(
+            {"purpose": "chat_message"}, "file", "note.txt", "text/plain",
+            b"TutorFlow smoke chat attachment\n",
+        )
+        chat_file = require_dict(
+            step,
+            http_request(step, "POST", "/files", expected=[201],
+                         token=student_token, raw_body=multipart_body,
+                         content_type=content_type)[1],
+        )
+        chat_file_id = require_field(step, chat_file, "id")
+        require_equal(step, chat_file.get("purpose"), "chat_message",
+                      "chat file purpose")
+        reply = require_dict(
+            step,
+            post_json(step, f"/chats/{dialog_id}/messages",
+                      {"text": "С вложением", "file_ids": [chat_file_id]}, [201],
+                      student_token),
+        )
+        reply_id = require_field(step, reply, "id")
+        require_equal(step, reply.get("file_ids"), [chat_file_id],
+                      "reply attachments")
+
+        step = "19 teacher downloads the student's attachment (symmetric access)"
+        http_request(step, "GET", f"/files/{chat_file_id}/download",
+                     expected=[200], token=teacher_token, parse_json=False)
+
+        step = "20 student dialog list shows unread for teacher's message"
+        dialogs = require_list(step, get_json(step, "/chats", [200], student_token))
+        target = next((require_dict(step, d) for d in dialogs
+                       if require_dict(step, d).get("id") == dialog_id), None)
+        if target is None:
+            fail(step, "dialog not in student list",
+                 json.dumps(dialogs, ensure_ascii=False))
+        if int(target.get("unread_count") or 0) < 1:
+            fail(step, "expected unread >= 1 for student",
+                 json.dumps(target, ensure_ascii=False))
+
+        step = "20 message.sent produces a notification for the recipient"
+        wait_for_notification(
+            step, student_token, "message_sent",
+            lambda n: n.get("payload", {}).get("dialog_id") == dialog_id
+            and n.get("payload", {}).get("message_id") == message_id,
+        )
+
+        step = "20 student marks read -> unread drops to 0"
+        marker = require_dict(
+            step,
+            post_json(step, f"/chats/{dialog_id}/read",
+                      {"up_to_message_id": reply_id}, [200], student_token),
+        )
+        require_equal(step, marker.get("last_read_message_id"), reply_id,
+                      "read marker id")
+        dialogs_after = require_list(
+            step, get_json(step, "/chats", [200], student_token))
+        target_after = next((require_dict(step, d) for d in dialogs_after
+                             if require_dict(step, d).get("id") == dialog_id), None)
+        if target_after is None:
+            fail(step, "dialog missing after read")
+        require_equal(step, int(target_after.get("unread_count") or 0), 0,
+                      "unread after read")
+
+        step = "20 mark read only moves forward (idempotent)"
+        post_json(step, f"/chats/{dialog_id}/read",
+                  {"up_to_message_id": message_id}, [200], student_token)
+        dialogs_idem = require_list(
+            step, get_json(step, "/chats", [200], student_token))
+        target_idem = next((require_dict(step, d) for d in dialogs_idem
+                            if require_dict(step, d).get("id") == dialog_id), None)
+        require_equal(step, int(target_idem.get("unread_count") or 0), 0,
+                      "unread stays 0 after backward mark-read")
+
+        step = "21 unrelated user cannot read or write the dialog (403)"
+        outsider_email = f"outsider-{run_id}@example.com"
+        outsider_register = post_json(
+            step, "/auth/register",
+            {"email": outsider_email, "password": "OutsiderPass123",
+             "role": "teacher", "display_name": "Smoke Outsider"}, [201])
+        outsider_token = token_from(step, outsider_register)
+        http_request(step, "GET", f"/chats/{dialog_id}/messages", expected=[403],
+                     token=outsider_token)
+        http_request(step, "POST", f"/chats/{dialog_id}/messages", expected=[403],
+                     token=outsider_token, json_body={"text": "intrusion"})
 
     except SmokeFailure:
         return 1

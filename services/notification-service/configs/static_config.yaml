@@ -56,6 +56,7 @@ components_manager:
               - tutorflow.lesson.cancelled
               - tutorflow.lesson.restored
               - tutorflow.balance.changed
+              - tutorflow.message.sent
             # Топики создаются лениво (auto-create на первый publish); частый
             # refresh подхватывает свежий топик без задержки (как в finance, 5L.4).
             topic_metadata_refresh_interval: 3s
