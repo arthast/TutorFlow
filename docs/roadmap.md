@@ -29,10 +29,11 @@
 | notification-service | **реализован** (Kafka consumer + gRPC list/mark-read), в `main` (5G) |
 | report-service | **реализован** (read-models из событий, dashboards по gRPC), в `main` (5H) |
 
-7 сервисов + gateway собраны и согласованы: REST снаружи через gateway, gRPC между
+9 сервисов + gateway собраны и согласованы: REST снаружи через gateway, gRPC между
 сервисами, Kafka/outbox + consumer inbox для доменных событий (lesson/assignment/finance).
 Сделано: 5G notification, 5H report/dashboards, 5I MinIO/S3 для file-service, 5L lesson
-lifecycle + finance corrections, 5J chat-service (без realtime). Осталось: 5K production hardening.
+lifecycle + finance corrections, 5J chat-service, 5J-later realtime-service (WebSocket +
+Redis). Осталось: 5K production hardening.
 
 ---
 
@@ -602,9 +603,21 @@ Gateway: REST `GET/POST /chats`, `GET/POST /chats/{dialogId}/messages`,
 mark-read при открытии, отправка текст+вложение). Тесты: `tests/test_chat.py` + chat-кейсы в
 `scripts/smoke_mvp.py`.
 
-Что отложено (5J-later/5K): realtime (WebSocket/SSE), Redis (online state/unread-кэш),
-групповые чаты, редактирование/удаление, typing, реакции, полнотекстовый поиск.
-`message.read`-потребителей в v1 нет (только задел).
+Realtime (5J-later) реализован отдельным `realtime-service` (WebSocket + Redis) —
+см. ниже. Что остаётся отложенным (5K/будущее): групповые чаты,
+редактирование/удаление сообщений, typing-индикатор, реакции, полнотекстовый поиск.
+
+### Этап 5J-later — realtime-service (WebSocket + Redis)  ✅ СДЕЛАНО (в `main`)
+Полный спек: `docs/agent-realtime-service.md`. Отдельный публичный push-канал для
+уже произошедших событий чата и уведомлений; домен не меняется (отправка остаётся
+REST → gateway → chat-service → Kafka). Реализовано: публичный
+`ws://…:8089/ws?token=<jwt>` (JWT в query, валидируется тем же `JWT_SECRET`);
+server→client `chat.message`/`chat.read`/`presence`/`notification`/`pong`;
+client→server `ping`/`typing`. Redis: presence (TTL), pub/sub доставка на нужный
+инстанс, кэш участников/собеседников, realtime-счётчик unread (source of truth —
+chat-service). Consumes Kafka `message.sent`/`message.read`/`notification.created`
+(добавлено событие `notification.created`, producer — notification-service).
+Realtime ничего не создаёт в домене (ни сообщений, ни уведомлений, ни платежей).
 
 <details><summary>Исходный спек (до реализации)</summary>
 

@@ -5,8 +5,8 @@
 > Личное назначение и заметки агента — в `AGENTS.local.md` (НЕ коммитится).
 
 ## Стек
-C++20 + userver, PostgreSQL (одна БД на сервис), Docker Compose. **7 сервисов** +
-gateway. Коммуникации (внедрено, Этап 5 roadmap): **REST** — только снаружи (frontend →
+C++20 + userver, PostgreSQL (одна БД на сервис), Redis (realtime), Docker Compose.
+**9 сервисов** + gateway. Коммуникации (внедрено, Этап 5 roadmap): **REST** — только снаружи (frontend →
 api-gateway) и файлы (gateway → file-service, multipart). **gRPC** — синхронные
 внутренние вызовы (gateway → сервисы; lesson/assignment/finance/file → identity
 check-access; gateway → notification/report). **Kafka** — асинхронные доменные события
@@ -19,9 +19,10 @@ restored → correction), notification-service, report-service (read-models дл
 Сделано (Этап 5): 5A–5F gRPC+Kafka foundation; **5G** notification-service; **5H**
 report-service + dashboards; **5I** MinIO/S3 для file-service (через `IFileStorage`,
 переключатель `FILE_STORAGE_BACKEND=local|s3`); **5L** lesson lifecycle + finance
-corrections (reschedule/reactivate/cancel-completed + ручная/авто correction, append-only).
-Ещё НЕ в MVP: **5J** chat-service, **5K** production hardening, Redis, реальные платежи,
-email/Telegram/push.
+corrections (reschedule/reactivate/cancel-completed + ручная/авто correction, append-only);
+**5J** chat-service (личная переписка, вложения, outbox message.sent/read);
+**5J-later** realtime-service (публичный WebSocket push + Redis presence/pub-sub).
+Ещё НЕ в MVP: **5K** production hardening, реальные платежи, email/Telegram/push.
 
 ## Роли и распределение задач
 - **Координатор — Claude.** Владеет контрактами и `docs/PLAN.md`, ревьюит и
@@ -157,14 +158,12 @@ Already implemented in the current architecture:
 * notification-service (in-app notifications from Kafka events)
 * report-service + dashboards (read-models from events)
 * MinIO/S3 storage option for file-service (IFileStorage, FILE_STORAGE_BACKEND=local|s3)
-* chat-service: личная переписка teacher↔student (диалоги/сообщения/чтение, без realtime)
+* chat-service: личная переписка teacher↔student (диалоги/сообщения/чтение, вложения)
+* realtime-service: публичный WebSocket push для чата/уведомлений (Redis presence/pub-sub)
 * React/Vite frontend MVP (incl. dashboards, chat)
 
 Do not implement yet unless explicitly asked:
 
-* Redis
-* chat-service (5J — next planned)
-* WebSocket/SSE realtime
 * Telegram bot
 * Google Calendar
 * real payment integrations

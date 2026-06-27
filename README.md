@@ -4,8 +4,8 @@ TutorFlow — учебная платформа для связки «препо
 занятия, домашние задания, файлы, чеки об оплате и ручное подтверждение платежей.
 
 Проект сделан как microservices-lite монорепозиторий на **C++20 + userver**.
-Снаружи открыт только `api-gateway`; внутренние сервисы общаются по gRPC, а
-побочные доменные эффекты идут через Kafka.
+Снаружи открыты `api-gateway` (REST) и `realtime-service` (WebSocket push);
+внутренние сервисы общаются по gRPC, а побочные доменные эффекты идут через Kafka.
 
 ## Что Уже Есть
 
@@ -27,7 +27,11 @@ TutorFlow — учебная платформа для связки «препо
 - Notification-service: Kafka consumer создаёт in-app уведомления; frontend показывает список и mark-as-read.
 - Report-service: строит read-models из событий; ролевые dashboards (teacher/student)
   отдаются по gRPC через gateway (`GET /dashboard/teacher|student`, `/students/{id}/summary`).
-- React + TypeScript + Vite frontend для teacher/student demo-flow, включая dashboards.
+- Chat-service: личная переписка teacher↔student (диалоги, сообщения, вложения,
+  read-маркеры) через gateway; события `message.sent`/`message.read` в Kafka.
+- Realtime-service: публичный WebSocket push-канал (`ws://…:8089/ws?token=`) для
+  чата и уведомлений; presence/доставка через Redis pub/sub. Push, не источник истины.
+- React + TypeScript + Vite frontend для teacher/student demo-flow, включая dashboards и чат.
 - Smoke и pytest e2e-проверки через внешний gateway.
 
 ## Архитектура
@@ -89,12 +93,13 @@ chat-service -- transactional outbox --> Kafka tutorflow.message.sent/read
 | `notification-service` | in-app уведомления из Kafka-событий | — | `9086` | `notification_db` |
 | `report-service` | read-models из событий, dashboards (teacher/student) | — | `9087` | `report_db` |
 | `chat-service` | личная переписка teacher↔student (диалоги/сообщения/чтение) | — | `9088` | `chat_db` |
+| `realtime-service` | публичный WebSocket push для чата/уведомлений (Redis pub/sub) | `8089` | — | — (Redis) |
 
 ## Документация
 
 - `docs/architecture.md` — обзор архитектуры (компоненты, транспорт, auth, принципы).
 - `docs/FINANCE_MODEL.md` — append-only журнал, charge/payment/correction, идемпотентность.
-- `docs/EVENTS.md` — событийная модель: envelope, outbox/inbox, каталог 15 событий.
+- `docs/EVENTS.md` — событийная модель: envelope, outbox/inbox, каталог 17 событий.
 - `docs/adr/` — architecture decision records (напр. почему identity = auth + user).
 - `docs/PLAN.md` — домен/решения; `docs/roadmap.md` — очередь работ;
   `docs/event-contracts/*` и `docs/api-contracts/*` — контракты (источник правды).
@@ -259,10 +264,11 @@ docs/                     architecture notes and contracts
 ## Что Не Входит Сейчас
 
 - Реальные платежные интеграции.
-- chat-service (5J — следующий запланированный этап), Redis, WebSocket/SSE realtime.
-- Email/Telegram/push-уведомления: сейчас есть только in-app notification-service.
+- Email/Telegram/push-уведомления: сейчас есть только in-app notification-service
+  (+ realtime WebSocket push).
 - Production hardening (5K): reverse proxy, CI/CD, метрики, Kafka lag/DLQ, бэкапы.
 
 Эти направления оставлены как следующие этапы развития. Уже сделано из ранее
 отложенного: notification-service, report-service/dashboards, MinIO/S3 для file-service,
-жизненный цикл занятия и финансовые корректировки.
+жизненный цикл занятия и финансовые корректировки, chat-service, а также
+realtime-service (WebSocket + Redis) — ранее отложенные 5J/5J-later закрыты.
