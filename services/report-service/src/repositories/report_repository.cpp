@@ -277,6 +277,7 @@ bool ReportRepository::ApplyAssignmentEvent(
                    WHEN 'reviewed' THEN 3
                    WHEN 'accepted' THEN 3
                    WHEN 'done' THEN 3
+                   WHEN 'expired' THEN 4
                    ELSE 0
                  END >= CASE report_assignments.status
                    WHEN 'assigned' THEN 1
@@ -285,6 +286,7 @@ bool ReportRepository::ApplyAssignmentEvent(
                    WHEN 'reviewed' THEN 3
                    WHEN 'accepted' THEN 3
                    WHEN 'done' THEN 3
+                   WHEN 'expired' THEN 4
                    ELSE 0
                  END
            )

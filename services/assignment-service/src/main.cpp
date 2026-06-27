@@ -19,6 +19,7 @@
 #include "grpc/assignment_grpc_service.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/assignment_repository.hpp"
+#include "workers/deadline_worker.hpp"
 
 int main(int argc, char* argv[]) {
   const auto component_list =
@@ -39,6 +40,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
           .Append<tutorflow::assignment::AssignmentGrpcService>()
-          .Append<tutorflow::assignment::OutboxPublisher>();
+          .Append<tutorflow::assignment::OutboxPublisher>()
+          .Append<tutorflow::assignment::DeadlineWorker>();
   return userver::utils::DaemonMain(argc, argv, component_list);
 }

@@ -80,6 +80,13 @@ std::optional<CreateNotificationRequest> BuildNotification(
         "Assignment reviewed", "Assignment review status: " + status);
   }
 
+  if (event.event_type == "assignment.deadline_expired") {
+    return NotificationFor(
+        event, RequiredString(payload, "student_id"),
+        "assignment_deadline_expired", "Дедлайн ДЗ истёк",
+        "Истёк срок сдачи ДЗ: " + RequiredString(payload, "title"));
+  }
+
   if (event.event_type == "payment_receipt.uploaded") {
     return NotificationFor(
         event, RequiredString(payload, "teacher_id"), "payment_receipt_uploaded",

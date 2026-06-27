@@ -72,6 +72,9 @@ AssignmentEvent BuildAssignmentEvent(
   } else if (event.event_type == "assignment.reviewed") {
     model.status = RequiredString(payload, "assignment_status");
     model.event_at = RequiredString(payload, "reviewed_at");
+  } else if (event.event_type == "assignment.deadline_expired") {
+    model.status = "expired";
+    model.event_at = RequiredString(payload, "expired_at");
   }
   return model;
 }
@@ -126,7 +129,8 @@ bool IsLessonEvent(std::string_view event_type) {
 bool IsAssignmentEvent(std::string_view event_type) {
   return event_type == "assignment.created" ||
          event_type == "submission.uploaded" ||
-         event_type == "assignment.reviewed";
+         event_type == "assignment.reviewed" ||
+         event_type == "assignment.deadline_expired";
 }
 
 bool IsReceiptEvent(std::string_view event_type) {
