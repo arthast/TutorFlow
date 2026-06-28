@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px">T</div>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ pendingBadgeShow }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ pendingCount }}</span></sc-if><sc-if value="{{ collapsedPending }}"><span style="position:absolute; top:7px; left:27px; width:7px; height:7px; border-radius:50%; background:#d99413; border:1.5px solid #fff"></span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Чеки</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">Подтверждение оплат</div></div>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; margin-left:auto; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <!-- Tabs -->
+    <div style="flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; padding:12px 26px; display:flex; align-items:center; gap:22px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <div onClick="{{ t.select }}" style="font-weight:600; font-size:13.5px; color:{{ t.color }}; padding:4px 2px; border-bottom:2px solid {{ t.border }}; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap">{{ t.label }}<span style="font-weight:700; font-size:11px; color:{{ t.countColor }}; background:{{ t.countBg }}; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ t.count }}</span></div>
+      </sc-for>
+    </div>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:24px 26px 60px">
+      <div style="max-width:920px; margin:0 auto">
+
+        <!-- Rule banner (only on pending) -->
+        <sc-if value="{{ showRuleBanner }}">
+          <div style="display:flex; align-items:flex-start; gap:11px; background:#fffaf0; border:1px solid #f5e2c8; border-radius:12px; padding:13px 16px; margin-bottom:18px">
+            <span class="ms" style="font-size:20px; color:#d99413; flex-shrink:0; margin-top:1px">info</span>
+            <div style="font-weight:500; font-size:13px; line-height:1.5; color:#7a5a1e">Чеки в статусе «на проверке» <b>не уменьшают долг ученика</b>. Баланс изменится только в момент подтверждения оплаты.</div>
+          </div>
+        </sc-if>
+
+        <!-- column header -->
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1.1fr auto; gap:16px; padding:0 18px 10px; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3">
+          <div>Ученик и файл</div><div style="text-align:right">Сумма</div><div>Статус</div><div></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <sc-for list="{{ receipts }}" as="r" hint-placeholder-count="4">
+            <div style="background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ r.accent }}; border-radius:12px; padding:14px 18px; display:grid; grid-template-columns:1.6fr 1fr 1.1fr auto; gap:16px; align-items:center; opacity:{{ r.opacity }}">
+              <!-- student + file -->
+              <div style="display:flex; align-items:center; gap:12px; min-width:0">
+                <div style="width:40px; height:40px; flex-shrink:0; border-radius:11px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:{{ r.bg }}; color:{{ r.color }}">{{ r.initials }}</div>
+                <div style="min-width:0">
+                  <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ r.name }}</div>
+                  <div onClick="{{ r.open }}" style="display:inline-flex; align-items:center; gap:6px; margin-top:3px; font-weight:500; font-size:12px; color:#3b5bdb; cursor:pointer"><span class="ms" style="font-size:15px">{{ r.fileIcon }}</span>{{ r.file }} <span style="color:#aab2bf">· {{ r.when }}</span></div>
+                </div>
+              </div>
+              <!-- amount -->
+              <div style="text-align:right; font-weight:800; font-size:17px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em">{{ r.amountFmt }} ₽</div>
+              <!-- status -->
+              <div><span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:{{ r.stBg }}; color:{{ r.stColor }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ r.stDot }}"></span>{{ r.stLabel }}</span></div>
+              <!-- actions -->
+              <div style="display:flex; align-items:center; gap:8px; justify-content:flex-end">
+                <sc-if value="{{ r.isPending }}">
+                  <button onClick="{{ r.confirm }}" style="background:#3b5bdb; color:#fff; border:none; padding:8px 15px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#2f49b8">Подтвердить</button>
+                  <button onClick="{{ r.reject }}" style="background:#fff; color:#c0362f; border:1px solid #f4cdca; padding:8px 13px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#fdf3f2">Отклонить</button>
+                </sc-if>
+                <sc-if value="{{ r.isResolved }}">
+                  <span style="display:inline-flex; align-items:center; gap:6px; font-weight:500; font-size:12px; color:#8b94a3"><span class="ms" style="font-size:16px">{{ r.resolvedIcon }}</span>{{ r.resolvedNote }}</span>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ empty }}">
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; color:#8b94a3">
+            <div style="width:60px; height:60px; border-radius:16px; background:#e3f4ec; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:30px; color:#18a866">task_alt</span></div>
+            <div style="font-weight:700; font-size:15px; color:#5a6472">Чеков на проверке нет</div>
+            <div style="font-weight:500; font-size:13px; margin-top:3px">Все оплаты обработаны</div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONFIRM/REJECT MODAL ============ -->
+  <sc-if value="{{ modalOpen }}">
+    <div onClick="{{ closeModal }}" style="position:fixed; inset:0; background:rgba(20,24,33,.4); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:520px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); overflow:hidden; animation:modalIn .26s cubic-bezier(.4,0,.2,1)">
+        <!-- file preview area -->
+        <div style="background:#eef2f7; border-bottom:1px solid #e6eaf0; padding:22px; display:flex; align-items:center; justify-content:center; position:relative; min-height:150px">
+          <span onClick="{{ closeModal }}" class="ms" style="position:absolute; right:14px; top:14px; font-size:24px; color:#5a6472; cursor:pointer; background:#fff; border-radius:8px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(20,24,33,.12)">close</span>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:10px">
+            <div style="width:64px; height:64px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(20,24,33,.1)"><span class="ms" style="font-size:34px; color:#c0362f">{{ mFileIcon }}</span></div>
+            <div style="font-weight:600; font-size:13.5px; color:#14181f">{{ mFile }}</div>
+            <button style="background:#fff; color:#3b5bdb; border:1px solid #c7d2f7; padding:7px 14px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px">open_in_new</span>Открыть файл</button>
+          </div>
+        </div>
+        <!-- body -->
+        <div style="padding:22px 24px">
+          <div style="font-weight:800; font-size:19px; letter-spacing:-0.01em">Подтверждение оплаты</div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:16px; padding:14px 16px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:12px">
+            <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; background:{{ mBg }}; color:{{ mColor }}">{{ mInitials }}</div>
+            <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:14px">{{ mName }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3">заявлено {{ mWhen }}</div></div>
+            <div style="font-weight:800; font-size:20px; font-variant-numeric:tabular-nums">{{ mAmountFmt }} ₽</div>
+          </div>
+          <!-- balance effect preview -->
+          <div style="margin-top:14px; display:flex; align-items:center; gap:12px; background:#f0f7ff; border:1px solid #d6e6fb; border-radius:12px; padding:13px 16px">
+            <div style="flex:1"><div style="font-weight:500; font-size:11.5px; color:#5a7299">Долг сейчас</div><div style="font-weight:700; font-size:16px; font-variant-numeric:tabular-nums">{{ mDebtFmt }} ₽</div></div>
+            <span class="ms" style="font-size:22px; color:#3b5bdb">arrow_forward</span>
+            <div style="flex:1; text-align:right"><div style="font-weight:500; font-size:11.5px; color:#5a7299">После подтверждения</div><div style="font-weight:700; font-size:16px; font-variant-numeric:tabular-nums; color:{{ mAfterColor }}">{{ mAfterFmt }} ₽</div></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:7px; margin-top:12px; font-weight:500; font-size:12px; color:#8b94a3"><span class="ms" style="font-size:16px">bolt</span>Долг ученика уменьшится только сейчас — при подтверждении.</div>
+
+          <div style="margin-top:20px; display:flex; gap:10px">
+            <button onClick="{{ doReject }}" style="flex:1; background:#fff; color:#c0362f; border:1px solid #f4cdca; padding:12px; border-radius:12px; font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .15s" style-hover="background:#fdf3f2"><span class="ms" style="font-size:19px">close</span>Отклонить</button>
+            <button onClick="{{ doConfirm }}" style="flex:2; background:#3b5bdb; color:#fff; border:none; padding:12px; border-radius:12px; font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .15s" style-hover="background:#2f49b8"><span class="ms" style="font-size:19px">check_circle</span>Подтвердить оплату</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      tab: 'pending',
+      nextId: 1,
+      toasts: [],
+      modalId: null,
+      receipts: [
+        { id: 'r1', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', file: 'чек_оплата.pdf', fileIcon: 'picture_as_pdf', when: 'сегодня в 14:20', amount: 5000, debt: 1500, status: 'pending' },
+        { id: 'r2', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', file: 'чек.jpg', fileIcon: 'image', when: 'сегодня в 11:05', amount: 8000, debt: 8000, status: 'pending' },
+        { id: 'r3', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', file: 'оплата_сент.pdf', fileIcon: 'picture_as_pdf', when: 'вчера в 18:40', amount: 5000, debt: 6000, status: 'pending' },
+        { id: 'r4', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', file: 'квитанция.pdf', fileIcon: 'picture_as_pdf', when: '6 сентября', amount: 4000, debt: 14000, status: 'confirmed' },
+        { id: 'r5', initials: 'ТО', bg: '#f3eafe', color: '#7c3aed', name: 'Тимур Орлов', file: 'скрин.png', fileIcon: 'image', when: '4 сентября', amount: 3000, debt: 9000, status: 'rejected' },
+      ],
+    };
+    this._timers = [];
+  }
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 5000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  fmt(n) { return Math.abs(n).toLocaleString('ru-RU'); }
+  fmtDebt(n) { return (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU'); }
+
+  _openModal(id) { this.setState({ modalId: id }); }
+  _closeModal() { this.setState({ modalId: null }); }
+
+  _confirm(id) {
+    const r = this.state.receipts.find(x => x.id === id);
+    this.setState(s => ({ modalId: null, receipts: s.receipts.map(x => x.id === id ? { ...x, status: 'confirmed' } : x) }));
+    if (r) this._toast({ icon: 'check_circle', color: '#18a866', title: 'Оплата подтверждена', body: r.name + ' · долг −' + this.fmt(r.amount) + ' ₽' });
+  }
+  _reject(id) {
+    const r = this.state.receipts.find(x => x.id === id);
+    this.setState(s => ({ modalId: null, receipts: s.receipts.map(x => x.id === id ? { ...x, status: 'rejected' } : x) }));
+    if (r) this._toast({ icon: 'cancel', color: '#e0584f', title: 'Чек отклонён', body: r.name + ' · долг не изменился' });
+  }
+
+  STATUS = {
+    pending:   { label: 'на проверке', dot: '#d99413', bg: '#fbeecd', color: '#8a5a00', accent: '#d99413' },
+    confirmed: { label: 'подтверждён', dot: '#18a866', bg: '#e3f4ec', color: '#0f7a4f', accent: '#18a866' },
+    rejected:  { label: 'отклонён',    dot: '#e0584f', bg: '#fce8e7', color: '#c0362f', accent: '#e0584f' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const tab = this.state.tab;
+    const counts = { pending: 0, confirmed: 0, rejected: 0 };
+    this.state.receipts.forEach(r => counts[r.status]++);
+
+    const tabDefs = [
+      { key: 'pending', label: 'На проверке' },
+      { key: 'confirmed', label: 'Подтверждённые' },
+      { key: 'rejected', label: 'Отклонённые' },
+    ];
+    const tabs = tabDefs.map(t => {
+      const active = tab === t.key;
+      return {
+        label: t.label, count: counts[t.key],
+        color: active ? '#2f49b8' : '#5a6472',
+        border: active ? '#3b5bdb' : 'transparent',
+        countBg: active ? '#e9edfd' : '#eef2f7',
+        countColor: active ? '#2f49b8' : '#8b94a3',
+        select: () => this.setState({ tab: t.key }),
+      };
+    });
+
+    const visible = this.state.receipts.filter(r => r.status === tab);
+    const receipts = visible.map(r => {
+      const st = this.STATUS[r.status];
+      return {
+        ...r,
+        accent: st.accent,
+        opacity: r.status === 'rejected' ? '.72' : '1',
+        amountFmt: this.fmt(r.amount),
+        stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
+        isPending: r.status === 'pending',
+        isResolved: r.status !== 'pending',
+        resolvedIcon: r.status === 'confirmed' ? 'check_circle' : 'cancel',
+        resolvedNote: r.status === 'confirmed' ? 'учтено в балансе' : 'не учтено',
+        open: () => this._openModal(r.id),
+        confirm: () => this._openModal(r.id),
+        reject: () => this._reject(r.id),
+      };
+    });
+
+    const m = this.state.modalId ? this.state.receipts.find(x => x.id === this.state.modalId) : null;
+    const after = m ? m.debt - m.amount : 0;
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+
+      pendingCount: counts.pending,
+      pendingBadgeShow: !collapsed && counts.pending > 0,
+      collapsedPending: collapsed && counts.pending > 0,
+
+      tabs,
+      receipts,
+      empty: visible.length === 0,
+      showRuleBanner: tab === 'pending' && visible.length > 0,
+
+      modalOpen: !!m,
+      closeModal: () => this._closeModal(),
+      mFile: m ? m.file : '',
+      mFileIcon: m ? m.fileIcon : 'description',
+      mInitials: m ? m.initials : '',
+      mBg: m ? m.bg : '#eef2f7',
+      mColor: m ? m.color : '#5a6472',
+      mName: m ? m.name : '',
+      mWhen: m ? m.when : '',
+      mAmountFmt: m ? this.fmt(m.amount) : '',
+      mDebtFmt: m ? this.fmtDebt(m.debt) : '',
+      mAfterFmt: m ? this.fmtDebt(after) : '',
+      mAfterColor: after < 0 ? '#0f7a4f' : (after === 0 ? '#0f7a4f' : '#14181f'),
+      doConfirm: () => this._confirm(this.state.modalId),
+      doReject: () => this._reject(this.state.modalId),
+
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

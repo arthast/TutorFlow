@@ -35,6 +35,10 @@
 lifecycle + finance corrections, 5J chat-service, 5J-later realtime-service (WebSocket +
 Redis). Осталось: 5K production hardening.
 
+Frontend-план вынесен отдельно: `docs/frontend-roadmap.md`. Там зафиксированы
+реализованные reference-based страницы и skeleton-план для оставшихся экранов
+без дизайн-референсов.
+
 ---
 
 ## Текущее межсервисное взаимодействие (зафиксировано по коду)

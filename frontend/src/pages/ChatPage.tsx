@@ -16,6 +16,7 @@ import { useAuth } from "../auth";
 import { useOnlineStatus, useRealtimeEvent } from "../realtime";
 import { AppShell, ErrorMsg, FileChips, Icon, fmtDate, useAsync } from "../ui";
 import { initials, teacherNav } from "./teacherNav";
+import { studentNav } from "./studentNav";
 
 interface ChatContact {
   id: string;
@@ -103,14 +104,11 @@ export default function ChatPage() {
       assignments: teacherDashboard.data?.pending_submissions_count,
       receipts: teacherDashboard.data?.pending_receipts_count,
     })
-    : [
-      { label: "Главная", icon: "dashboard", href: "/student" },
-      { label: "Мои занятия", icon: "calendar_month", href: "/student" },
-      { label: "Домашние задания", icon: "assignment", href: "/student", badge: studentDashboard.data?.summaries.reduce((sum, item) => sum + item.activity.active_assignments_count, 0) },
-      { label: "Оплата", icon: "payments", href: "/student" },
-      { label: "Мои чеки", icon: "receipt_long", href: "/student", badge: studentDashboard.data?.pending_receipts_count },
-      { label: "Чат", icon: "chat_bubble", href: "/student/chat", active: true },
-    ];
+    : studentNav("chat", {
+      assignments: studentDashboard.data?.summaries.reduce((sum, item) => sum + item.activity.active_assignments_count, 0),
+      lessons: studentDashboard.data?.summaries.reduce((sum, item) => sum + item.activity.upcoming_lessons_count, 0),
+      receipts: studentDashboard.data?.pending_receipts_count,
+    });
 
   return (
     <AppShell

@@ -146,7 +146,7 @@
 
             <div style="margin-top:16px">
               <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Комментарий {{ commentReq }}</label>
-              <textarea ref="{{ taRef }}" onInput="{{ setComment }}" placeholder="{{ commentPlaceholder }}" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; min-height:90px; resize:vertical; line-height:1.5"></textarea>
+              <textarea value="{{ commentText }}" onInput="{{ setComment }}" placeholder="{{ commentPlaceholder }}" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; min-height:90px; resize:vertical; line-height:1.5"></textarea>
               <div style="display:flex; gap:7px; margin-top:9px; flex-wrap:wrap">
                 <sc-for list="{{ quickReplies }}" as="q" hint-placeholder-count="3">
                   <span onClick="{{ q.add }}" style="font-weight:600; font-size:12px; color:#3b5bdb; background:#eef2fb; border:1px solid #dbe3f7; border-radius:999px; padding:5px 11px; cursor:pointer; transition:background .15s" style-hover="background:#e2e9f9">{{ q.label }}</span>
@@ -217,9 +217,10 @@ class Component extends DCLogic {
   _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
 
   _addComment(text) {
-    const cur = (this._ta && this._ta.value) ? this._ta.value.replace(/\s+$/, '') + ' ' + text : text;
-    if (this._ta) this._ta.value = cur;
-    this.setState({ comment: cur });
+    this.setState(s => {
+      const prev = typeof s.comment === 'string' ? s.comment : '';
+      return { comment: prev ? (prev.replace(/\s+$/, '') + ' ' + text) : text };
+    });
   }
 
   _submit() {
@@ -279,7 +280,7 @@ class Component extends DCLogic {
       reviseIcon: revise ? 'edit_note' : 'edit',
       reviseTextColor: revise ? '#8a5a00' : '#14181f',
 
-      taRef: (el) => { this._ta = el; },
+      commentText: (typeof this.state.comment === 'string' ? this.state.comment : ''),
       setComment: (e) => this.setState({ comment: e && e.target ? e.target.value : '' }),
       commentReq: revise ? '(обязательно)' : '(необязательно)',
       commentPlaceholder: revise ? 'Что нужно исправить…' : 'Похвалите или дайте совет…',
@@ -287,7 +288,7 @@ class Component extends DCLogic {
 
       attachReview: () => this.setState(s => ({ reviewFile: !s.reviewFile })),
       reviewFile: this.state.reviewFile,
-      reviewFileLabel: this.state.reviewFile ? 'разметка_проверка.pdf · 210 КБ' : 'Прикрепить файл с разметкой',
+      reviewFileLabel: this.state.reviewFile ? 'разметка_проверка.pdf · 210 КБ' : 'Прикрепить файл',
       reviewFileIcon: this.state.reviewFile ? 'check_circle' : 'attach_file',
       reviewFileIconColor: this.state.reviewFile ? '#18a866' : '#8b94a3',
       reviewFileBorder: this.state.reviewFile ? '#9cd0a8' : '#cdd5df',

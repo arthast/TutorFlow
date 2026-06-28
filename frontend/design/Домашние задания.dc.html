@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px">T</div>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Домашние задания</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">Выдача и проверка работ</div></div>
+      <button onClick="{{ openCreate }}" style="background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-left:auto; transition:background .15s" style-hover="background:#2f49b8"><span class="ms" style="font-size:18px">add</span>Выдать ДЗ</button>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <!-- Tabs -->
+    <div style="flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; padding:12px 26px; display:flex; align-items:center; gap:20px">
+      <div style="display:flex; gap:20px; overflow:hidden">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <div onClick="{{ t.select }}" style="font-weight:600; font-size:13.5px; color:{{ t.color }}; padding:4px 2px; border-bottom:2px solid {{ t.border }}; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap">{{ t.label }}<span style="font-weight:700; font-size:11px; color:{{ t.countColor }}; background:{{ t.countBg }}; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ t.count }}</span></div>
+        </sc-for>
+      </div>
+      <div style="position:relative; width:220px; margin-left:auto"><span class="ms" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:18px; color:#8b94a3">search</span><input value="{{ query }}" onInput="{{ setQuery }}" placeholder="Поиск по теме или ученику…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px 10px 8px 34px; border:1px solid #d4dae3; border-radius:9px; background:#f8fafc"></div>
+    </div>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:22px 26px 60px">
+      <div style="max-width:960px; margin:0 auto; display:flex; flex-direction:column; gap:12px">
+        <sc-for list="{{ items }}" as="h" hint-placeholder-count="5">
+          <div style="background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ h.accent }}; border-radius:13px; padding:16px 18px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:box-shadow .15s" style-hover="box-shadow:0 4px 16px rgba(20,24,33,.07)">
+            <div style="width:42px; height:42px; flex-shrink:0; border-radius:11px; display:flex; align-items:center; justify-content:center; background:{{ h.iconBg }}; color:{{ h.iconColor }}"><span class="ms" style="font-size:22px">{{ h.icon }}</span></div>
+            <div style="flex:1; min-width:0">
+              <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap"><span style="font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ h.title }}</span><sc-if value="{{ h.hasFiles }}"><span style="display:inline-flex; align-items:center; gap:4px; font-weight:500; font-size:11.5px; color:#8b94a3"><span class="ms" style="font-size:14px">attach_file</span>{{ h.files }}</span></sc-if></div>
+              <div style="display:flex; align-items:center; gap:13px; margin-top:5px; font-weight:500; font-size:12.5px; color:#8b94a3; flex-wrap:wrap">
+                <span style="display:inline-flex; align-items:center; gap:6px"><span style="width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:9.5px; background:{{ h.avBg }}; color:{{ h.avColor }}">{{ h.initials }}</span>{{ h.student }}</span>
+                <span style="display:inline-flex; align-items:center; gap:5px; color:{{ h.deadlineColor }}"><span class="ms" style="font-size:15px">schedule</span>{{ h.deadline }}</span>
+              </div>
+            </div>
+            <span style="display:inline-flex; align-items:center; gap:7px; padding:5px 12px 5px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:{{ h.stBg }}; color:{{ h.stColor }}; flex-shrink:0"><span style="width:6px; height:6px; border-radius:50%; background:{{ h.stDot }}"></span>{{ h.stLabel }}</span>
+            <button onClick="{{ h.action }}" style="background:{{ h.btnBg }}; color:{{ h.btnColor }}; border:{{ h.btnBorder }}; padding:8px 15px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; white-space:nowrap; transition:filter .15s" style-hover="filter:brightness(.97)">{{ h.btnLabel }}</button>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ empty }}">
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; color:#8b94a3"><div style="width:60px; height:60px; border-radius:16px; background:#eef2f7; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:30px; color:#aab2bf">assignment</span></div><div style="font-weight:700; font-size:15px; color:#5a6472">Заданий нет</div><div style="font-weight:500; font-size:13px; margin-top:3px">В этой вкладке пока пусто</div></div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CREATE HOMEWORK MODAL ============ -->
+  <sc-if value="{{ createOpen }}">
+    <div onClick="{{ closeCreate }}" style="position:fixed; inset:0; background:rgba(20,24,33,.4); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:500px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); padding:26px; animation:modalIn .26s cubic-bezier(.4,0,.2,1); max-height:88vh; overflow-y:auto" class="tf-scroll">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between"><div><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Выдать домашнее задание</div><div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">Тема, материалы и дедлайн</div></div><span onClick="{{ closeCreate }}" class="ms" style="font-size:24px; color:#8b94a3; cursor:pointer">close</span></div>
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:15px">
+          <div><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Ученик</label><div style="position:relative"><select style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; appearance:none"><option>Марк Лебедев</option><option>Аня Климова</option><option>Игорь Петров</option><option>Соня Васильева</option></select><span class="ms" style="position:absolute; right:11px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; pointer-events:none">expand_more</span></div></div>
+          <div><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Тема задания</label><input placeholder="Например: Квадратные уравнения · вариант 5" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div>
+          <div><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Описание</label><textarea placeholder="Что нужно сделать, на что обратить внимание…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; min-height:72px; resize:vertical; line-height:1.5"></textarea></div>
+          <div style="display:flex; gap:12px">
+            <div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Дедлайн · дата</label><input type="date" value="2026-09-12" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div>
+            <div style="width:130px"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Время</label><input type="time" value="18:00" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div>
+          </div>
+          <div>
+            <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Материалы задания</label>
+            <sc-if value="{{ hasAttach }}">
+              <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px">
+                <sc-for list="{{ attachments }}" as="a" hint-placeholder-count="0">
+                  <div style="display:flex; align-items:center; gap:11px; background:#f6f8fb; border:1px solid #eef2f7; border-radius:10px; padding:9px 12px"><span class="ms" style="font-size:20px; color:#3b5bdb">{{ a.icon }}</span><div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ a.name }}</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">{{ a.size }}</div></div><span onClick="{{ a.remove }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer">close</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div onClick="{{ addAttach }}" style="display:flex; align-items:center; justify-content:center; gap:9px; border:1.5px dashed #cdd5df; border-radius:11px; padding:13px; cursor:pointer; color:#5a6472; background:#fafbfc; transition:background .15s" style-hover="background:#f4f6f9"><span class="ms" style="font-size:20px; color:#8b94a3">upload_file</span><span style="font-weight:600; font-size:13px">Прикрепить файл</span></div>
+          </div>
+        </div>
+        <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end">
+          <button onClick="{{ closeCreate }}" style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отмена</button>
+          <button onClick="{{ submitCreate }}" style="background:#3b5bdb; color:#fff; border:none; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px"><span class="ms" style="font-size:18px">send</span>Выдать задание</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      tab: 'all',
+      query: '',
+      nextId: 1,
+      toasts: [],
+      createOpen: false,
+      attachments: [],
+      items: [
+        { id: 'h1', title: 'Производные функций', student: 'Игорь Петров', initials: 'ИП', avBg: '#eef2f7', avColor: '#5a6472', deadline: 'сегодня, 22:00', files: 1, status: 'submitted' },
+        { id: 'h2', title: 'Квадратные уравнения · вариант 4', student: 'Марк Лебедев', initials: 'МЛ', avBg: '#e9edfd', avColor: '#3b5bdb', deadline: 'завтра, 18:00', files: 2, status: 'assigned' },
+        { id: 'h3', title: 'Производные функций', student: 'Марк Лебедев', initials: 'МЛ', avBg: '#e9edfd', avColor: '#3b5bdb', deadline: 'сегодня, 22:00', files: 0, status: 'revise' },
+        { id: 'h4', title: 'Законы Ньютона · задачи', student: 'Аня Климова', initials: 'АК', avBg: '#e3f4ec', avColor: '#0f7a4f', deadline: '14 сентября', files: 1, status: 'assigned' },
+        { id: 'h5', title: 'Линейные функции · вариант 1', student: 'Марк Лебедев', initials: 'МЛ', avBg: '#e9edfd', avColor: '#3b5bdb', deadline: 'сдано 6 сент', files: 1, status: 'done' },
+        { id: 'h6', title: 'Подобие треугольников', student: 'Соня Васильева', initials: 'СВ', avBg: '#fbeecd', avColor: '#8a5a00', deadline: 'просрочено 5 сент', files: 0, status: 'overdue' },
+        { id: 'h7', title: 'Кинематика · контрольная', student: 'Аня Климова', initials: 'АК', avBg: '#e3f4ec', avColor: '#0f7a4f', deadline: 'проверено 4 сент', files: 2, status: 'done' },
+      ],
+    };
+    this._timers = [];
+  }
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 4000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _openCreate() { this.setState({ createOpen: true, attachments: [] }); }
+  _closeCreate() { this.setState({ createOpen: false }); }
+  _addAttach() {
+    const samples = [
+      { icon: 'picture_as_pdf', name: 'условие_задания.pdf', size: '180 КБ · PDF' },
+      { icon: 'image', name: 'пример_решения.png', size: '420 КБ · фото' },
+      { icon: 'description', name: 'теория.docx', size: '64 КБ · DOCX' },
+    ];
+    this.setState(s => ({ nextId: s.nextId + 1, attachments: s.attachments.concat([{ id: 'a' + s.nextId, ...samples[s.attachments.length % samples.length] }]) }));
+  }
+  _removeAttach(id) { this.setState(s => ({ attachments: s.attachments.filter(a => a.id !== id) })); }
+  _submitCreate() { this.setState({ createOpen: false }); this._toast({ icon: 'check_circle', color: '#18a866', title: 'Задание выдано', body: 'Ученик получит уведомление' }); }
+
+  STATUS = {
+    assigned:  { label: 'выдано',       dot: '#3b5bdb', bg: '#e9edfd', color: '#2f49b8', accent: '#3b5bdb', icon: 'assignment', iconBg: '#e9edfd', iconColor: '#3b5bdb', cat: 'active' },
+    submitted: { label: 'сдано',        dot: '#d99413', bg: '#fbeecd', color: '#8a5a00', accent: '#d99413', icon: 'assignment_turned_in', iconBg: '#fbeecd', iconColor: '#8a5a00', cat: 'review' },
+    revise:    { label: 'нужны правки', dot: '#d99413', bg: '#fbeecd', color: '#8a5a00', accent: '#d99413', icon: 'edit_note', iconBg: '#fef0e0', iconColor: '#b3681a', cat: 'active' },
+    done:      { label: 'выполнено',    dot: '#18a866', bg: '#e3f4ec', color: '#0f7a4f', accent: '#18a866', icon: 'task_alt', iconBg: '#e3f4ec', iconColor: '#0f7a4f', cat: 'done' },
+    overdue:   { label: 'просрочено',   dot: '#e0584f', bg: '#fce8e7', color: '#c0362f', accent: '#e0584f', icon: 'event_busy', iconBg: '#fce8e7', iconColor: '#c0362f', cat: 'active' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const tab = this.state.tab;
+    const q = this.state.query.trim().toLowerCase();
+
+    const counts = { all: 0, review: 0, active: 0, done: 0 };
+    this.state.items.forEach(i => { counts.all++; const cat = this.STATUS[i.status].cat; if (cat === 'review') counts.review++; if (cat === 'active' || cat === 'review') counts.active++; if (cat === 'done') counts.done++; });
+
+    const tabDefs = [
+      { key: 'all', label: 'Все', count: counts.all },
+      { key: 'review', label: 'На проверку', count: counts.review },
+      { key: 'active', label: 'В работе', count: counts.active },
+      { key: 'done', label: 'Выполнено', count: counts.done },
+    ];
+    const tabs = tabDefs.map(t => {
+      const active = tab === t.key;
+      return {
+        label: t.label, count: t.count,
+        color: active ? '#2f49b8' : '#5a6472',
+        border: active ? '#3b5bdb' : 'transparent',
+        countBg: active ? '#e9edfd' : '#eef2f7',
+        countColor: active ? '#2f49b8' : '#8b94a3',
+        select: () => this.setState({ tab: t.key }),
+      };
+    });
+
+    let list = this.state.items.filter(i => {
+      const cat = this.STATUS[i.status].cat;
+      if (tab === 'review' && cat !== 'review') return false;
+      if (tab === 'active' && !(cat === 'active' || cat === 'review')) return false;
+      if (tab === 'done' && cat !== 'done') return false;
+      if (q && !(i.title.toLowerCase().includes(q) || i.student.toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    const items = list.map(i => {
+      const st = this.STATUS[i.status];
+      const review = st.cat === 'review';
+      const overdue = i.status === 'overdue';
+      return {
+        ...i,
+        accent: st.accent, icon: st.icon, iconBg: st.iconBg, iconColor: st.iconColor,
+        stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
+        hasFiles: i.files > 0,
+        deadlineColor: overdue ? '#c0362f' : '#8b94a3',
+        btnLabel: review ? 'Проверить' : (i.status === 'done' ? 'Открыть' : 'Подробнее'),
+        btnBg: review ? '#3b5bdb' : '#fff',
+        btnColor: review ? '#fff' : '#5a6472',
+        btnBorder: review ? 'none' : '1px solid #e6eaf0',
+        action: () => this._toast({ icon: review ? 'rate_review' : 'open_in_new', color: '#3b5bdb', title: review ? 'Проверка работы' : 'Открываю', body: i.title + ' · ' + i.student }),
+      };
+    });
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      tabs,
+      query: this.state.query,
+      setQuery: (e) => this.setState({ query: e && e.target ? e.target.value : '' }),
+      items,
+      empty: items.length === 0,
+      openCreate: () => this._openCreate(),
+      createOpen: this.state.createOpen,
+      closeCreate: () => this._closeCreate(),
+      hasAttach: this.state.attachments.length > 0,
+      attachments: this.state.attachments.map(a => ({ ...a, remove: () => this._removeAttach(a.id) })),
+      addAttach: () => this._addAttach(),
+      submitCreate: () => this._submitCreate(),
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

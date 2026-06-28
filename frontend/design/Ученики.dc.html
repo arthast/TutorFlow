@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px">T</div>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Ученики</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">{{ totalLabel }}</div></div>
+      <button onClick="{{ openCreate }}" style="background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-left:auto; transition:background .15s" style-hover="background:#2f49b8"><span class="ms" style="font-size:18px">person_add</span>Новый ученик</button>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <!-- Toolbar -->
+    <div style="flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; padding:12px 26px; display:flex; align-items:center; gap:12px">
+      <div style="position:relative; width:260px; max-width:40vw"><span class="ms" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:19px; color:#8b94a3">search</span><input value="{{ query }}" onInput="{{ setQuery }}" placeholder="Поиск по имени или предмету…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; padding:9px 12px 9px 37px; border:1px solid #d4dae3; border-radius:10px; background:#f8fafc"></div>
+      <div style="display:flex; gap:6px; margin-left:4px">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+          <div onClick="{{ f.select }}" style="font-weight:600; font-size:12.5px; padding:7px 13px; border-radius:9px; cursor:pointer; background:{{ f.bg }}; color:{{ f.color }}; border:1px solid {{ f.border }}; white-space:nowrap">{{ f.label }}</div>
+        </sc-for>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:4px; background:#eef2f7; border-radius:9px; padding:3px">
+        <div onClick="{{ setGrid }}" style="width:32px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{ gridBg }}; color:{{ gridColor }}"><span class="ms" style="font-size:19px">grid_view</span></div>
+        <div onClick="{{ setList }}" style="width:32px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{ listBg }}; color:{{ listColor }}"><span class="ms" style="font-size:19px">view_list</span></div>
+      </div>
+    </div>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:22px 26px 60px">
+
+      <!-- GRID VIEW -->
+      <sc-if value="{{ isGrid }}">
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px">
+          <sc-for list="{{ students }}" as="s" hint-placeholder-count="6">
+            <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; cursor:pointer; transition:box-shadow .15s, border-color .15s" style-hover="box-shadow:0 6px 20px rgba(20,24,33,.08); border-color:#d4dae3">
+              <div style="display:flex; align-items:center; gap:13px">
+                <div style="position:relative; flex-shrink:0">
+                  <div style="width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; background:{{ s.bg }}; color:{{ s.color }}">{{ s.initials }}</div>
+                  <span style="position:absolute; right:-2px; bottom:-2px; width:12px; height:12px; border-radius:50%; background:{{ s.presence }}; border:2.5px solid #fff"></span>
+                </div>
+                <div style="flex:1; min-width:0">
+                  <div style="font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ s.name }}</div>
+                  <div style="font-weight:500; font-size:12.5px; color:#8b94a3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ s.subject }} · {{ s.grade }}</div>
+                </div>
+                <span class="ms" style="font-size:20px; color:#c4ccd6">chevron_right</span>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:14px">
+                <div style="flex:1; background:#f8fafc; border:1px solid #eef2f7; border-radius:10px; padding:9px 11px">
+                  <div style="font-weight:500; font-size:11px; color:#8b94a3">{{ s.debtLabel }}</div>
+                  <div style="font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; color:{{ s.debtColor }}; margin-top:1px">{{ s.debtFmt }} ₽</div>
+                </div>
+                <div style="flex:1; background:#f8fafc; border:1px solid #eef2f7; border-radius:10px; padding:9px 11px">
+                  <div style="font-weight:500; font-size:11px; color:#8b94a3">Занятие</div>
+                  <div style="font-weight:700; font-size:13px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ s.next }}</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; margin-top:13px">
+                <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:{{ s.tagBg }}; color:{{ s.tagColor }}"><span style="width:5px; height:5px; border-radius:50%; background:{{ s.tagDot }}"></span>{{ s.tag }}</span>
+                <sc-if value="{{ s.hasPending }}"><span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-weight:600; font-size:11.5px; background:#fbeecd; color:#8a5a00"><span class="ms" style="font-size:14px">hourglass_top</span>чек</span></sc-if>
+                <button style="margin-left:auto; width:32px; height:32px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:18px">chat_bubble</span></button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- LIST VIEW -->
+      <sc-if value="{{ isList }}">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+          <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.3fr 40px; gap:16px; padding:12px 20px; background:#fafbfd; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3"><div>Ученик</div><div>Предмет</div><div style="text-align:right">Долг</div><div>Статус</div><div></div></div>
+          <sc-for list="{{ students }}" as="s" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.3fr 40px; gap:16px; padding:13px 20px; border-bottom:1px solid #f3f5f8; align-items:center; cursor:pointer; transition:background .15s" style-hover="background:#f8fafc">
+              <div style="display:flex; align-items:center; gap:11px; min-width:0"><div style="position:relative; flex-shrink:0"><div style="width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; background:{{ s.bg }}; color:{{ s.color }}">{{ s.initials }}</div><span style="position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%; background:{{ s.presence }}; border:2px solid #fff"></span></div><div style="min-width:0"><div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ s.name }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3">{{ s.grade }}</div></div></div>
+              <div style="font-weight:500; font-size:13.5px; color:#5a6472">{{ s.subject }}</div>
+              <div style="text-align:right; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; color:{{ s.debtColor }}">{{ s.debtFmt }} ₽</div>
+              <div><span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:12px; background:{{ s.tagBg }}; color:{{ s.tagColor }}"><span style="width:5px; height:5px; border-radius:50%; background:{{ s.tagDot }}"></span>{{ s.tag }}</span></div>
+              <div style="text-align:center; color:#c4ccd6"><span class="ms" style="font-size:20px">chevron_right</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ empty }}">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; color:#8b94a3"><div style="width:60px; height:60px; border-radius:16px; background:#eef2f7; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:30px; color:#aab2bf">person_search</span></div><div style="font-weight:700; font-size:15px; color:#5a6472">Никого не найдено</div><div style="font-weight:500; font-size:13px; margin-top:3px">Измените запрос или фильтр</div></div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- ============ CREATE STUDENT MODAL ============ -->
+  <sc-if value="{{ createOpen }}">
+    <div onClick="{{ closeCreate }}" style="position:fixed; inset:0; background:rgba(20,24,33,.4); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:460px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); padding:26px; animation:modalIn .26s cubic-bezier(.4,0,.2,1)">
+        <sc-if value="{{ createStep1 }}">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between"><div><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Новый ученик</div><div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">Создайте аккаунт и временный пароль</div></div><span onClick="{{ closeCreate }}" class="ms" style="font-size:24px; color:#8b94a3; cursor:pointer">close</span></div>
+          <div style="margin-top:20px; display:flex; flex-direction:column; gap:15px">
+            <div style="display:flex; gap:12px">
+              <div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Имя и фамилия</label><input value="{{ fName }}" onInput="{{ setFName }}" placeholder="Например: Лиза Орлова" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div>
+            </div>
+            <div><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Email ученика</label><div style="position:relative"><span class="ms" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:19px; color:#8b94a3">mail</span><input value="{{ fEmail }}" onInput="{{ setFEmail }}" placeholder="student@example.ru" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px 11px 40px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div></div>
+            <div style="display:flex; gap:12px">
+              <div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Предмет</label><div style="position:relative"><select style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; appearance:none"><option>Математика</option><option>Физика</option><option>Информатика</option></select><span class="ms" style="position:absolute; right:11px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; pointer-events:none">expand_more</span></div></div>
+              <div style="width:120px"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Класс</label><input placeholder="9" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff"></div>
+            </div>
+            <div><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Временный пароль</label>
+              <div style="display:flex; gap:8px">
+                <div style="position:relative; flex:1"><span class="ms" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:19px; color:#8b94a3">key</span><input value="{{ tempPw }}" readonly style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px 11px 40px; border:1px solid #d4dae3; border-radius:11px; background:#f8fafc; font-variant-numeric:tabular-nums; letter-spacing:.04em"></div>
+                <button onClick="{{ regenPw }}" style="width:44px; border:1px solid #e6eaf0; background:#fff; border-radius:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:20px">autorenew</span></button>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; margin-top:9px; font-weight:500; font-size:12px; color:#8b94a3"><span class="ms" style="font-size:15px">info</span>Ученик сменит его при первом входе</div>
+            </div>
+          </div>
+          <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end">
+            <button onClick="{{ closeCreate }}" style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отмена</button>
+            <button onClick="{{ submitCreate }}" style="background:{{ createBg }}; color:#fff; border:none; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:{{ createCursor }}; opacity:{{ createOpacity }}; display:inline-flex; align-items:center; gap:7px"><span class="ms" style="font-size:18px">person_add</span>Создать</button>
+          </div>
+        </sc-if>
+
+        <!-- step 2: created, show credentials -->
+        <sc-if value="{{ createStep2 }}">
+          <div style="text-align:center; padding:6px 0 0">
+            <div style="width:56px; height:56px; border-radius:16px; background:#e3f4ec; display:flex; align-items:center; justify-content:center; margin:0 auto 14px"><span class="ms" style="font-size:30px; color:#18a866">check_circle</span></div>
+            <div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Ученик создан</div>
+            <div style="font-weight:500; font-size:13.5px; color:#5a6472; margin-top:5px; line-height:1.5">Передайте ученику данные для первого входа.<br>Пароль временный — он сменит его сам.</div>
+          </div>
+          <div style="margin-top:18px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:13px; padding:6px 4px">
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 14px; border-bottom:1px solid #eef2f7"><span class="ms" style="font-size:20px; color:#8b94a3">mail</span><div style="flex:1; min-width:0"><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Email</div><div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ fEmail }}</div></div><span onClick="{{ copyEmail }}" class="ms" style="font-size:19px; color:#3b5bdb; cursor:pointer">content_copy</span></div>
+            <div style="display:flex; align-items:center; gap:12px; padding:11px 14px"><span class="ms" style="font-size:20px; color:#8b94a3">key</span><div style="flex:1; min-width:0"><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Временный пароль</div><div style="font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; letter-spacing:.04em">{{ tempPw }}</div></div><span onClick="{{ copyPw }}" class="ms" style="font-size:19px; color:#3b5bdb; cursor:pointer">content_copy</span></div>
+          </div>
+          <div style="margin-top:20px; display:flex; gap:10px">
+            <button onClick="{{ copyBoth }}" style="flex:1; background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:11px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px"><span class="ms" style="font-size:18px">content_copy</span>Скопировать</button>
+            <button onClick="{{ closeCreate }}" style="flex:1; background:#3b5bdb; color:#fff; border:none; padding:11px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Готово</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;},&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;grid&quot;,&quot;list&quot;],&quot;default&quot;:&quot;grid&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Вид&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      view: 'grid',
+      filter: 'all',
+      query: '',
+      nextId: 1,
+      toasts: [],
+      createOpen: false,
+      createStep: 1,
+      fName: '', fEmail: '', tempPw: this._genPw(),
+      students: [
+        { id: 's1', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', subject: 'Математика', grade: '9 класс', debt: 8000, next: 'Сегодня 17:00', presence: '#18a866', online: true, pending: true },
+        { id: 's2', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', subject: 'Физика', grade: '11 класс', debt: -1500, next: 'Сегодня 18:30', presence: '#18a866', online: true, pending: true },
+        { id: 's3', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', subject: 'Математика', grade: '8 класс', debt: 14000, next: 'Пт 15:30', presence: '#c4ccd6', online: false, pending: false },
+        { id: 's4', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', subject: 'Геометрия', grade: '10 класс', debt: 6000, next: 'Завтра 16:00', presence: '#c4ccd6', online: false, pending: false },
+        { id: 's5', initials: 'ТО', bg: '#f3eafe', color: '#7c3aed', name: 'Тимур Орлов', subject: 'Математика', grade: '11 класс', debt: 0, next: '— не назначено', presence: '#c4ccd6', online: false, pending: false },
+        { id: 's6', initials: 'ДК', bg: '#e0f0f0', color: '#0c6e6e', name: 'Дима Котов', subject: 'Информатика', grade: '9 класс', debt: 3000, next: 'Ср 19:00', presence: '#18a866', online: true, pending: false },
+      ],
+    };
+    this._timers = [];
+  }
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+  _genPw() {
+    const ch = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let p = '';
+    for (let i = 0; i < 8; i++) p += ch[Math.floor(Math.random() * ch.length)];
+    return p;
+  }
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 4000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _openCreate() { this.setState({ createOpen: true, createStep: 1, fName: '', fEmail: '', tempPw: this._genPw() }); }
+  _closeCreate() { this.setState({ createOpen: false }); }
+  _submitCreate() {
+    if (!this.state.fName.trim() || !this.state.fEmail.trim()) { this._toast({ icon: 'error', color: '#e0584f', title: 'Заполните поля', body: 'Нужны имя и email' }); return; }
+    this.setState({ createStep: 2 });
+  }
+
+  fmtDebt(n) { return (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU'); }
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const view = this.state.view;
+    const q = this.state.query.trim().toLowerCase();
+    const filter = this.state.filter;
+
+    const filterDefs = [
+      { key: 'all', label: 'Все' },
+      { key: 'debt', label: 'С долгом' },
+      { key: 'pending', label: 'Ждут чек' },
+      { key: 'online', label: 'Онлайн' },
+    ];
+    const filters = filterDefs.map(f => {
+      const active = filter === f.key;
+      return {
+        label: f.label,
+        bg: active ? '#e9edfd' : '#fff',
+        color: active ? '#2f49b8' : '#5a6472',
+        border: active ? '#c7d2f7' : '#e6eaf0',
+        select: () => this.setState({ filter: f.key }),
+      };
+    });
+
+    let list = this.state.students.filter(s => {
+      if (q && !(s.name.toLowerCase().includes(q) || s.subject.toLowerCase().includes(q))) return false;
+      if (filter === 'debt' && s.debt <= 0) return false;
+      if (filter === 'pending' && !s.pending) return false;
+      if (filter === 'online' && !s.online) return false;
+      return true;
+    });
+
+    const students = list.map(s => {
+      const credit = s.debt < 0;
+      const zero = s.debt === 0;
+      return {
+        ...s,
+        debtFmt: this.fmtDebt(s.debt),
+        debtLabel: credit ? 'Переплата' : 'Долг',
+        debtColor: credit ? '#0f7a4f' : (zero ? '#8b94a3' : '#14181f'),
+        tag: credit ? 'переплата' : (zero ? 'оплачено' : 'есть долг'),
+        tagDot: credit ? '#18a866' : (zero ? '#9aa3b2' : '#d99413'),
+        tagBg: credit ? '#e3f4ec' : (zero ? '#eef2f7' : '#fbeecd'),
+        tagColor: credit ? '#0f7a4f' : (zero ? '#5a6472' : '#8a5a00'),
+        hasPending: s.pending,
+      };
+    });
+
+    const totalDebt = this.state.students.reduce((a, s) => a + Math.max(0, s.debt), 0);
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      totalLabel: this.state.students.length + ' учеников · общий долг ' + this.fmtDebt(totalDebt) + ' ₽',
+
+      query: this.state.query,
+      setQuery: (e) => this.setState({ query: e && e.target ? e.target.value : '' }),
+      filters,
+
+      isGrid: view === 'grid', isList: view === 'list',
+      setGrid: () => this.setState({ view: 'grid' }),
+      setList: () => this.setState({ view: 'list' }),
+      gridBg: view === 'grid' ? '#fff' : 'transparent', gridColor: view === 'grid' ? '#3b5bdb' : '#8b94a3',
+      listBg: view === 'list' ? '#fff' : 'transparent', listColor: view === 'list' ? '#3b5bdb' : '#8b94a3',
+
+      students,
+      empty: students.length === 0,
+
+      createOpen: this.state.createOpen,
+      createStep1: this.state.createStep === 1,
+      createStep2: this.state.createStep === 2,
+      openCreate: () => this._openCreate(),
+      closeCreate: () => this._closeCreate(),
+      fName: this.state.fName, setFName: (e) => this.setState({ fName: e && e.target ? e.target.value : '' }),
+      fEmail: this.state.fEmail, setFEmail: (e) => this.setState({ fEmail: e && e.target ? e.target.value : '' }),
+      tempPw: this.state.tempPw,
+      regenPw: () => this.setState({ tempPw: this._genPw() }),
+      submitCreate: () => this._submitCreate(),
+      createBg: (this.state.fName.trim() && this.state.fEmail.trim()) ? '#3b5bdb' : '#aeb9e8',
+      createCursor: (this.state.fName.trim() && this.state.fEmail.trim()) ? 'pointer' : 'not-allowed',
+      createOpacity: (this.state.fName.trim() && this.state.fEmail.trim()) ? '1' : '.75',
+      copyEmail: () => this._toast({ icon: 'content_copy', color: '#3b5bdb', title: 'Скопировано', body: this.state.fEmail }),
+      copyPw: () => this._toast({ icon: 'content_copy', color: '#3b5bdb', title: 'Скопировано', body: 'Временный пароль' }),
+      copyBoth: () => this._toast({ icon: 'content_copy', color: '#18a866', title: 'Данные скопированы', body: 'Email и пароль' }),
+
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

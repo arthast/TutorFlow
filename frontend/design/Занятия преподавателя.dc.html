@@ -196,7 +196,7 @@ class Component extends DCLogic {
     if (props.collapsed === true) collapsed = true;
     this.state = {
       collapsed,
-      tab: 'all',
+      tab: 'upcoming',
       openMenuId: null,
       nextId: 1,
       toasts: [],
@@ -210,7 +210,9 @@ class Component extends DCLogic {
         { id: 'e', group: 'tomorrow', date: 'Завтра · 9 сентября', time: '19:00', dur: '90 мин', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', topic: 'Алгебра · контрольная работа', online: true, status: 'planned' },
         { id: 'f', group: 'past', date: 'Вчера · 7 сентября', time: '17:00', dur: '60 мин', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', topic: 'Физика · кинематика', online: false, status: 'done' },
         { id: 'g', group: 'past', date: 'Вчера · 7 сентября', time: '15:30', dur: '60 мин', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', topic: 'Математика · дроби', online: false, status: 'done' },
-        { id: 'h', group: 'past', date: '6 сентября', time: '18:00', dur: '60 мин', initials: 'ТО', bg: '#eef2f7', color: '#5a6472', name: 'Тимур Орлов', topic: 'Отменено учеником', online: false, status: 'canceled' },
+        { id: 'h', group: 'past', date: '6 сентября', time: '18:00', dur: '60 мин', initials: 'ТО', bg: '#eef2f7', color: '#5a6472', name: 'Тимур Орлов', topic: 'Тригонометрия · основные формулы', online: false, status: 'canceled', cancelNote: 'отменено учеником' },
+        { id: 'i', group: 'past', date: '5 сентября', time: '17:00', dur: '90 мин', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', topic: 'Алгебра · квадратные уравнения', online: false, status: 'done' },
+        { id: 'j', group: 'past', date: '4 сентября', time: '16:00', dur: '60 мин', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', topic: 'Геометрия · площади фигур', online: false, status: 'canceled', cancelNote: 'отменено преподавателем' },
       ],
     };
     this._timers = [];
@@ -268,14 +270,12 @@ class Component extends DCLogic {
   renderVals() {
     const collapsed = this.state.collapsed;
     const tab = this.state.tab;
-    const counts = { all: 0, planned: 0, done: 0, canceled: 0 };
-    this.state.lessons.forEach(l => { counts.all++; counts[l.status]++; });
+    const counts = { upcoming: 0, past: 0 };
+    this.state.lessons.forEach(l => { if (l.status === 'planned') counts.upcoming++; else counts.past++; });
 
     const tabDefs = [
-      { key: 'all', label: 'Все' },
-      { key: 'planned', label: 'Запланированные' },
-      { key: 'done', label: 'Завершённые' },
-      { key: 'canceled', label: 'Отменённые' },
+      { key: 'upcoming', label: 'Предстоящие' },
+      { key: 'past', label: 'Завершённые' },
     ];
     const tabs = tabDefs.map(t => {
       const active = tab === t.key;
@@ -290,30 +290,49 @@ class Component extends DCLogic {
       };
     });
 
-    const visible = this.state.lessons.filter(l => tab === 'all' || l.status === tab);
-    const groupDefs = [
-      { key: 'today', title: 'Сегодня', sub: '8 сентября' },
-      { key: 'tomorrow', title: 'Завтра', sub: '9 сентября' },
-      { key: 'past', title: 'Ранее', sub: 'история занятий' },
-    ];
-    const groups = groupDefs.map(gd => {
-      const items = visible.filter(l => l.group === gd.key).map(l => {
-        const st = this.STATUS[l.status];
-        return {
-          ...l,
-          accent: st.accent, opacity: st.opacity, timeColor: st.timeColor,
-          stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
-          showComplete: l.status === 'planned',
-          showReactivate: l.status === 'canceled',
-          complete: () => this._setStatus(l.id, 'done', { icon: 'check_circle', color: '#18a866', title: 'Занятие завершено', body: l.name + ' · создаётся начисление' }),
-          reactivate: () => this._setStatus(l.id, 'planned', { icon: 'restart_alt', color: '#3b5bdb', title: 'Занятие восстановлено', body: l.name }),
-          menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => ({ openMenuId: s.openMenuId === l.id ? null : l.id })); },
-          menuOpen: this.state.openMenuId === l.id,
-          actions: this._actionsFor(l),
-        };
+    const visible = this.state.lessons.filter(l => tab === 'upcoming' ? l.status === 'planned' : l.status !== 'planned');
+
+    const mapLesson = (l) => {
+      const st = this.STATUS[l.status];
+      return {
+        ...l,
+        accent: st.accent, opacity: st.opacity, timeColor: st.timeColor,
+        stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
+        topic: (l.status === 'canceled' && l.cancelNote) ? (l.topic + ' · ' + l.cancelNote) : l.topic,
+        showComplete: l.status === 'planned',
+        showReactivate: l.status === 'canceled',
+        complete: () => this._setStatus(l.id, 'done', { icon: 'check_circle', color: '#18a866', title: 'Занятие завершено', body: l.name + ' · создаётся начисление' }),
+        reactivate: () => this._setStatus(l.id, 'planned', { icon: 'restart_alt', color: '#3b5bdb', title: 'Занятие восстановлено', body: l.name }),
+        menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => ({ openMenuId: s.openMenuId === l.id ? null : l.id })); },
+        menuOpen: this.state.openMenuId === l.id,
+        actions: this._actionsFor(l),
+      };
+    };
+
+    let groups;
+    if (tab === 'upcoming') {
+      const groupDefs = [
+        { key: 'today', title: 'Сегодня', sub: '8 сентября' },
+        { key: 'tomorrow', title: 'Завтра', sub: '9 сентября' },
+      ];
+      groups = groupDefs.map(gd => {
+        const items = visible.filter(l => l.group === gd.key).map(mapLesson);
+        return { title: gd.title, sub: gd.sub, items, _n: items.length };
+      }).filter(g => g._n > 0);
+    } else {
+      const order = [];
+      const byDate = {};
+      visible.forEach(l => { if (!byDate[l.date]) { byDate[l.date] = []; order.push(l.date); } byDate[l.date].push(l); });
+      groups = order.map(d => {
+        const items = byDate[d].map(mapLesson);
+        const doneN = items.filter(x => x.status === 'done').length;
+        const canN = items.filter(x => x.status === 'canceled').length;
+        const parts = [];
+        if (doneN) parts.push(doneN + ' завершено');
+        if (canN) parts.push(canN + ' отменено');
+        return { title: d, sub: parts.join(' · '), items, _n: items.length };
       });
-      return { title: gd.title, sub: gd.sub, items, _n: items.length };
-    }).filter(g => g._n > 0);
+    }
 
     const isCreate = this.state.modalMode === 'create';
     return {

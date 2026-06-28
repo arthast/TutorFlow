@@ -1,14 +1,17 @@
 import type { AppNavItem } from "../ui";
 
-export function teacherNav(active: "summary" | "students" | "lessons" | "assignments" | "finance" | "chat", badges: Partial<Record<"students" | "lessons" | "assignments" | "receipts", number | string>> = {}): AppNavItem[] {
+export type TeacherNavKey = "summary" | "students" | "lessons" | "assignments" | "finance" | "receipts" | "chat" | "settings";
+
+export function teacherNav(active: TeacherNavKey, badges: Partial<Record<"students" | "lessons" | "assignments" | "receipts", number | string>> = {}): AppNavItem[] {
   return [
-    { label: "Сводка", icon: "dashboard", href: "/teacher#summary", active: active === "summary" },
-    { label: "Ученики", icon: "group", href: "/teacher#students", badge: badges.students, active: active === "students" },
+    { label: "Сводка", icon: "dashboard", href: "/teacher", active: active === "summary" },
+    { label: "Ученики", icon: "group", href: "/teacher/students", badge: badges.students, active: active === "students" },
     { label: "Занятия", icon: "calendar_month", href: "/teacher/lessons", badge: badges.lessons, active: active === "lessons" },
-    { label: "Домашние задания", icon: "assignment", href: "/teacher#assignments", badge: badges.assignments, active: active === "assignments" },
-    { label: "Финансы", icon: "account_balance_wallet", href: "/teacher#finance", active: active === "finance" },
-    { label: "Чеки", icon: "receipt_long", href: "/teacher#finance", badge: badges.receipts, active: active === "finance" },
+    { label: "Домашние задания", icon: "assignment", href: "/teacher/assignments", badge: badges.assignments, active: active === "assignments" },
+    { label: "Финансы", icon: "account_balance_wallet", href: "/teacher/finance", active: active === "finance" },
+    { label: "Чеки", icon: "receipt_long", href: "/teacher/receipts", badge: badges.receipts, active: active === "receipts" },
     { label: "Чаты", icon: "chat_bubble", href: "/teacher/chat", active: active === "chat" },
+    { label: "Настройки", icon: "settings", href: "/teacher/settings", active: active === "settings" },
   ];
 }
 

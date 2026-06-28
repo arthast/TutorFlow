@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  @keyframes cardIn { from{transform:translateY(10px)} to{transform:none} }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="min-height:100vh; display:flex; background:#f6f8fb">
+
+  <!-- ===== LEFT: brand panel ===== -->
+  <div style="width:46%; max-width:640px; flex-shrink:0; background:#1c2440; color:#fff; padding:48px 56px; display:flex; flex-direction:column; position:relative; overflow:hidden">
+    <div style="position:absolute; right:-120px; top:-80px; width:360px; height:360px; border-radius:50%; background:radial-gradient(circle, rgba(59,91,219,.55), transparent 70%)"></div>
+    <div style="position:absolute; left:-100px; bottom:-120px; width:340px; height:340px; border-radius:50%; background:radial-gradient(circle, rgba(15,138,138,.35), transparent 70%)"></div>
+
+    <div style="display:flex; align-items:center; gap:12px; position:relative">
+      <div style="width:36px; height:36px; border-radius:10px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:19px">T</div>
+      <span style="font-weight:800; font-size:19px; letter-spacing:-0.01em">TutorFlow</span>
+    </div>
+
+    <div style="margin-top:auto; margin-bottom:auto; position:relative; padding:40px 0">
+      <div style="font-weight:800; font-size:34px; line-height:1.2; letter-spacing:-0.02em; max-width:420px">Спокойное пространство для занятий и расчётов</div>
+      <p style="font-weight:500; font-size:15px; line-height:1.65; color:#aeb6d4; max-width:400px; margin:20px 0 0">Расписание, домашние задания, проверка работ и понятный учёт оплат — всё в одном рабочем кабинете.</p>
+
+      <div style="display:flex; flex-direction:column; gap:16px; margin-top:36px">
+        <div style="display:flex; align-items:center; gap:13px"><div style="width:40px; height:40px; flex-shrink:0; border-radius:11px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px; color:#9fb0ff">calendar_month</span></div><div><div style="font-weight:700; font-size:14px">Расписание и занятия</div><div style="font-weight:500; font-size:12.5px; color:#9aa3c4">переносы, статусы, история</div></div></div>
+        <div style="display:flex; align-items:center; gap:13px"><div style="width:40px; height:40px; flex-shrink:0; border-radius:11px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px; color:#7fd4d4">receipt_long</span></div><div><div style="font-weight:700; font-size:14px">Оплаты по чекам</div><div style="font-weight:500; font-size:12.5px; color:#9aa3c4">подтверждение вручную, без карт</div></div></div>
+        <div style="display:flex; align-items:center; gap:13px"><div style="width:40px; height:40px; flex-shrink:0; border-radius:11px; background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px; color:#9fb0ff">chat_bubble</span></div><div><div style="font-weight:700; font-size:14px">Чат и уведомления</div><div style="font-weight:500; font-size:12.5px; color:#9aa3c4">в реальном времени</div></div></div>
+      </div>
+    </div>
+
+    <div style="position:relative; font-weight:500; font-size:12.5px; color:#7a84a8">© 2026 TutorFlow · Учебный рабочий инструмент</div>
+  </div>
+
+  <!-- ===== RIGHT: form ===== -->
+  <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:40px 28px; min-width:0">
+    <div style="width:400px; max-width:100%">
+
+      <!-- ====== LOGIN ====== -->
+      <sc-if value="{{ isLogin }}">
+        <div>
+          <div style="font-weight:800; font-size:26px; letter-spacing:-0.01em">Вход в кабинет</div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472; margin-top:6px">Рады видеть снова. Введите данные для входа.</div>
+
+          <div style="margin-top:26px; display:flex; flex-direction:column; gap:16px">
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Email</label>
+              <div style="position:relative"><span class="ms" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3">mail</span><input value="elena.s@tutorflow.ru" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 14px 13px 42px; border:1px solid #d4dae3; border-radius:12px; background:#fff"></div>
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:7px"><label style="font-weight:600; font-size:13px; color:#5a6472">Пароль</label><span style="font-weight:600; font-size:12.5px; color:#3b5bdb; cursor:pointer">Забыли пароль?</span></div>
+              <div style="position:relative">
+                <span class="ms" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3">lock</span>
+                <input type="{{ pwType }}" value="••••••••" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 44px 13px 42px; border:1px solid #d4dae3; border-radius:12px; background:#fff">
+                <span onClick="{{ togglePw }}" class="ms" style="position:absolute; right:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; cursor:pointer">{{ pwEye }}</span>
+              </div>
+            </div>
+            <label style="display:flex; align-items:center; gap:9px; cursor:pointer; user-select:none">
+              <span onClick="{{ toggleRemember }}" style="width:20px; height:20px; flex-shrink:0; border-radius:6px; border:1.5px solid {{ rememberBorder }}; background:{{ rememberBg }}; display:flex; align-items:center; justify-content:center"><sc-if value="{{ remember }}"><span class="ms" style="font-size:15px; color:#fff">check</span></sc-if></span>
+              <span style="font-weight:500; font-size:13.5px; color:#5a6472">Запомнить меня</span>
+            </label>
+          </div>
+
+          <button onClick="{{ doLogin }}" style="margin-top:22px; width:100%; box-sizing:border-box; background:#3b5bdb; color:#fff; border:none; padding:14px; border-radius:12px; font-weight:700; font-size:15px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#2f49b8">Войти</button>
+
+          <div style="margin-top:18px; display:flex; align-items:center; gap:12px; color:#aab2bf"><div style="flex:1; height:1px; background:#e6eaf0"></div><span style="font-weight:600; font-size:12px">или</span><div style="flex:1; height:1px; background:#e6eaf0"></div></div>
+
+          <div style="margin-top:18px; text-align:center; font-weight:500; font-size:13.5px; color:#5a6472">Нет аккаунта? <span onClick="{{ goRegister }}" style="font-weight:700; color:#3b5bdb; cursor:pointer">Создать аккаунт преподавателя</span></div>
+          <div style="margin-top:18px; background:#f0f7ff; border:1px solid #d6e6fb; border-radius:11px; padding:12px 14px; display:flex; align-items:flex-start; gap:9px"><span class="ms" style="font-size:18px; color:#3b5bdb; flex-shrink:0; margin-top:1px">info</span><div style="font-weight:500; font-size:12.5px; line-height:1.5; color:#3a5680">Ученики не регистрируются сами — преподаватель создаёт аккаунт и выдаёт временный пароль.</div></div>
+        </div>
+      </sc-if>
+
+      <!-- ====== REGISTER ====== -->
+      <sc-if value="{{ isRegister }}">
+        <div>
+          <div onClick="{{ goLogin }}" style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:13px; color:#5a6472; cursor:pointer; margin-bottom:16px"><span class="ms" style="font-size:18px">arrow_back</span>Назад ко входу</div>
+          <div style="font-weight:800; font-size:26px; letter-spacing:-0.01em">Аккаунт преподавателя</div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472; margin-top:6px">Создайте кабинет и приглашайте учеников.</div>
+
+          <div style="margin-top:24px; display:flex; flex-direction:column; gap:15px">
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Имя и фамилия</label>
+              <input placeholder="Елена Соколова" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 14px; border:1px solid #d4dae3; border-radius:12px; background:#fff">
+            </div>
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Email</label>
+              <input placeholder="you@example.ru" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 14px; border:1px solid #d4dae3; border-radius:12px; background:#fff">
+            </div>
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Пароль</label>
+              <div style="position:relative"><input type="{{ pwType }}" placeholder="Минимум 8 символов" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 44px 13px 14px; border:1px solid #d4dae3; border-radius:12px; background:#fff"><span onClick="{{ togglePw }}" class="ms" style="position:absolute; right:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; cursor:pointer">{{ pwEye }}</span></div>
+            </div>
+            <label style="display:flex; align-items:flex-start; gap:9px; cursor:pointer; user-select:none">
+              <span onClick="{{ toggleAgree }}" style="width:20px; height:20px; flex-shrink:0; border-radius:6px; border:1.5px solid {{ agreeBorder }}; background:{{ agreeBg }}; display:flex; align-items:center; justify-content:center; margin-top:1px"><sc-if value="{{ agree }}"><span class="ms" style="font-size:15px; color:#fff">check</span></sc-if></span>
+              <span style="font-weight:500; font-size:13px; color:#5a6472; line-height:1.5">Принимаю условия использования и политику конфиденциальности</span>
+            </label>
+          </div>
+
+          <button onClick="{{ doRegister }}" style="margin-top:22px; width:100%; box-sizing:border-box; background:{{ regBg }}; color:#fff; border:none; padding:14px; border-radius:12px; font-weight:700; font-size:15px; font-family:inherit; cursor:{{ regCursor }}; opacity:{{ regOpacity }}; transition:background .15s">Создать аккаунт</button>
+          <div style="margin-top:18px; text-align:center; font-weight:500; font-size:13.5px; color:#5a6472">Уже есть аккаунт? <span onClick="{{ goLogin }}" style="font-weight:700; color:#3b5bdb; cursor:pointer">Войти</span></div>
+        </div>
+      </sc-if>
+
+      <!-- ====== FIRST LOGIN: change temp password ====== -->
+      <sc-if value="{{ isChange }}">
+        <div>
+          <div style="width:52px; height:52px; border-radius:14px; background:#fbeecd; display:flex; align-items:center; justify-content:center; margin-bottom:18px"><span class="ms" style="font-size:28px; color:#8a5a00">key</span></div>
+          <div style="font-weight:800; font-size:26px; letter-spacing:-0.01em">Смените временный пароль</div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472; margin-top:6px; line-height:1.5">Вы вошли по временному паролю. Придумайте постоянный, чтобы продолжить.</div>
+
+          <div style="margin-top:24px; display:flex; flex-direction:column; gap:15px">
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Новый пароль</label>
+              <div style="position:relative"><span class="ms" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3">lock</span><input type="{{ pwType }}" value="{{ newPw }}" onInput="{{ setNewPw }}" placeholder="Минимум 8 символов" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 44px 13px 42px; border:1px solid #d4dae3; border-radius:12px; background:#fff"><span onClick="{{ togglePw }}" class="ms" style="position:absolute; right:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; cursor:pointer">{{ pwEye }}</span></div>
+              <!-- strength -->
+              <div style="display:flex; gap:5px; margin-top:9px">
+                <div style="flex:1; height:4px; border-radius:2px; background:{{ s1 }}"></div>
+                <div style="flex:1; height:4px; border-radius:2px; background:{{ s2 }}"></div>
+                <div style="flex:1; height:4px; border-radius:2px; background:{{ s3 }}"></div>
+              </div>
+              <div style="font-weight:500; font-size:12px; color:{{ strengthColor }}; margin-top:6px">{{ strengthLabel }}</div>
+            </div>
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Повторите пароль</label>
+              <div style="position:relative"><span class="ms" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3">lock</span><input type="{{ pwType }}" value="{{ confirmPw }}" onInput="{{ setConfirmPw }}" placeholder="Ещё раз" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14.5px; padding:13px 14px 13px 42px; border:1.5px solid {{ confirmBorder }}; border-radius:12px; background:#fff"></div>
+              <sc-if value="{{ mismatch }}"><div style="font-weight:500; font-size:12px; color:#c0362f; margin-top:6px">Пароли не совпадают</div></sc-if>
+            </div>
+          </div>
+
+          <button onClick="{{ doChange }}" style="margin-top:22px; width:100%; box-sizing:border-box; background:{{ changeBg }}; color:#fff; border:none; padding:14px; border-radius:12px; font-weight:700; font-size:15px; font-family:inherit; cursor:{{ changeCursor }}; opacity:{{ changeOpacity }}; transition:background .15s">Сохранить и войти</button>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- ===== role/state switcher (demo helper) ===== -->
+  <div style="position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:4px; background:#fff; border:1px solid #e6eaf0; border-radius:999px; padding:5px; box-shadow:0 8px 28px rgba(20,24,33,.14)">
+    <span style="font-weight:600; font-size:11.5px; color:#8b94a3; padding:0 8px 0 10px">Демо:</span>
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="3">
+      <div onClick="{{ s.select }}" style="font-weight:600; font-size:12.5px; padding:6px 13px; border-radius:999px; cursor:pointer; background:{{ s.bg }}; color:{{ s.color }}">{{ s.label }}</div>
+    </sc-for>
+  </div>
+
+  <!-- ===== TOASTS ===== -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;register&quot;,&quot;change&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Демо&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      view: props.view || 'login',  // login | register | change
+      showPw: false,
+      remember: true,
+      agree: false,
+      newPw: '',
+      confirmPw: '',
+      nextId: 1,
+      toasts: [],
+    };
+    this._timers = [];
+  }
+  componentWillUnmount() { this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.view !== this.props.view && typeof this.props.view === 'string' && this.props.view !== this.state.view) this.setState({ view: this.props.view });
+  }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 4500)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _strength(pw) {
+    let n = 0;
+    if (pw.length >= 8) n++;
+    if (/[A-ZА-Я]/.test(pw) && /[a-zа-я]/.test(pw)) n++;
+    if (/[0-9]/.test(pw) || /[^A-Za-zА-Яа-я0-9]/.test(pw)) n++;
+    return Math.min(n, 3);
+  }
+
+  renderVals() {
+    const view = this.state.view;
+    const pw = this.state.newPw;
+    const str = this._strength(pw);
+    const strColors = ['#e0584f', '#d99413', '#18a866'];
+    const strLabels = ['Слабый пароль', 'Средний пароль', 'Надёжный пароль'];
+    const lvl = pw.length === 0 ? -1 : str - 1;
+    const mismatch = this.state.confirmPw.length > 0 && this.state.confirmPw !== pw;
+    const changeReady = pw.length >= 8 && this.state.confirmPw === pw;
+
+    const stateDefs = [
+      { key: 'login', label: 'Вход' },
+      { key: 'register', label: 'Регистрация' },
+      { key: 'change', label: 'Смена пароля' },
+    ];
+    const states = stateDefs.map(s => ({
+      label: s.label,
+      bg: view === s.key ? '#3b5bdb' : 'transparent',
+      color: view === s.key ? '#fff' : '#5a6472',
+      select: () => this.setState({ view: s.key }),
+    }));
+
+    return {
+      isLogin: view === 'login',
+      isRegister: view === 'register',
+      isChange: view === 'change',
+
+      pwType: this.state.showPw ? 'text' : 'password',
+      pwEye: this.state.showPw ? 'visibility_off' : 'visibility',
+      togglePw: () => this.setState(s => ({ showPw: !s.showPw })),
+
+      remember: this.state.remember,
+      toggleRemember: () => this.setState(s => ({ remember: !s.remember })),
+      rememberBg: this.state.remember ? '#3b5bdb' : '#fff',
+      rememberBorder: this.state.remember ? '#3b5bdb' : '#cdd5df',
+
+      agree: this.state.agree,
+      toggleAgree: () => this.setState(s => ({ agree: !s.agree })),
+      agreeBg: this.state.agree ? '#3b5bdb' : '#fff',
+      agreeBorder: this.state.agree ? '#3b5bdb' : '#cdd5df',
+
+      goRegister: () => this.setState({ view: 'register' }),
+      goLogin: () => this.setState({ view: 'login' }),
+
+      doLogin: () => this._toast({ icon: 'login', color: '#18a866', title: 'Вход выполнен', body: 'Открываю кабинет преподавателя' }),
+      doRegister: () => {
+        if (!this.state.agree) { this._toast({ icon: 'error', color: '#e0584f', title: 'Примите условия', body: 'Поставьте галочку согласия' }); return; }
+        this._toast({ icon: 'check_circle', color: '#18a866', title: 'Аккаунт создан', body: 'Добро пожаловать в TutorFlow' });
+      },
+      regBg: this.state.agree ? '#3b5bdb' : '#aeb9e8',
+      regCursor: this.state.agree ? 'pointer' : 'not-allowed',
+      regOpacity: this.state.agree ? '1' : '.8',
+
+      newPw: this.state.newPw,
+      setNewPw: (e) => this.setState({ newPw: e && e.target ? e.target.value : '' }),
+      confirmPw: this.state.confirmPw,
+      setConfirmPw: (e) => this.setState({ confirmPw: e && e.target ? e.target.value : '' }),
+      s1: lvl >= 0 ? strColors[Math.min(lvl, 2)] : '#e6eaf0',
+      s2: lvl >= 1 ? strColors[Math.min(lvl, 2)] : '#e6eaf0',
+      s3: lvl >= 2 ? strColors[2] : '#e6eaf0',
+      strengthLabel: pw.length === 0 ? 'Используйте буквы, цифры и регистр' : strLabels[Math.max(0, lvl)],
+      strengthColor: pw.length === 0 ? '#8b94a3' : strColors[Math.max(0, lvl)],
+      confirmBorder: mismatch ? '#e0584f' : '#d4dae3',
+      mismatch,
+      doChange: () => {
+        if (!changeReady) { this._toast({ icon: 'error', color: '#e0584f', title: 'Проверьте пароль', body: 'Минимум 8 символов и совпадение' }); return; }
+        this._toast({ icon: 'check_circle', color: '#18a866', title: 'Пароль обновлён', body: 'Входим в кабинет' });
+      },
+      changeBg: changeReady ? '#3b5bdb' : '#aeb9e8',
+      changeCursor: changeReady ? 'pointer' : 'not-allowed',
+      changeOpacity: changeReady ? '1' : '.8',
+
+      states,
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

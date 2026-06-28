@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import {
   api,
   openFile,
@@ -13,6 +14,7 @@ import {
 } from "../api";
 import { AppShell, Card, ErrorMsg, FileChips, Icon, ListState, Notice, NotificationsCard, StatusPill, fmtDate, useAsync } from "../ui";
 import { ChatCard } from "../chat";
+import { studentNav } from "./studentNav";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
 
@@ -51,19 +53,16 @@ export default function Student() {
       subtitle={new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
       navSection="Учёба"
       accent="student"
-      navItems={[
-        { label: "Главная", icon: "dashboard", href: "#summary", active: true },
-        { label: "Мои занятия", icon: "calendar_month", href: "#lessons", badge: report ? activity.upcoming : (lessons.data ?? []).filter((l) => l.status === "scheduled").length },
-        { label: "Домашние задания", icon: "assignment", href: "#assignments", badge: activeAssignments },
-        { label: "Оплата", icon: "payments", href: "#upload-receipt" },
-        { label: "Мои чеки", icon: "receipt_long", href: "#receipts", badge: report?.pending_receipts_count ?? 0 },
-        { label: "Чат", icon: "chat_bubble", href: "/student/chat" },
-      ]}
+      navItems={studentNav("summary", {
+        lessons: report ? activity.upcoming : (lessons.data ?? []).filter((l) => l.status === "scheduled").length,
+        assignments: activeAssignments,
+        receipts: report?.pending_receipts_count ?? 0,
+      })}
       actions={
-        <a className="primary-action" href="#upload-receipt">
+        <Link className="primary-action" to="/student/payments">
           <Icon name="upload_file" />
           <span>Загрузить чек</span>
-        </a>
+        </Link>
       }
     >
       <div className="container">

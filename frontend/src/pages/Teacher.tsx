@@ -60,10 +60,10 @@ export default function Teacher() {
         receipts: pendingReceipts,
       })}
       actions={
-        <a className="primary-action" href="#new-lesson">
+        <Link className="primary-action" to="/teacher/lessons">
           <Icon name="add" />
           <span>Новое занятие</span>
-        </a>
+        </Link>
       }
     >
       <div className="container">

@@ -79,13 +79,94 @@
 
         <!-- Tabs -->
         <div style="display:flex; gap:24px; border-bottom:1px solid #e6eaf0; margin-bottom:20px">
-          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px; cursor:pointer">Обзор</div>
-          <div style="font-weight:700; font-size:14px; color:#3b5bdb; padding:0 2px 12px; border-bottom:2px solid #3b5bdb; margin-bottom:-1px">Финансы</div>
-          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px; cursor:pointer">Занятия</div>
-          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px; cursor:pointer">Домашние задания</div>
-          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px; cursor:pointer">Чеки</div>
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+            <div onClick="{{ tb.select }}" style="font-weight:{{ tb.weight }}; font-size:14px; color:{{ tb.color }}; padding:0 2px 12px; border-bottom:2px solid {{ tb.border }}; margin-bottom:-1px; cursor:pointer; white-space:nowrap">{{ tb.label }}</div>
+          </sc-for>
         </div>
 
+        <!-- ===== OVERVIEW TAB ===== -->
+        <sc-if value="{{ isOverview }}">
+          <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start">
+            <!-- LEFT -->
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+              <!-- info -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden">
+                <div style="display:flex; align-items:center; gap:10px; padding:16px 22px; border-bottom:1px solid #eef2f7"><span class="ms" style="font-size:20px; color:#3b5bdb">badge</span><div style="font-weight:700; font-size:16px">Информация об ученике</div><span onClick="{{ editInfo }}" style="margin-left:auto; font-weight:600; font-size:13px; color:#3b5bdb; cursor:pointer; display:inline-flex; align-items:center; gap:5px"><span class="ms" style="font-size:16px">edit</span>Редактировать</span></div>
+                <div style="padding:4px 22px 8px; display:grid; grid-template-columns:1fr 1fr; gap:0 28px">
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">mail</span><div style="min-width:0"><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Email</div><div style="font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">mark.lebedev@mail.ru</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">call</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Телефон</div><div style="font-weight:600; font-size:13.5px">+7 916 240-18-05</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">menu_book</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Предмет и класс</div><div style="font-weight:600; font-size:13.5px">Математика · 9 класс</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">payments</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Стоимость занятия</div><div style="font-weight:600; font-size:13.5px">1 000 ₽ / 60 мин</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">videocam</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Формат</div><div style="font-weight:600; font-size:13.5px">Онлайн · Zoom</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">event</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Занимается с</div><div style="font-weight:600; font-size:13.5px">марта 2025</div></div></div>
+                </div>
+              </div>
+
+              <!-- notes + extra info -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px"><span class="ms" style="font-size:20px; color:#7c3aed">sticky_note_2</span><div style="font-weight:700; font-size:16px">Заметки и доп. информация</div></div>
+                <textarea value="{{ notesText }}" onInput="{{ setNotes }}" placeholder="Личные заметки: цели, сильные и слабые темы, договорённости…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:12px 14px; border:1px solid #d4dae3; border-radius:11px; background:#fbfcfe; min-height:74px; resize:vertical; line-height:1.55"></textarea>
+
+                <!-- extra fields -->
+                <sc-if value="{{ hasFields }}">
+                  <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
+                    <sc-for list="{{ extraFields }}" as="f" hint-placeholder-count="2">
+                      <div style="display:flex; align-items:center; gap:12px; background:#f6f8fb; border:1px solid #eef2f7; border-radius:10px; padding:9px 13px">
+                        <span class="ms" style="font-size:17px; color:#7c3aed; flex-shrink:0">label</span>
+                        <div style="font-weight:600; font-size:12.5px; color:#5a6472; flex-shrink:0; min-width:120px">{{ f.label }}</div>
+                        <div style="font-weight:500; font-size:13.5px; flex:1; min-width:0">{{ f.value }}</div>
+                        <span onClick="{{ f.remove }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <!-- add field -->
+                <div style="display:flex; gap:8px; margin-top:14px; align-items:stretch">
+                  <input value="{{ newLabel }}" onInput="{{ setNewLabel }}" placeholder="Поле (напр. Родитель)" style="width:170px; box-sizing:border-box; font-family:inherit; font-size:13.5px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff">
+                  <input value="{{ newValue }}" onInput="{{ setNewValue }}" onKeyDown="{{ onFieldKey }}" placeholder="Значение" style="flex:1; min-width:0; box-sizing:border-box; font-family:inherit; font-size:13.5px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff">
+                  <button onClick="{{ addField }}" style="background:{{ addBg }}; color:#fff; border:none; padding:0 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:{{ addCursor }}; opacity:{{ addOpacity }}; display:inline-flex; align-items:center; gap:6px; white-space:nowrap"><span class="ms" style="font-size:18px">add</span>Добавить</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT -->
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+              <!-- quick stats -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="font-weight:700; font-size:15px; margin-bottom:14px">Активность</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">16</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">занятий проведено</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums; color:#0f7a4f">12</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">ДЗ выполнено</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">94%</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">посещаемость</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">2</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">активных ДЗ</div></div>
+                </div>
+              </div>
+              <!-- tags -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:13px"><div style="font-weight:700; font-size:15px">Метки</div><span onClick="{{ addTag }}" class="ms" style="margin-left:auto; font-size:20px; color:#3b5bdb; cursor:pointer">add_circle</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                  <span style="font-weight:600; font-size:12.5px; color:#2f49b8; background:#e9edfd; border-radius:999px; padding:5px 12px">подготовка к ОГЭ</span>
+                  <span style="font-weight:600; font-size:12.5px; color:#0f7a4f; background:#e3f4ec; border-radius:999px; padding:5px 12px">сильный ученик</span>
+                  <span style="font-weight:600; font-size:12.5px; color:#8a5a00; background:#fbeecd; border-radius:999px; padding:5px 12px">геометрия — слабее</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== OTHER TABS placeholder ===== -->
+        <sc-if value="{{ isOther }}">
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:64px 20px; color:#8b94a3; background:#fff; border:1px solid #e6eaf0; border-radius:16px">
+            <div style="width:56px; height:56px; border-radius:15px; background:#eef2f7; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:28px; color:#aab2bf">{{ otherIcon }}</span></div>
+            <div style="font-weight:700; font-size:15px; color:#5a6472">{{ otherTitle }}</div>
+            <div style="font-weight:500; font-size:13px; margin-top:3px; text-align:center; max-width:340px">{{ otherSub }}</div>
+            <button style="margin-top:16px; background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer">{{ otherCta }}</button>
+          </div>
+        </sc-if>
+
+        <!-- ===== FINANCE TAB ===== -->
+        <sc-if value="{{ isFinance }}">
         <!-- Finance row -->
         <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:16px; margin-bottom:18px">
           <!-- Balance -->
@@ -136,6 +217,7 @@
             </div>
           </sc-for>
         </div>
+        </sc-if>
 
       </div>
     </div>
@@ -220,6 +302,7 @@ class Component extends DCLogic {
 
     this.state = {
       collapsed,
+      tab: 'overview',
       nextId: 1,
       toasts: [],
       extraEntries: [],
@@ -227,6 +310,13 @@ class Component extends DCLogic {
       dir: 'charge',     // 'charge' (+debt) | 'credit' (-debt)
       amountStr: '',
       comment: '',
+      notes: 'Хорошо идёт алгебра, любит разбирать сложные задачи. По геометрии — нужна дополнительная практика на доказательства.',
+      extraFields: [
+        { id: 'f1', label: 'Родитель', value: 'Ольга Лебедева, +7 916 240-18-05' },
+        { id: 'f2', label: 'Цель', value: 'Сдать ОГЭ на 5' },
+      ],
+      newLabel: '',
+      newValue: '',
     };
     this._timers = [];
   }
@@ -253,6 +343,19 @@ class Component extends DCLogic {
   _closeAdjust() { this.setState({ adjustOpen: false }); }
   _setAmount(e) { this.setState({ amountStr: (e && e.target ? e.target.value : '').replace(/[^0-9]/g, '') }); }
   _setComment(e) { this.setState({ comment: e && e.target ? e.target.value : '' }); }
+
+  _addField() {
+    const label = this.state.newLabel.trim();
+    const value = this.state.newValue.trim();
+    if (!label || !value) { this._toast({ icon: 'error', color: '#e0584f', title: 'Заполните поле', body: 'Нужны название и значение' }); return; }
+    this.setState(s => ({
+      nextId: s.nextId + 1,
+      extraFields: s.extraFields.concat([{ id: 'f' + s.nextId, label, value }]),
+      newLabel: '', newValue: '',
+    }));
+    this._toast({ icon: 'check_circle', color: '#18a866', title: 'Добавлено', body: label });
+  }
+  _removeField(id) { this.setState(s => ({ extraFields: s.extraFields.filter(f => f.id !== id) })); }
 
   _allEntries() { return this.baseEntries.concat(this.state.extraEntries); }
   _currentDebt() { return this._allEntries().reduce((a, e) => a + e.amount, 0); }
@@ -314,10 +417,57 @@ class Component extends DCLogic {
     const ready = amt > 0 && this.state.comment.trim().length > 0;
     const charge = this.state.dir === 'charge';
 
+    // tabs
+    const tab = this.state.tab;
+    const tabDefs = [
+      { key: 'overview', label: 'Обзор' },
+      { key: 'finance', label: 'Финансы' },
+      { key: 'lessons', label: 'Занятия' },
+      { key: 'homework', label: 'Домашние задания' },
+      { key: 'receipts', label: 'Чеки' },
+    ];
+    const tabs = tabDefs.map(t => {
+      const active = tab === t.key;
+      return {
+        label: t.label,
+        select: () => this.setState({ tab: t.key }),
+        color: active ? '#3b5bdb' : '#8b94a3',
+        weight: active ? '700' : '600',
+        border: active ? '#3b5bdb' : 'transparent',
+      };
+    });
+    const otherMap = {
+      lessons: { icon: 'calendar_month', title: 'Занятия ученика', sub: 'История и расписание занятий Марка открываются в разделе «Занятия».', cta: 'Открыть занятия' },
+      homework: { icon: 'assignment', title: 'Домашние задания', sub: 'Все выданные и проверенные работы Марка — в разделе «Домашние задания».', cta: 'Открыть ДЗ' },
+      receipts: { icon: 'receipt_long', title: 'Чеки ученика', sub: 'История оплат и чеков на подтверждение — в разделе «Чеки».', cta: 'Открыть чеки' },
+    };
+    const other = otherMap[tab] || otherMap.lessons;
+
     return {
       collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
       toggle: () => this._toggle(),
       stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+
+      tabs,
+      isOverview: tab === 'overview',
+      isFinance: tab === 'finance',
+      isOther: tab === 'lessons' || tab === 'homework' || tab === 'receipts',
+      otherIcon: other.icon, otherTitle: other.title, otherSub: other.sub, otherCta: other.cta,
+
+      // overview
+      notesText: typeof this.state.notes === 'string' ? this.state.notes : '',
+      setNotes: (e) => this.setState({ notes: e && e.target ? e.target.value : '' }),
+      hasFields: this.state.extraFields.length > 0,
+      extraFields: this.state.extraFields.map(f => ({ ...f, remove: () => this._removeField(f.id) })),
+      newLabel: this.state.newLabel, setNewLabel: (e) => this.setState({ newLabel: e && e.target ? e.target.value : '' }),
+      newValue: this.state.newValue, setNewValue: (e) => this.setState({ newValue: e && e.target ? e.target.value : '' }),
+      onFieldKey: (e) => { if (e && e.key === 'Enter') { e.preventDefault(); this._addField(); } },
+      addField: () => this._addField(),
+      addBg: (this.state.newLabel.trim() && this.state.newValue.trim()) ? '#3b5bdb' : '#aeb9e8',
+      addCursor: (this.state.newLabel.trim() && this.state.newValue.trim()) ? 'pointer' : 'not-allowed',
+      addOpacity: (this.state.newLabel.trim() && this.state.newValue.trim()) ? '1' : '.75',
+      editInfo: () => this._toast({ icon: 'edit', color: '#3b5bdb', title: 'Редактирование', body: 'Карточка ученика' }),
+      addTag: () => this._toast({ icon: 'add', color: '#3b5bdb', title: 'Новая метка', body: 'Добавьте метку ученику' }),
 
       // balance card
       balanceFmt: this.fmtDebt(debt),
