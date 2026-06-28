@@ -2,6 +2,31 @@
 
 Обновлено: 2026-06-28.
 
+Прогресс 2026-06-28:
+
+- D1 partially done: добавлены/доработаны общие классы для action-menu,
+  grid/list toggle, credential rows, rule banner, receipt decision modal; статусы
+  показываются русскими метками.
+- D3 partially done: `/teacher/students` получил grid/list, tab counters и
+  двухшаговую create-student modal; `/teacher/receipts` получил rule banner и
+  confirm/reject modal; `/teacher/assignments` получил page tabs, status rows,
+  create-homework modal с due date/time и attachments UI; `/teacher/finance`
+  получил KPI по референсу, debt table с фильтрами и pending receipts shortcut.
+- D4 partially done: `/teacher/lessons` больше не использует inline reschedule;
+  перенос вынесен в modal, secondary actions вынесены в kebab-menu;
+  `/teacher/students/:studentId` получил tabbed layout, overview/finance tabs и
+  modal ручной корректировки; `/teacher/assignments/:assignmentId/review`
+  получил двухколоночный review layout со sticky verdict panel.
+- D2 partially done: `/login` и `/register` приведены к split auth layout.
+  First-login password change не добавлен в login flow, потому что текущий
+  `/auth/login` не возвращает признак временного пароля; существующая смена
+  пароля остается через `/auth/change-password`.
+- Проверено: `cd frontend && npm run build`; Vite browser-smoke на
+  `/teacher/students`, `/teacher/lessons`, `/teacher/receipts`,
+  `/teacher/assignments`, `/teacher/finance`,
+  `/teacher/students/:studentId`, `/teacher/assignments/:assignmentId/review`,
+  `/login`, `/register`.
+
 Цель: синхронизировать текущий React/Vite frontend с обновленными файлами в
 `frontend/design/`, не меняя дизайн-систему и не меняя backend-контракты без
 отдельного согласования.
@@ -44,11 +69,11 @@ Frontend должен ходить только в `api-gateway` через `fro
 - `modal` shell: overlay, close, footer actions, busy/error state;
 - `toast` stack: success/error/info, dismiss, shared placement;
 - `page toolbar`: title, menu button, right actions, notification badge;
-- `tabs` with counters;
+- `tabs` with counters; partially done for `/teacher/students`;
 - `segmented filters`;
 - `empty-state`;
 - `file chip` and attachment upload row;
-- `kebab/action menu` for lesson rows.
+- `kebab/action menu` for lesson rows; partially done for `/teacher/lessons`.
 
 Критерий готовности: новые страницы собираются из общих классов/компонентов, а не
 копируют крупные блоки CSS.
@@ -61,6 +86,7 @@ Routes: `/login`, `/register`.
 - Сохранить существующую auth-интеграцию через gateway.
 - Добавить UI-состояние first-login password change только если оно уже
   поддержано текущим API. Если нет, зафиксировать gap, контракт не менять.
+  Gap зафиксирован: login response не содержит признак временного пароля.
 - Добавить toasts для success/error.
 
 Проверка: login/register проходят в браузере; first-login state не ломает обычный
@@ -74,13 +100,13 @@ Routes: `/teacher/students`, `/teacher/assignments`, `/teacher/finance`,
 Порядок:
 
 1. `/teacher/students`: grid/list, search, filters, create-student modal,
-   credentials step, links to student card.
+   credentials step, links to student card. Partially done.
 2. `/teacher/assignments`: tabs by status, search, assignment rows, create-homework
-   modal, attachments UI.
+   modal, attachments UI. Partially done.
 3. `/teacher/receipts`: pending/confirmed/rejected tabs, rule banner, file preview
-   action, confirm/reject modal.
+   action, confirm/reject modal. Partially done.
 4. `/teacher/finance`: KPI, per-student debts, recent operations, pending receipts
-   shortcut.
+   shortcut. Partially done.
 
 Backend gaps to check before coding:
 
@@ -98,11 +124,13 @@ Routes: `/teacher/lessons`, `/teacher/students/:studentId`,
 `/teacher/assignments/:assignmentId/review`.
 
 - `/teacher/lessons`: replace inline create/reschedule with modal, add action menu,
-  keep lifecycle actions mapped to existing endpoints.
+  keep lifecycle actions mapped to existing endpoints. Partially done.
 - `/teacher/students/:studentId`: implement profile tabs; finance tab should show
   debt/accrued/paid cards, pending note, operations journal and adjustment modal.
+  Partially done.
 - `/teacher/assignments/:assignmentId/review`: align assignment/submission/history
   layout and verdict panel; keep review submit flow through existing assignment API.
+  Partially done.
 
 ### D5. Student pages without new references
 

@@ -15,6 +15,14 @@ function toIso(local: string): string {
   return new Date(local).toISOString();
 }
 
+function isoToLocalInput(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 function toIsoFromParts(date: string, time: string): string {
   return new Date(`${date}T${time}`).toISOString();
 }
@@ -165,9 +173,8 @@ function LessonRow({
   students: StudentLink[];
   dashboard: Async<TeacherDashboard>;
 }) {
-  const [rescheduling, setRescheduling] = useState(false);
-  const [starts, setStarts] = useState("");
-  const [ends, setEnds] = useState("");
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -223,28 +230,6 @@ function LessonRow({
     }
   }
 
-  async function reschedule(event: FormEvent) {
-    event.preventDefault();
-    setBusy("reschedule");
-    setError(null);
-    setNotice(null);
-    try {
-      await api.post(`/lessons/${lesson.id}/reschedule`, {
-        new_starts_at: toIso(starts),
-        new_ends_at: toIso(ends),
-      });
-      setNotice("Занятие перенесено.");
-      setRescheduling(false);
-      setStarts("");
-      setEnds("");
-      reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
   return (
     <div className="lesson-list-row">
       <div className="lesson-time">
@@ -257,26 +242,126 @@ function LessonRow({
         <div className="muted">{lesson.topic || "Занятие"} · {fmtDate(lesson.starts_at)}</div>
         <ErrorMsg error={error} />
         <Notice text={notice} />
-        {rescheduling && (
-          <form onSubmit={reschedule} className="inline-form">
-            <label>Новое начало<input type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} required /></label>
-            <label>Новый конец<input type="datetime-local" value={ends} onChange={(event) => setEnds(event.target.value)} required /></label>
-            <button className="primary small" disabled={busy === "reschedule"} type="submit">Перенести</button>
-          </form>
-        )}
       </div>
       <StatusPill status={lesson.status} />
       <div className="btn-group">
-        {lesson.status === "scheduled" && (
-          <>
-            <button className="small primary" disabled={!!busy} onClick={complete}>{busy === "complete" ? "…" : "Завершить"}</button>
-            <button className="small" disabled={!!busy} onClick={() => setRescheduling(!rescheduling)}>Перенести</button>
-            <button className="small danger-button" disabled={!!busy} onClick={cancel}>Отменить</button>
-          </>
-        )}
-        {lesson.status === "completed" && <button className="small danger-button" disabled={!!busy} onClick={cancel}>Отменить</button>}
-        {lesson.status === "cancelled" && <button className="small" disabled={!!busy} onClick={reactivate}>Восстановить</button>}
+        {lesson.status === "scheduled" && <button className="small primary" disabled={!!busy} onClick={complete}>{busy === "complete" ? "…" : "Завершить"}</button>}
+        <div className="action-menu-wrap">
+          <button className="icon-button compact" type="button" onClick={() => setMenuOpen((value) => !value)} title="Действия">
+            <Icon name="more_vert" />
+          </button>
+          {menuOpen && (
+            <div className="action-menu">
+              {lesson.status === "scheduled" && (
+                <>
+                  <button type="button" onClick={() => { setMenuOpen(false); setRescheduleOpen(true); }}>
+                    <Icon name="schedule" />Перенести
+                  </button>
+                  <button type="button" className="danger-menu-item" disabled={!!busy} onClick={() => { setMenuOpen(false); cancel(); }}>
+                    <Icon name="event_busy" />Отменить
+                  </button>
+                </>
+              )}
+              {lesson.status === "completed" && (
+                <button type="button" className="danger-menu-item" disabled={!!busy} onClick={() => { setMenuOpen(false); cancel(); }}>
+                  <Icon name="event_busy" />Отменить
+                </button>
+              )}
+              {lesson.status === "cancelled" && (
+                <button type="button" disabled={!!busy} onClick={() => { setMenuOpen(false); reactivate(); }}>
+                  <Icon name="restore" />Восстановить
+                </button>
+              )}
+              {!["scheduled", "completed", "cancelled"].includes(lesson.status) && (
+                <button type="button" disabled><Icon name="info" />Нет действий</button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+      {rescheduleOpen && (
+        <RescheduleLessonModal
+          lesson={lesson}
+          studentName={name}
+          busy={busy === "reschedule"}
+          onClose={() => setRescheduleOpen(false)}
+          onSubmit={async (starts, ends) => {
+            setBusy("reschedule");
+            setError(null);
+            setNotice(null);
+            try {
+              await api.post(`/lessons/${lesson.id}/reschedule`, {
+                new_starts_at: toIso(starts),
+                new_ends_at: toIso(ends),
+              });
+              setNotice("Занятие перенесено.");
+              setRescheduleOpen(false);
+              reload();
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setBusy(null);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function RescheduleLessonModal({
+  lesson,
+  studentName,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  lesson: Lesson;
+  studentName: string;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (starts: string, ends: string) => Promise<void>;
+}) {
+  const [starts, setStarts] = useState(isoToLocalInput(lesson.starts_at));
+  const [ends, setEnds] = useState(isoToLocalInput(lesson.ends_at));
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    await onSubmit(starts, ends);
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={onClose}>
+      <form className="modal-panel" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
+        <div className="modal-heading">
+          <div>
+            <h2>Перенести занятие</h2>
+            <p>{studentName} · {lesson.topic || "Занятие"}</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
+            <Icon name="close" />
+          </button>
+        </div>
+        <div className="modal-fields">
+          <div className="field">
+            <label>Новое начало
+              <input type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} required />
+            </label>
+          </div>
+          <div className="field">
+            <label>Новый конец
+              <input type="datetime-local" value={ends} onChange={(event) => setEnds(event.target.value)} required />
+            </label>
+          </div>
+        </div>
+        <div className="modal-actions">
+          <button type="button" onClick={onClose}>Отмена</button>
+          <button className="primary" type="submit" disabled={busy}>
+            <Icon name="schedule" />
+            {busy ? "Перенос…" : "Перенести"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

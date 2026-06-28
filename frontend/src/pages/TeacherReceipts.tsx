@@ -15,6 +15,7 @@ export default function TeacherReceipts() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [modal, setModal] = useState<{ receipt: Receipt; action: "confirm" | "reject" } | null>(null);
 
   const filtered = useMemo(
     () => (receipts.data ?? []).filter((receipt) => status === "all" || receipt.status === status),
@@ -28,6 +29,7 @@ export default function TeacherReceipts() {
     try {
       await api.post(`/payments/receipts/${receipt.id}/${action}`);
       setNotice(action === "confirm" ? "Чек подтверждён." : "Чек отклонён.");
+      setModal(null);
       receipts.reload();
       dashboard.reload();
     } catch (err) {
@@ -68,6 +70,12 @@ export default function TeacherReceipts() {
         <Card title="Чеки учеников" icon="receipt_long">
           <ErrorMsg error={error || receipts.error} />
           <Notice text={notice} />
+          {status === "pending_review" && filtered.length > 0 && (
+            <div className="rule-banner">
+              <Icon name="info" />
+              <span>Баланс ученика меняется только после подтверждения чека преподавателем.</span>
+            </div>
+          )}
           {filtered.map((receipt) => (
             <div className="resource-row" key={receipt.id}>
               <div className="resource-icon"><Icon name="receipt_long" /></div>
@@ -83,8 +91,8 @@ export default function TeacherReceipts() {
                 <button className="small" onClick={() => openFile(receipt.file_id).catch((err) => setError((err as Error).message))}>Файл</button>
                 {receipt.status === "pending_review" && (
                   <>
-                    <button className="small primary" disabled={actingId === receipt.id} onClick={() => act(receipt, "confirm")}>Подтвердить</button>
-                    <button className="small danger-button" disabled={actingId === receipt.id} onClick={() => act(receipt, "reject")}>Отклонить</button>
+                    <button className="small primary" disabled={actingId === receipt.id} onClick={() => setModal({ receipt, action: "confirm" })}>Подтвердить</button>
+                    <button className="small danger-button" disabled={actingId === receipt.id} onClick={() => setModal({ receipt, action: "reject" })}>Отклонить</button>
                   </>
                 )}
                 <StatusPill status={receipt.status} />
@@ -94,6 +102,75 @@ export default function TeacherReceipts() {
           <ListState query={{ ...receipts, data: filtered }} empty="Чеки не найдены." />
         </Card>
       </div>
+
+      {modal && (
+        <ReceiptDecisionModal
+          receipt={modal.receipt}
+          action={modal.action}
+          studentName={studentName(students.data ?? [], modal.receipt.student_id)}
+          busy={actingId === modal.receipt.id}
+          onClose={() => setModal(null)}
+          onOpenFile={() => openFile(modal.receipt.file_id).catch((err) => setError((err as Error).message))}
+          onSubmit={() => act(modal.receipt, modal.action)}
+        />
+      )}
     </AppShell>
+  );
+}
+
+function ReceiptDecisionModal({
+  receipt,
+  action,
+  studentName,
+  busy,
+  onClose,
+  onOpenFile,
+  onSubmit,
+}: {
+  receipt: Receipt;
+  action: "confirm" | "reject";
+  studentName: string;
+  busy: boolean;
+  onClose: () => void;
+  onOpenFile: () => void;
+  onSubmit: () => void;
+}) {
+  const confirming = action === "confirm";
+  return (
+    <div className="modal-overlay" onMouseDown={onClose}>
+      <div className="modal-panel receipt-modal" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-heading">
+          <div>
+            <h2>{confirming ? "Подтвердить чек" : "Отклонить чек"}</h2>
+            <p>{studentName} · {money(receipt.amount, receipt.currency)}</p>
+          </div>
+          <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
+            <Icon name="close" />
+          </button>
+        </div>
+
+        <button className="receipt-preview" type="button" onClick={onOpenFile}>
+          <Icon name="description" />
+          <span>Открыть файл чека</span>
+          <strong>{receipt.file_id.slice(0, 8)}</strong>
+        </button>
+
+        <div className={"balance-effect " + (confirming ? "effect-confirm" : "effect-reject")}>
+          <Icon name={confirming ? "check_circle" : "cancel"} />
+          <div>
+            <strong>{confirming ? "Оплата будет учтена" : "Долг не изменится"}</strong>
+            <span>{confirming ? `Баланс ученика уменьшится на ${money(receipt.amount, receipt.currency)}.` : "Ученик увидит статус отклонения и сможет загрузить новый чек."}</span>
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" onClick={onClose}>Отмена</button>
+          <button className={confirming ? "primary" : "danger-button"} type="button" disabled={busy} onClick={onSubmit}>
+            <Icon name={confirming ? "check_circle" : "cancel"} />
+            {busy ? "Сохранение…" : confirming ? "Подтвердить" : "Отклонить"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

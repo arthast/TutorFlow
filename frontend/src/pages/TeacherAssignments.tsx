@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   api,
@@ -8,8 +8,24 @@ import {
   type StudentLink,
   type TeacherDashboard,
 } from "../api";
-import { AppShell, Card, ErrorMsg, Icon, ListState, StatusPill, useAsync } from "../ui";
+import { AppShell, ErrorMsg, Icon, ListState, StatusPill, useAsync } from "../ui";
 import { teacherNav } from "./teacherNav";
+
+type AssignmentTab = "all" | "review" | "active" | "done";
+
+const ASSIGNMENT_STATUS: Record<string, {
+  label: string;
+  category: Exclude<AssignmentTab, "all">;
+  accent: string;
+  icon: string;
+  iconClass: string;
+}> = {
+  assigned: { label: "выдано", category: "active", accent: "#3b5bdb", icon: "assignment", iconClass: "assignment-icon-info" },
+  submitted: { label: "сдано", category: "review", accent: "#d99413", icon: "assignment_turned_in", iconClass: "assignment-icon-warning" },
+  needs_fix: { label: "нужны правки", category: "active", accent: "#d99413", icon: "edit_note", iconClass: "assignment-icon-warning" },
+  reviewed: { label: "выполнено", category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
+  accepted: { label: "зачтено", category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
+};
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   const ids: string[] = [];
@@ -23,33 +39,66 @@ async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   return ids;
 }
 
+function statusMeta(status: string) {
+  return ASSIGNMENT_STATUS[status] ?? ASSIGNMENT_STATUS.assigned;
+}
+
 function studentName(students: StudentLink[], studentId: string): string {
   return students.find((student) => student.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "??";
+}
+
+function deadlineLabel(assignment: Assignment): string {
+  if (assignment.due_at) {
+    const date = new Date(assignment.due_at);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    }
+  }
+  return assignment.created_at ? `создано ${new Date(assignment.created_at).toLocaleDateString("ru-RU")}` : "без дедлайна";
+}
+
+function fileSize(file: File): string {
+  if (file.size >= 1024 * 1024) return `${(file.size / (1024 * 1024)).toFixed(1)} МБ`;
+  return `${Math.max(1, Math.round(file.size / 1024))} КБ`;
 }
 
 export default function TeacherAssignments() {
   const dashboard = useAsync<TeacherDashboard>(() => reports.teacherDashboard(), []);
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
-  const [status, setStatus] = useState("all");
+  const [tab, setTab] = useState<AssignmentTab>("all");
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
 
   const studentList = students.data ?? [];
+  const counts = useMemo(() => {
+    const base: Record<AssignmentTab, number> = { all: 0, review: 0, active: 0, done: 0 };
+    (assignments.data ?? []).forEach((assignment) => {
+      const category = statusMeta(assignment.status).category;
+      base.all += 1;
+      base[category] += 1;
+    });
+    return base;
+  }, [assignments.data]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (assignments.data ?? []).filter((assignment) => {
       const name = studentName(studentList, assignment.student_id).toLowerCase();
       const matchesQuery = !q || assignment.title.toLowerCase().includes(q) || name.includes(q);
-      const matchesStatus = status === "all" || assignment.status === status;
-      return matchesQuery && matchesStatus;
+      const matchesTab = tab === "all" || statusMeta(assignment.status).category === tab;
+      return matchesQuery && matchesTab;
     });
-  }, [assignments.data, query, status, studentList]);
+  }, [assignments.data, query, studentList, tab]);
 
   return (
     <AppShell
       title="Домашние задания"
-      subtitle="Выдача, сдача и проверка работ"
+      subtitle="Выдача и проверка работ"
       navSection="Работа"
       navItems={teacherNav("assignments", {
         students: dashboard.data?.students_count,
@@ -60,51 +109,37 @@ export default function TeacherAssignments() {
       actions={
         <button className="primary-action" type="button" onClick={() => setCreateOpen(true)}>
           <Icon name="add" />
-          <span>Новое ДЗ</span>
+          <span>Выдать ДЗ</span>
         </button>
       }
     >
       <div className="container">
-        <div className="teacher-toolbar">
-          <div className="segmented">
+        <div className="page-tabs-bar">
+          <div className="page-tabs">
             {[
               ["all", "Все"],
-              ["assigned", "Выдано"],
-              ["submitted", "Сдано"],
-              ["needs_fix", "На правках"],
-              ["reviewed", "Проверено"],
+              ["review", "На проверку"],
+              ["active", "В работе"],
+              ["done", "Выполнено"],
             ].map(([value, label]) => (
-              <button className={status === value ? "active" : ""} key={value} onClick={() => setStatus(value)}>
+              <button className={tab === value ? "active" : ""} key={value} onClick={() => setTab(value as AssignmentTab)}>
                 {label}
+                <span>{counts[value as AssignmentTab]}</span>
               </button>
             ))}
           </div>
           <div className="search-field">
             <Icon name="search" />
-            <input placeholder="Поиск по заданию или ученику..." value={query} onChange={(event) => setQuery(event.target.value)} />
+            <input placeholder="Поиск по теме или ученику..." value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
         </div>
 
-        <Card title="Все задания" icon="assignment">
+        <div className="assignment-list">
           {filtered.map((assignment) => (
-            <div className="resource-row" key={assignment.id}>
-              <div className="resource-icon"><Icon name="assignment" /></div>
-              <div className="resource-main">
-                <Link className="summary-title" to={`/teacher/assignments/${assignment.id}/review`}>{assignment.title}</Link>
-                <div className="summary-grid">
-                  <span>{studentName(studentList, assignment.student_id)}</span>
-                  <span>Создано: {assignment.created_at ? new Date(assignment.created_at).toLocaleDateString("ru-RU") : "-"}</span>
-                  <span>{assignment.description || "Описание не указано"}</span>
-                </div>
-              </div>
-              <div className="btn-group">
-                <Link className="button-link small-link" to={`/teacher/assignments/${assignment.id}/review`}>Проверка</Link>
-                <StatusPill status={assignment.status} />
-              </div>
-            </div>
+            <AssignmentRow assignment={assignment} students={studentList} key={assignment.id} />
           ))}
-          <ListState query={{ ...assignments, data: filtered }} empty="Задания не найдены." />
-        </Card>
+          <ListState query={{ ...assignments, data: filtered }} empty="В этой вкладке пока пусто." />
+        </div>
       </div>
 
       {createOpen && (
@@ -122,6 +157,38 @@ export default function TeacherAssignments() {
   );
 }
 
+function AssignmentRow({ assignment, students }: { assignment: Assignment; students: StudentLink[] }) {
+  const meta = statusMeta(assignment.status);
+  const name = studentName(students, assignment.student_id);
+  const review = meta.category === "review";
+  return (
+    <div className="assignment-list-row" style={{ borderLeftColor: meta.accent }}>
+      <div className={"assignment-row-icon " + meta.iconClass}>
+        <Icon name={meta.icon} />
+      </div>
+      <div className="assignment-row-main">
+        <div className="assignment-row-title">
+          <Link to={`/teacher/assignments/${assignment.id}/review`}>{assignment.title}</Link>
+          {!!assignment.file_ids?.length && (
+            <span className="file-count"><Icon name="attach_file" />{assignment.file_ids.length}</span>
+          )}
+        </div>
+        <div className="assignment-row-meta">
+          <span>
+            <span className="mini-avatar">{initials(name)}</span>
+            {name}
+          </span>
+          <span className={assignment.due_at ? "deadline" : ""}><Icon name="schedule" />{deadlineLabel(assignment)}</span>
+        </div>
+      </div>
+      <StatusPill status={assignment.status} />
+      <Link className={review ? "button-link small-link primary-link" : "button-link small-link"} to={`/teacher/assignments/${assignment.id}/review`}>
+        {review ? "Проверить" : "Подробнее"}
+      </Link>
+    </div>
+  );
+}
+
 function CreateAssignmentModal({
   students,
   onClose,
@@ -134,9 +201,12 @@ function CreateAssignmentModal({
   const [studentId, setStudentId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -148,6 +218,7 @@ function CreateAssignmentModal({
         student_id: studentId,
         title,
         description: description || undefined,
+        due_at: dueDate && dueTime ? new Date(`${dueDate}T${dueTime}`).toISOString() : undefined,
         file_ids: fileIds.length ? fileIds : undefined,
       });
       onCreated();
@@ -158,13 +229,17 @@ function CreateAssignmentModal({
     }
   }
 
+  function removeFile(index: number) {
+    setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
   return (
     <div className="modal-overlay" onMouseDown={onClose}>
-      <form className="modal-panel" onMouseDown={(event) => event.stopPropagation()} onSubmit={create}>
+      <form className="modal-panel modal-panel-wide" onMouseDown={(event) => event.stopPropagation()} onSubmit={create}>
         <div className="modal-heading">
           <div>
-            <h2>Новое ДЗ</h2>
-            <p>Черновой skeleton до отдельного дизайна</p>
+            <h2>Выдать домашнее задание</h2>
+            <p>Тема, материалы и дедлайн</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} title="Закрыть"><Icon name="close" /></button>
         </div>
@@ -183,15 +258,48 @@ function CreateAssignmentModal({
               </span>
             </label>
           </div>
-          <div className="field"><label>Название<input value={title} onChange={(event) => setTitle(event.target.value)} required /></label></div>
-          <div className="field"><label>Описание<textarea value={description} onChange={(event) => setDescription(event.target.value)} /></label></div>
-          <div className="field"><label>Файлы<input type="file" multiple onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])} /></label></div>
+          <div className="field"><label>Тема задания<input value={title} onChange={(event) => setTitle(event.target.value)} required placeholder="Например: Квадратные уравнения · вариант 5" /></label></div>
+          <div className="field"><label>Описание<textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Что нужно сделать, на что обратить внимание..." /></label></div>
+          <div className="field-row modal-field-row">
+            <label>Дедлайн · дата<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
+            <label className="time-field">Время<input type="time" value={dueTime} onChange={(event) => setDueTime(event.target.value)} /></label>
+          </div>
+          <div className="field">
+            <label>Материалы задания</label>
+            {files.length > 0 && (
+              <div className="attachment-list">
+                {files.map((file, index) => (
+                  <div className="attachment-item" key={file.name + index}>
+                    <Icon name={file.type.startsWith("image/") ? "image" : file.type.includes("pdf") ? "picture_as_pdf" : "description"} />
+                    <div>
+                      <strong>{file.name}</strong>
+                      <span>{fileSize(file)}</span>
+                    </div>
+                    <button type="button" className="icon-button compact" onClick={() => removeFile(index)} title="Удалить">
+                      <Icon name="close" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              hidden
+              onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
+            />
+            <button type="button" className="upload-drop-button" onClick={() => inputRef.current?.click()}>
+              <Icon name="upload_file" />
+              <span>Прикрепить файл</span>
+            </button>
+          </div>
         </div>
         <div className="modal-actions">
           <button type="button" onClick={onClose}>Отмена</button>
           <button className="primary" type="submit" disabled={busy}>
-            <Icon name="assignment_add" />
-            {busy ? "Создание..." : "Создать ДЗ"}
+            <Icon name="send" />
+            {busy ? "Выдача..." : "Выдать задание"}
           </button>
         </div>
       </form>

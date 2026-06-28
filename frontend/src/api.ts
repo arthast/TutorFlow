@@ -169,6 +169,8 @@ export interface Assignment {
   description?: string;
   status: string;
   created_at?: string;
+  due_at?: string | null;
+  file_ids?: string[];
 }
 export interface Submission {
   id: string;

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  a { text-decoration:none; color:inherit; }
+  ::selection { background:#d6defb; }
+  .card { transition:box-shadow .15s, transform .15s, border-color .15s; }
+  .card:hover { box-shadow:0 10px 28px rgba(20,24,33,.10); transform:translateY(-2px); border-color:#d4dae3; }
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#f6f8fb">
+
+  <!-- Top bar -->
+  <div style="background:#1c2440; color:#fff; position:relative; overflow:hidden">
+    <div style="position:absolute; right:-80px; top:-90px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle, rgba(59,91,219,.5), transparent 70%)"></div>
+    <div style="position:absolute; left:38%; bottom:-140px; width:300px; height:300px; border-radius:50%; background:radial-gradient(circle, rgba(15,138,138,.35), transparent 70%)"></div>
+    <div style="max-width:1080px; margin:0 auto; padding:26px 36px 40px; position:relative">
+      <div style="display:flex; align-items:center; gap:12px">
+        <div style="width:34px; height:34px; border-radius:9px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:18px">T</div>
+        <span style="font-weight:800; font-size:18px; letter-spacing:-0.01em">TutorFlow</span>
+        <span style="font-weight:600; font-size:12px; color:#fff; background:rgba(255,255,255,.14); padding:5px 11px; border-radius:999px; margin-left:4px">Прототип · v1</span>
+      </div>
+      <div style="font-weight:800; font-size:30px; letter-spacing:-0.02em; margin-top:24px; max-width:640px; line-height:1.18">Кликабельный прототип платформы для репетиторов</div>
+      <p style="font-weight:500; font-size:14.5px; line-height:1.6; color:#aeb6d4; max-width:620px; margin:14px 0 0">Все ключевые экраны двух кабинетов — преподавателя и ученика. Откройте любой экран; в каждом логотип возвращает сюда. Ниже — заметки для разработчика по привязке к бэкенду.</p>
+      <div style="display:flex; gap:24px; margin-top:24px; flex-wrap:wrap">
+        <div><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">12</div><div style="font-weight:500; font-size:12px; color:#9aa3c4">экранов</div></div>
+        <div style="width:1px; background:rgba(255,255,255,.14)"></div>
+        <div><div style="font-weight:800; font-size:22px">2</div><div style="font-weight:500; font-size:12px; color:#9aa3c4">роли · разные акценты</div></div>
+        <div style="width:1px; background:rgba(255,255,255,.14)"></div>
+        <div><div style="font-weight:800; font-size:22px">React + TS</div><div style="font-weight:500; font-size:12px; color:#9aa3c4">целевой стек (Vite)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1080px; margin:0 auto; padding:0 36px 80px">
+
+    <!-- ===== TEACHER ===== -->
+    <div style="display:flex; align-items:center; gap:11px; margin:34px 0 16px">
+      <span style="width:10px; height:10px; border-radius:50%; background:#3b5bdb"></span>
+      <div style="font-weight:800; font-size:18px; letter-spacing:-0.01em">Кабинет преподавателя</div>
+      <span style="font-weight:600; font-size:12px; color:#2f49b8; background:#e9edfd; padding:4px 10px; border-radius:999px">синий акцент</span>
+      <div style="flex:1; height:1px; background:#e6eaf0"></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(232px, 1fr)); gap:14px">
+      <a href="Кабинет преподавателя.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">dashboard</span></div>
+        <div style="font-weight:700; font-size:15px">Дашборд-сводка</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">KPI, занятия на сегодня, очередь чеков, realtime-уведомления</div>
+      </a>
+      <a href="Ученики.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">group</span></div>
+        <div style="font-weight:700; font-size:15px">Ученики · список</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Поиск, фильтры, создание ученика + временный пароль</div>
+      </a>
+      <a href="Карточка ученика.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">badge</span></div>
+        <div style="font-weight:700; font-size:15px">Карточка ученика</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Обзор + доп. инфо, Финансы с журналом и корректировкой</div>
+      </a>
+      <a href="Занятия преподавателя.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">calendar_month</span></div>
+        <div style="font-weight:700; font-size:15px">Занятия</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Предстоящие / завершённые, перенос, отмена, восстановление</div>
+      </a>
+      <a href="Домашние задания.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">assignment</span></div>
+        <div style="font-weight:700; font-size:15px">Домашние задания</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Список всех работ со статусами + выдача ДЗ с материалами</div>
+      </a>
+      <a href="Проверка ДЗ.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">grading</span></div>
+        <div style="font-weight:700; font-size:15px">Проверка работы</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Решение ученика, вердикт принять / нужны правки, комментарий</div>
+      </a>
+      <a href="Финансы преподавателя.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">account_balance_wallet</span></div>
+        <div style="font-weight:700; font-size:15px">Финансы</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Сводка по всем ученикам: долги, начисления, операции</div>
+      </a>
+      <a href="Чеки на подтверждение.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">receipt_long</span></div>
+        <div style="font-weight:700; font-size:15px">Чеки на подтверждение</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Подтвердить / отклонить, предпросмотр влияния на долг</div>
+      </a>
+    </div>
+
+    <!-- ===== STUDENT ===== -->
+    <div style="display:flex; align-items:center; gap:11px; margin:34px 0 16px">
+      <span style="width:10px; height:10px; border-radius:50%; background:#0f8a8a"></span>
+      <div style="font-weight:800; font-size:18px; letter-spacing:-0.01em">Кабинет ученика</div>
+      <span style="font-weight:600; font-size:12px; color:#0c6e6e; background:#e0f0f0; padding:4px 10px; border-radius:999px">бирюзовый акцент</span>
+      <div style="flex:1; height:1px; background:#e6eaf0"></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(232px, 1fr)); gap:14px">
+      <a href="Кабинет ученика.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e0f0f0; color:#0c6e6e; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">dashboard</span></div>
+        <div style="font-weight:700; font-size:15px">Главная ученика</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Долг (только чтение), занятия, активные ДЗ, статусы чеков</div>
+      </a>
+      <a href="Оплата ученика.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#e0f0f0; color:#0c6e6e; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">payments</span></div>
+        <div style="font-weight:700; font-size:15px">Оплата</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Заявить оплату + чек, история со статусами. Без оплаты картой</div>
+      </a>
+    </div>
+
+    <!-- ===== SHARED ===== -->
+    <div style="display:flex; align-items:center; gap:11px; margin:34px 0 16px">
+      <span style="width:10px; height:10px; border-radius:50%; background:#8b94a3"></span>
+      <div style="font-weight:800; font-size:18px; letter-spacing:-0.01em">Общее и основа</div>
+      <div style="flex:1; height:1px; background:#e6eaf0"></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(232px, 1fr)); gap:14px">
+      <a href="Чат.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#eef2f7; color:#5a6472; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">chat_bubble</span></div>
+        <div style="font-weight:700; font-size:15px">Чат</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Диалоги, вложения, прочтения, онлайн, realtime</div>
+      </a>
+      <a href="Вход и регистрация.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#eef2f7; color:#5a6472; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">login</span></div>
+        <div style="font-weight:700; font-size:15px">Вход / регистрация</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Вход, регистрация преподавателя, смена временного пароля</div>
+      </a>
+      <a href="Дизайн-система.dc.html" class="card" style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px; display:block">
+        <div style="width:40px; height:40px; border-radius:11px; background:#eef2f7; color:#5a6472; display:flex; align-items:center; justify-content:center; margin-bottom:13px"><span class="ms" style="font-size:22px">palette</span></div>
+        <div style="font-weight:700; font-size:15px">Дизайн-система</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:4px; line-height:1.45">Цвет, типографика, компоненты, статус-бейджи, навигация</div>
+      </a>
+    </div>
+
+    <!-- ===== DEV HANDOFF ===== -->
+    <div style="display:flex; align-items:center; gap:11px; margin:40px 0 16px">
+      <span class="ms" style="font-size:22px; color:#3b5bdb">terminal</span>
+      <div style="font-weight:800; font-size:18px; letter-spacing:-0.01em">Заметки для разработчика</div>
+      <div style="flex:1; height:1px; background:#e6eaf0"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start">
+
+      <!-- entities -->
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+        <div style="font-weight:700; font-size:15px; margin-bottom:14px">Доменные сущности</div>
+        <div style="display:flex; flex-direction:column; gap:11px">
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">person</span><div><b style="font-weight:700; font-size:13.5px">User</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— role: teacher | student; первый вход по временному паролю → смена</span></div></div>
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">calendar_month</span><div><b style="font-weight:700; font-size:13.5px">Lesson</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— status: planned | done | canceled; reschedule, reactivate</span></div></div>
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">assignment</span><div><b style="font-weight:700; font-size:13.5px">Homework + Submission</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— issued | submitted | revise | reviewed | done | overdue; вложения</span></div></div>
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">receipt_long</span><div><b style="font-weight:700; font-size:13.5px">Receipt</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— pending | confirmed | rejected; файл + заявленная сумма</span></div></div>
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">account_balance_wallet</span><div><b style="font-weight:700; font-size:13.5px">FinanceEntry / Balance</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— charge | payment | adjust; долг = Σ; может быть < 0 (переплата)</span></div></div>
+          <div style="display:flex; gap:11px"><span class="ms" style="font-size:19px; color:#3b5bdb; flex-shrink:0">forum</span><div><b style="font-weight:700; font-size:13.5px">Message / Notification</b> <span style="font-weight:500; font-size:12.5px; color:#8b94a3">— realtime (WS/SSE): бейджи непрочитанного, прочтения, онлайн, тосты</span></div></div>
+        </div>
+      </div>
+
+      <!-- key rules -->
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+        <div style="font-weight:700; font-size:15px; margin-bottom:14px">Ключевые правила (UX → backend)</div>
+        <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="display:flex; align-items:flex-start; gap:9px; background:#fffaf0; border:1px solid #f5e2c8; border-radius:10px; padding:10px 12px"><span class="ms" style="font-size:18px; color:#d99413; flex-shrink:0; margin-top:1px">priority_high</span><div style="font-weight:500; font-size:12.5px; line-height:1.5; color:#7a5a1e">Загрузка чека НЕ меняет долг. Баланс пересчитывается только при <b>confirm</b> чека преподавателем.</div></div>
+          <div style="display:flex; align-items:flex-start; gap:9px; background:#f0f7ff; border:1px solid #d6e6fb; border-radius:10px; padding:10px 12px"><span class="ms" style="font-size:18px; color:#3b5bdb; flex-shrink:0; margin-top:1px">block</span><div style="font-weight:500; font-size:12.5px; line-height:1.5; color:#3a5680">Реальных платежей нет — никакой эквайринг. Только ручное подтверждение.</div></div>
+          <div style="display:flex; align-items:flex-start; gap:9px; background:#f0faf4; border:1px solid #cdeede; border-radius:10px; padding:10px 12px"><span class="ms" style="font-size:18px; color:#0f7a4f; flex-shrink:0; margin-top:1px">visibility</span><div style="font-weight:500; font-size:12.5px; line-height:1.5; color:#0f5c3c">Ученик видит долг только на чтение; правки баланса — у преподавателя (корректировки ±).</div></div>
+          <div style="display:flex; align-items:flex-start; gap:9px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:10px; padding:10px 12px"><span class="ms" style="font-size:18px; color:#5a6472; flex-shrink:0; margin-top:1px">bolt</span><div style="font-weight:500; font-size:12.5px; line-height:1.5; color:#5a6472">Realtime: счётчики непрочитанного, статусы онлайн и тосты приходят push-ом.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- screen -> actions table -->
+    <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:6px 0 4px; margin-top:16px; overflow:hidden">
+      <div style="font-weight:700; font-size:15px; padding:16px 22px 12px">Экран → ключевые операции бэкенда</div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:10px 22px; background:#fafbfd; border-top:1px solid #e6eaf0; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3"><div>Экран</div><div>Операции</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px; border-bottom:1px solid #f3f5f8"><div style="font-weight:600; font-size:13px">Ученики / Карточка</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">list / create student (email + temp pw), get profile, update notes & fields, adjust balance (±, comment)</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px; border-bottom:1px solid #f3f5f8"><div style="font-weight:600; font-size:13px">Занятия</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">list (upcoming / past), create, complete (→ charge), cancel, reschedule, reactivate</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px; border-bottom:1px solid #f3f5f8"><div style="font-weight:600; font-size:13px">Домашние задания / Проверка</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">create HW (files, deadline), list, get submissions, review (accept / revise + comment), download files</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px; border-bottom:1px solid #f3f5f8"><div style="font-weight:600; font-size:13px">Чеки / Оплата</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">student: declare payment (amount + file). teacher: list pending, confirm (→ payment entry), reject (reason)</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px; border-bottom:1px solid #f3f5f8"><div style="font-weight:600; font-size:13px">Финансы</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">aggregate debts, per-student ledger, recent operations, export</div></div>
+      <div style="display:grid; grid-template-columns:1.1fr 2fr; gap:14px; padding:12px 22px"><div style="font-weight:600; font-size:13px">Чат / Уведомления</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">conversations, messages + attachments, mark-read, presence, notifications — через WebSocket/SSE</div></div>
+    </div>
+
+    <!-- impl note -->
+    <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px dashed #c7d2f7; border-radius:14px; padding:16px 18px; margin-top:16px">
+      <span class="ms" style="font-size:22px; color:#3b5bdb; flex-shrink:0">info</span>
+      <div style="font-weight:500; font-size:13px; line-height:1.6; color:#5a6472">Прототип — статический: данные хранятся в стейте каждого экрана (демо-значения на русском), действия дают тосты и оптимистично обновляют UI. Для продакшена: заменить локальный стейт на вызовы API-gateway, подключить realtime-канал для чата и уведомлений, файлы — через загрузку/скачивание вложений. Палитра, типографика и компоненты — в «Дизайн-системе».</div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

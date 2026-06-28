@@ -190,8 +190,26 @@ const PILL_CLASS: Record<string, string> = {
   rejected: "pill-danger",
 };
 
+const PILL_LABEL: Record<string, string> = {
+  scheduled: "запланировано",
+  completed: "завершено",
+  cancelled: "отменено",
+  active: "активен",
+  invited: "приглашён",
+  archived: "архив",
+  assigned: "выдано",
+  submitted: "сдано",
+  reviewed: "проверено",
+  needs_fix: "правки",
+  accepted: "принято",
+  done: "готово",
+  pending_review: "на проверке",
+  confirmed: "подтверждён",
+  rejected: "отклонён",
+};
+
 export function StatusPill({ status }: { status: string }) {
-  return <span className={"pill " + (PILL_CLASS[status] ?? "pill-muted")}>{status}</span>;
+  return <span className={"pill " + (PILL_CLASS[status] ?? "pill-muted")}>{PILL_LABEL[status] ?? status}</span>;
 }
 
 export function ErrorMsg({ error }: { error: string | null }) {
