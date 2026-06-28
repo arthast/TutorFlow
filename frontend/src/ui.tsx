@@ -3,6 +3,133 @@ import { api, openFile, type AppNotification, type FileMeta } from "./api";
 import { useAuth } from "./auth";
 import { useRealtimeEvent } from "./realtime";
 
+export function Icon({ name, className = "" }: { name: string; className?: string }) {
+  return <span className={"ms " + className} aria-hidden="true">{name}</span>;
+}
+
+export interface AppNavItem {
+  label: string;
+  icon: string;
+  href: string;
+  badge?: number | string;
+  active?: boolean;
+}
+
+function initials(name?: string): string {
+  const parts = (name ?? "TutorFlow").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "TF";
+  return parts.slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
+}
+
+export function AppShell({
+  title,
+  subtitle,
+  navSection,
+  navItems,
+  accent = "teacher",
+  actions,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  navSection: string;
+  navItems: AppNavItem[];
+  accent?: "teacher" | "student";
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const { user, role, logout } = useAuth();
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tf_sb_collapsed");
+      if (saved !== null) return saved === "1";
+    } catch {
+      /* localStorage may be unavailable in private contexts */
+    }
+    return typeof window !== "undefined" && window.innerWidth < 1080;
+  });
+
+  useEffect(() => {
+    function onResize() {
+      if (window.innerWidth < 880) setCollapsed(true);
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  function toggle() {
+    setCollapsed((next) => {
+      const value = !next;
+      try {
+        localStorage.setItem("tf_sb_collapsed", value ? "1" : "0");
+      } catch {
+        /* noop */
+      }
+      return value;
+    });
+  }
+
+  const roleLabel = role === "teacher" ? "Преподаватель" : "Ученик";
+
+  return (
+    <div className={"app-shell app-shell-" + accent + (collapsed ? " is-collapsed" : "")}>
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="brand-mark">T</div>
+          {!collapsed && <span>TutorFlow</span>}
+        </div>
+        <nav className="sidebar-nav tf-scroll">
+          {!collapsed && <div className="sidebar-section">{navSection}</div>}
+          {navItems.map((item, index) => {
+            const routeActive =
+              typeof window !== "undefined" &&
+              item.href.startsWith("/") &&
+              window.location.pathname === item.href;
+            const isActive = item.active ?? (routeActive || index === 0);
+            return (
+              <a className={"sidebar-link" + (isActive ? " active" : "")} href={item.href} key={item.href} title={item.label}>
+                <Icon name={item.icon} />
+                {!collapsed && <span>{item.label}</span>}
+                {item.badge !== undefined && item.badge !== 0 && (
+                  <span className="nav-badge">{item.badge}</span>
+                )}
+              </a>
+            );
+          })}
+        </nav>
+        <div className="sidebar-user">
+          <div className="avatar">{initials(user?.display_name)}</div>
+          {!collapsed && (
+            <>
+              <div className="sidebar-user-meta">
+                <div className="sidebar-user-name">{user?.display_name ?? "Пользователь"}</div>
+                <div className="sidebar-user-role">{roleLabel}</div>
+              </div>
+              <button className="icon-button" onClick={logout} title="Выйти">
+                <Icon name="logout" />
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      <div className="app-main">
+        <header className="app-header">
+          <button className="icon-button menu-button" onClick={toggle} title="Свернуть меню">
+            <Icon name="menu" />
+          </button>
+          <div className="app-title">
+            <h1>{title}</h1>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+          <div className="header-actions">{actions}</div>
+        </header>
+        <main className="app-content tf-scroll">{children}</main>
+      </div>
+    </div>
+  );
+}
+
 export function TopBar() {
   const { user, role, logout } = useAuth();
   return (
@@ -19,12 +146,29 @@ export function TopBar() {
   );
 }
 
-export function Card({ title, children }: { title: string; children: ReactNode }) {
+export function Card({
+  title,
+  children,
+  id,
+  icon,
+  actions,
+  className = "",
+}: {
+  title: string;
+  children: ReactNode;
+  id?: string;
+  icon?: string;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="card">
-      <h3>{title}</h3>
+    <section className={"card " + className} id={id}>
+      <div className="card-heading">
+        <h3>{icon && <Icon name={icon} />}{title}</h3>
+        {actions && <div className="card-actions">{actions}</div>}
+      </div>
       {children}
-    </div>
+    </section>
   );
 }
 

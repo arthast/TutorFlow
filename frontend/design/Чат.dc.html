@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid transparent; background-clip:padding-box; }
+  @keyframes msgIn { from{transform:translateY(8px)} to{transform:none} }
+  @keyframes typing { 0%,60%,100%{transform:translateY(0); opacity:.4} 30%{transform:translateY(-4px); opacity:1} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px">T</div>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if><sc-if value="{{ totalUnreadShow }}"><span style="background:#e0584f; color:#fff; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ totalUnread }}</span></sc-if><sc-if value="{{ collapsedUnread }}"><span style="position:absolute; top:7px; left:27px; width:7px; height:7px; border-radius:50%; background:#e0584f; border:1.5px solid #fff"></span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Чаты</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">Переписка с учениками</div></div>
+    </header>
+
+    <!-- chat split -->
+    <div style="flex:1; display:flex; min-height:0">
+
+      <!-- ===== conversation list ===== -->
+      <div style="width:320px; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; min-height:0">
+        <div style="padding:14px 16px; flex-shrink:0">
+          <div style="position:relative"><span class="ms" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:19px; color:#8b94a3">search</span><input placeholder="Поиск по диалогам…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; padding:9px 12px 9px 37px; border:1px solid #d4dae3; border-radius:10px; background:#f8fafc"></div>
+        </div>
+        <div class="tf-scroll" style="flex:1; overflow-y:auto; min-height:0">
+          <sc-for list="{{ convos }}" as="c" hint-placeholder-count="5">
+            <div onClick="{{ c.open }}" style="display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; border-left:3px solid {{ c.activeBar }}; background:{{ c.activeBg }}; transition:background .15s" style-hover="background:#f8fafc">
+              <div style="position:relative; flex-shrink:0">
+                <div style="width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:{{ c.bg }}; color:{{ c.color }}">{{ c.initials }}</div>
+                <span style="position:absolute; right:-2px; bottom:-2px; width:12px; height:12px; border-radius:50%; background:{{ c.presence }}; border:2px solid #fff"></span>
+              </div>
+              <div style="flex:1; min-width:0">
+                <div style="display:flex; align-items:center; gap:8px"><div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1">{{ c.name }}</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; flex-shrink:0">{{ c.time }}</div></div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:2px"><div style="font-weight:{{ c.previewWeight }}; font-size:12.5px; color:{{ c.previewColor }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1">{{ c.preview }}</div><sc-if value="{{ c.hasUnread }}"><span style="background:#3b5bdb; color:#fff; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0">{{ c.unread }}</span></sc-if></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- ===== thread ===== -->
+      <div style="flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; background:#f6f8fb">
+        <!-- thread header -->
+        <div style="flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; padding:12px 22px; display:flex; align-items:center; gap:13px">
+          <div style="position:relative; flex-shrink:0"><div style="width:40px; height:40px; border-radius:11px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:14px; display:flex; align-items:center; justify-content:center">МЛ</div><span style="position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%; background:#18a866; border:2px solid #fff"></span></div>
+          <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:15px">Марк Лебедев</div><div style="font-weight:600; font-size:12px; color:#0f7a4f; display:flex; align-items:center; gap:5px"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>в сети</div></div>
+          <button style="width:38px; height:38px; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:20px">calendar_add_on</span></button>
+          <button style="width:38px; height:38px; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:20px">more_horiz</span></button>
+        </div>
+
+        <!-- messages -->
+        <div class="tf-scroll" id="tf-thread" ref="{{ threadRef }}" style="flex:1; overflow-y:auto; min-height:0; padding:22px 22px 8px; display:flex; flex-direction:column; gap:3px">
+          <div style="text-align:center; margin:4px 0 12px"><span style="font-weight:600; font-size:11.5px; color:#8b94a3; background:#e9edf2; padding:4px 12px; border-radius:999px">Сегодня</span></div>
+
+          <sc-for list="{{ messages }}" as="m" hint-placeholder-count="6">
+            <div style="display:flex; flex-direction:column; align-items:{{ m.align }}; margin-bottom:{{ m.gap }}">
+              <div style="max-width:64%; background:{{ m.bubbleBg }}; color:{{ m.bubbleColor }}; border:{{ m.border }}; border-radius:{{ m.radius }}; padding:{{ m.pad }}; box-shadow:0 1px 1px rgba(20,24,33,.04); animation:{{ m.anim }}">
+                <sc-if value="{{ m.isFile }}">
+                  <div style="display:flex; align-items:center; gap:11px; min-width:200px">
+                    <div style="width:38px; height:38px; flex-shrink:0; border-radius:9px; background:{{ m.fileIconBg }}; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:21px; color:{{ m.fileIconColor }}">{{ m.fileIcon }}</span></div>
+                    <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ m.fileName }}</div><div style="font-weight:500; font-size:11.5px; color:{{ m.fileMetaColor }}">{{ m.fileSize }}</div></div>
+                    <span class="ms" style="font-size:20px; color:{{ m.bubbleColor }}; cursor:pointer; opacity:.8">download</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.isText }}"><div style="font-weight:500; font-size:14px; line-height:1.45">{{ m.text }}</div></sc-if>
+              </div>
+              <div style="display:flex; align-items:center; gap:5px; margin-top:4px; padding:0 4px"><span style="font-weight:500; font-size:11px; color:#8b94a3">{{ m.time }}</span><sc-if value="{{ m.showRead }}"><span class="ms" style="font-size:15px; color:{{ m.readColor }}">{{ m.readIcon }}</span></sc-if></div>
+            </div>
+          </sc-for>
+
+          <sc-if value="{{ typing }}">
+            <div style="display:flex; align-items:center; gap:6px; background:#fff; border:1px solid #e6eaf0; border-radius:14px 14px 14px 4px; padding:13px 16px; align-self:flex-start; margin-top:4px">
+              <span style="width:7px; height:7px; border-radius:50%; background:#8b94a3; animation:typing 1.2s infinite"></span>
+              <span style="width:7px; height:7px; border-radius:50%; background:#8b94a3; animation:typing 1.2s infinite .2s"></span>
+              <span style="width:7px; height:7px; border-radius:50%; background:#8b94a3; animation:typing 1.2s infinite .4s"></span>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- composer -->
+        <div style="flex-shrink:0; background:#fff; border-top:1px solid #e6eaf0; padding:14px 22px">
+          <div style="display:flex; align-items:flex-end; gap:10px">
+            <button onClick="{{ attach }}" style="width:42px; height:42px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">attach_file</span></button>
+            <textarea value="{{ draft }}" onInput="{{ setDraft }}" onKeyDown="{{ onKey }}" placeholder="Написать сообщение…" style="flex:1; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 14px; border:1px solid #d4dae3; border-radius:12px; background:#f8fafc; resize:none; min-height:42px; max-height:120px; line-height:1.4"></textarea>
+            <button onClick="{{ send }}" style="width:42px; height:42px; flex-shrink:0; border:none; background:{{ sendBg }}; border-radius:11px; cursor:{{ sendCursor }}; display:flex; align-items:center; justify-content:center; color:#fff; transition:background .15s"><span class="ms" style="font-size:22px">send</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;},&quot;realtime&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Поведение&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+
+    this.state = {
+      collapsed,
+      activeId: 'mark',
+      draft: '',
+      typing: false,
+      nextMsgId: 100,
+      convos: [
+        { id: 'mark', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', time: '14:32', preview: 'Можно перенести на 18:00?', presence: '#18a866', unread: 2 },
+        { id: 'anya', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', time: '13:10', preview: 'Спасибо, отправила чек 🙌', presence: '#18a866', unread: 0 },
+        { id: 'igor', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', time: 'вчера', preview: 'Вы: проверил, всё отлично', presence: '#c4ccd6', unread: 0 },
+        { id: 'sonya', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', time: 'вчера', preview: 'А когда следующее занятие?', presence: '#c4ccd6', unread: 1 },
+        { id: 'timur', initials: 'ТО', bg: '#f3eafe', color: '#7c3aed', name: 'Тимур Орлов', time: 'пн', preview: 'Вы: отправил материалы', presence: '#c4ccd6', unread: 0 },
+      ],
+      messages: [
+        { id: 1, from: 'them', kind: 'text', text: 'Здравствуйте, Елена! Хотел уточнить по домашке', time: '14:18' },
+        { id: 2, from: 'me', kind: 'text', text: 'Привет, Марк! Конечно, спрашивай', time: '14:20', read: true },
+        { id: 3, from: 'them', kind: 'file', fileName: 'решение_дз3.pdf', fileSize: '320 КБ · PDF', fileKind: 'pdf', time: '14:25' },
+        { id: 4, from: 'them', kind: 'text', text: 'Вот моё решение, посмотрите пожалуйста третий пункт', time: '14:25' },
+        { id: 5, from: 'me', kind: 'text', text: 'Глянула — почти всё верно. В пункте 3 ошибка в знаке производной, остальное хорошо 👍', time: '14:30', read: true },
+        { id: 6, from: 'them', kind: 'text', text: 'Понял, спасибо! Можно перенести на 18:00?', time: '14:32' },
+      ],
+    };
+    this._timers = [];
+  }
+
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 760 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+    this._scrollBottom();
+    // mark active convo read on load
+    this.setState(s => ({ convos: s.convos.map(c => c.id === s.activeId ? { ...c, unread: 0 } : c) }));
+    // realtime: incoming message after a few seconds
+    if (this.props.realtime !== false) {
+      this._timers.push(setTimeout(() => this.setState({ typing: true }, () => this._scrollBottom()), 4000));
+      this._timers.push(setTimeout(() => {
+        this.setState(s => ({
+          typing: false,
+          nextMsgId: s.nextMsgId + 1,
+          messages: s.messages.concat([{ id: s.nextMsgId, from: 'them', kind: 'text', _new: true, text: 'И ещё — отправила оплату за сентябрь, чек приложила в разделе оплаты 🙏', time: '14:34' }]),
+        }), () => this._scrollBottom());
+      }, 6500));
+    }
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+
+  _scrollBottom() {
+    requestAnimationFrame(() => {
+      const el = this._thread;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }
+
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+
+  _openConvo(id) { this.setState(s => ({ activeId: id, convos: s.convos.map(c => c.id === id ? { ...c, unread: 0 } : c) }), () => this._scrollBottom()); }
+
+  _setDraft(e) { this.setState({ draft: e && e.target ? e.target.value : '' }); }
+  _onKey(e) {
+    if (e && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._send(); }
+  }
+  _send() {
+    const text = this.state.draft.trim();
+    if (!text) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    this.setState(s => ({
+      draft: '',
+      nextMsgId: s.nextMsgId + 1,
+      messages: s.messages.concat([{ id: s.nextMsgId, from: 'me', kind: 'text', _new: true, text, time: hh, read: false }]),
+    }), () => {
+      this._scrollBottom();
+      // simulate delivery -> read
+      const sentId = this.state.nextMsgId - 1;
+      this._timers.push(setTimeout(() => {
+        this.setState(s => ({ messages: s.messages.map(m => m.id === sentId ? { ...m, read: true } : m) }));
+      }, 1600));
+    });
+  }
+  _attach() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    this.setState(s => ({
+      nextMsgId: s.nextMsgId + 1,
+      messages: s.messages.concat([{ id: s.nextMsgId, from: 'me', kind: 'file', _new: true, fileName: 'материалы_занятия.pdf', fileSize: '1.2 МБ · PDF', fileKind: 'pdf', time: hh, read: false }]),
+    }), () => this._scrollBottom());
+  }
+
+  FILEICON = {
+    pdf: { icon: 'picture_as_pdf', them: '#c0362f', meThemBg: '#fde7e6' },
+    img: { icon: 'image', them: '#0f8a8a', meThemBg: '#e0f0f0' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const activeId = this.state.activeId;
+    const totalUnread = this.state.convos.reduce((a, c) => a + c.unread, 0);
+
+    const convos = this.state.convos.map(c => {
+      const active = c.id === activeId;
+      return {
+        ...c,
+        open: () => this._openConvo(c.id),
+        activeBg: active ? '#f3f5fe' : 'transparent',
+        activeBar: active ? '#3b5bdb' : 'transparent',
+        hasUnread: c.unread > 0,
+        previewWeight: c.unread > 0 ? '600' : '500',
+        previewColor: c.unread > 0 ? '#2a313c' : '#8b94a3',
+      };
+    });
+
+    const messages = this.state.messages.map((m, i) => {
+      const me = m.from === 'me';
+      const next = this.state.messages[i + 1];
+      const grouped = next && next.from === m.from;
+      const fi = this.FILEICON[m.fileKind] || this.FILEICON.pdf;
+      return {
+        align: me ? 'flex-end' : 'flex-start',
+        gap: grouped ? '2px' : '10px',
+        isText: m.kind === 'text',
+        isFile: m.kind === 'file',
+        text: m.text,
+        bubbleBg: me ? '#3b5bdb' : '#fff',
+        bubbleColor: me ? '#fff' : '#14181f',
+        border: me ? 'none' : '1px solid #e6eaf0',
+        radius: me ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+        pad: m.kind === 'file' ? '12px 14px' : '10px 14px',
+        anim: m._new ? 'msgIn .3s ease both' : 'none',
+        fileName: m.fileName, fileSize: m.fileSize,
+        fileIcon: fi.icon,
+        fileIconBg: me ? 'rgba(255,255,255,.18)' : fi.meThemBg,
+        fileIconColor: me ? '#fff' : fi.them,
+        fileMetaColor: me ? 'rgba(255,255,255,.7)' : '#8b94a3',
+        time: m.time,
+        showRead: me,
+        readIcon: m.read ? 'done_all' : 'done',
+        readColor: m.read ? '#3b5bdb' : '#b8c0cc',
+      };
+    });
+
+    const canSend = this.state.draft.trim().length > 0;
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      totalUnread, totalUnreadShow: !collapsed && totalUnread > 0, collapsedUnread: collapsed && totalUnread > 0,
+      convos,
+      messages,
+      typing: this.state.typing,
+      threadRef: (el) => { this._thread = el; },
+      draft: this.state.draft,
+      setDraft: (e) => this._setDraft(e),
+      onKey: (e) => this._onKey(e),
+      send: () => this._send(),
+      attach: () => this._attach(),
+      sendBg: canSend ? '#3b5bdb' : '#aeb9e8',
+      sendCursor: canSend ? 'pointer' : 'not-allowed',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#bfe7e7; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes tfpulse { 0%{box-shadow:0 0 0 0 rgba(15,138,138,.4)} 70%{box-shadow:0 0 0 6px rgba(15,138,138,0)} 100%{box-shadow:0 0 0 0 rgba(15,138,138,0)} }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes liveIn { from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR (teal) ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#e7f4f4; border-bottom:1px solid #d6ebeb">
+      <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#0f8a8a; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px">T</div>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#0c6e6e; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Учёба</div></sc-if>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e0f0f0; color:#0c6e6e; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap">
+        <span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Главная</span></sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Мои занятия</span></sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:21px; flex-shrink:0">assignment</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">2</span></sc-if>
+        <sc-if value="{{ collapsed }}"><span style="position:absolute; top:7px; left:27px; width:7px; height:7px; border-radius:50%; background:#d99413; border:1.5px solid #fff"></span></sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:21px; flex-shrink:0">payments</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Оплата</span></sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Мои чеки</span></sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чат</span></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#e0584f; color:#fff; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">1</span></sc-if>
+        <sc-if value="{{ collapsed }}"><span style="position:absolute; top:7px; left:27px; width:7px; height:7px; border-radius:50%; background:#e0584f; border:1.5px solid #fff"></span></sc-if>
+      </div>
+    </nav>
+
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#0f8a8a; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #bfe0e0">МЛ</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Марк Лебедев</div><div style="font-weight:600; font-size:11.5px; color:#0c6e6e">Ученик</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+
+    <!-- Header -->
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:16px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0">
+        <div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Привет, Марк!</div>
+        <div style="font-weight:500; font-size:12.5px; color:#8b94a3">Понедельник, 8 сентября</div>
+      </div>
+      <button onClick="{{ openUpload }}" style="background:#0f8a8a; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-left:auto; transition:background .15s" style-hover="background:#0c6e6e"><span class="ms" style="font-size:18px">upload_file</span>Загрузить чек</button>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; transition:background .15s" style-hover="background:#f6f8fb">
+        <span class="ms" style="font-size:23px">notifications</span>
+        <sc-if value="{{ unreadShow }}"><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">{{ unread }}</span></sc-if>
+      </div>
+    </header>
+
+    <!-- Scroll content -->
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:26px 26px 60px">
+
+      <!-- TOP ROW: debt + next lesson -->
+      <div style="display:grid; grid-template-columns:1fr 1.45fr; gap:16px; margin-bottom:18px; align-items:stretch">
+
+        <!-- Debt card (read-only) -->
+        <div style="background:#0c6e6e; border-radius:16px; padding:22px 24px; color:#fff; position:relative; overflow:hidden">
+          <div style="position:absolute; right:-30px; top:-30px; width:140px; height:140px; border-radius:50%; background:rgba(255,255,255,.06)"></div>
+          <div style="display:flex; align-items:center; gap:8px; color:#bfe7e7"><span class="ms" style="font-size:19px">account_balance_wallet</span><span style="font-weight:600; font-size:12.5px">Мой баланс</span><span style="margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-weight:600; font-size:11px; background:rgba(255,255,255,.14); padding:3px 9px; border-radius:999px"><span class="ms" style="font-size:13px">lock</span>только просмотр</span></div>
+          <div style="font-weight:800; font-size:36px; margin-top:14px; font-variant-numeric:tabular-nums; letter-spacing:-0.02em">8 000 ₽</div>
+          <div style="font-weight:600; font-size:13px; color:#bfe7e7; margin-top:2px">к оплате преподавателю</div>
+          <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,.16); display:flex; gap:18px">
+            <div><div style="font-weight:500; font-size:11.5px; color:#9fd4d4">Начислено за занятия</div><div style="font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; margin-top:2px">13 000 ₽</div></div>
+            <div><div style="font-weight:500; font-size:11.5px; color:#9fd4d4">Оплачено</div><div style="font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; margin-top:2px">5 000 ₽</div></div>
+          </div>
+        </div>
+
+        <!-- Next lesson -->
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:22px 24px; display:flex; flex-direction:column">
+          <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">event_upcoming</span><span style="font-weight:600; font-size:12.5px">Ближайшее занятие</span><span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#e0f0f0; color:#0c6e6e"><span style="width:5px; height:5px; border-radius:50%; background:#0f8a8a"></span>запланировано</span></div>
+          <div style="font-weight:800; font-size:24px; margin-top:14px; letter-spacing:-0.01em">Сегодня, 17:00</div>
+          <div style="font-weight:600; font-size:14px; color:#5a6472; margin-top:4px">Алгебра · квадратные уравнения</div>
+          <div style="display:flex; align-items:center; gap:11px; margin-top:auto; padding-top:18px">
+            <div style="position:relative; flex-shrink:0"><div style="width:38px; height:38px; border-radius:10px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center">ЕС</div><span style="position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%; background:#18a866; border:2px solid #fff"></span></div>
+            <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#0f7a4f">онлайн</div></div>
+            <button style="background:#fff; color:#0c6e6e; border:1px solid #cfe6e6; padding:8px 14px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s" style-hover="background:#f0fafa"><span class="ms" style="font-size:17px">chat_bubble</span>Написать</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-col -->
+      <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start">
+
+        <!-- LEFT -->
+        <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+
+          <!-- Активные ДЗ -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid #eef2f7">
+              <span class="ms" style="font-size:20px; color:#0f8a8a">assignment</span>
+              <div style="font-weight:700; font-size:16px">Активные задания</div>
+              <span style="font-weight:600; font-size:12px; color:#8a5a00; background:#fbeecd; padding:3px 9px; border-radius:999px">2 ждут сдачи</span>
+              <span style="margin-left:auto; font-weight:600; font-size:13px; color:#0f8a8a; cursor:pointer">Все задания</span>
+            </div>
+
+            <!-- HW 1: нужны правки -->
+            <div style="padding:15px 20px; border-bottom:1px solid #f3f5f8">
+              <div style="display:flex; align-items:flex-start; gap:12px">
+                <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; background:#fde7e6; color:#c0362f; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:20px">edit_note</span></div>
+                <div style="flex:1; min-width:0">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap"><span style="font-weight:600; font-size:14px">Производные функций</span><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:#fbeecd; color:#8a5a00"><span style="width:5px; height:5px; border-radius:50%; background:#d99413"></span>нужны правки</span></div>
+                  <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:3px">Дедлайн сегодня в 22:00 · комментарий преподавателя</div>
+                  <div style="margin-top:9px; background:#fef7ee; border:1px solid #f5e2c8; border-radius:9px; padding:9px 12px; font-weight:500; font-size:12.5px; color:#7a5a1e">«Хорошая работа, но в пункте 3 ошибка в знаке. Перепроверь и пришли заново.»</div>
+                </div>
+                <button onClick="{{ submitHw1 }}" style="background:#0f8a8a; color:#fff; border:none; padding:8px 14px; border-radius:10px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; transition:background .15s" style-hover="background:#0c6e6e">Сдать заново</button>
+              </div>
+            </div>
+
+            <!-- HW 2: выдано -->
+            <div style="padding:15px 20px">
+              <div style="display:flex; align-items:flex-start; gap:12px">
+                <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:20px">description</span></div>
+                <div style="flex:1; min-width:0">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap"><span style="font-weight:600; font-size:14px">Квадратные уравнения · вариант 4</span><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:#e9edfd; color:#2f49b8"><span style="width:5px; height:5px; border-radius:50%; background:#3b5bdb"></span>выдано</span></div>
+                  <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:3px">Дедлайн завтра в 18:00 · 2 файла материалов</div>
+                  <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap">
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:8px; padding:5px 10px; font-weight:500; font-size:12px; color:#5a6472"><span class="ms" style="font-size:16px; color:#3b5bdb">picture_as_pdf</span>условие.pdf</span>
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:8px; padding:5px 10px; font-weight:500; font-size:12px; color:#5a6472"><span class="ms" style="font-size:16px; color:#0f8a8a">image</span>пример.png</span>
+                  </div>
+                </div>
+                <button onClick="{{ submitHw2 }}" style="background:#0f8a8a; color:#fff; border:none; padding:8px 14px; border-radius:10px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; transition:background .15s" style-hover="background:#0c6e6e">Сдать решение</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Недавняя проверка -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid #eef2f7">
+              <span class="ms" style="font-size:20px; color:#18a866">grading</span>
+              <div style="font-weight:700; font-size:16px">Недавно проверено</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:13px; padding:14px 20px">
+              <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; background:#e3f4ec; color:#0f7a4f; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:20px">task_alt</span></div>
+              <div style="flex:1; min-width:0">
+                <div style="font-weight:600; font-size:13.5px">Линейные функции · вариант 1</div>
+                <div style="font-weight:500; font-size:12px; color:#8b94a3">Проверено вчера · «Отлично, всё верно!»</div>
+              </div>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#e3f4ec; color:#0f7a4f; flex-shrink:0"><span style="width:5px; height:5px; border-radius:50%; background:#18a866"></span>выполнено</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+
+          <!-- Статус моих чеков -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:9px; padding:15px 18px; border-bottom:1px solid #eef2f7">
+              <span class="ms" style="font-size:19px; color:#0f8a8a">receipt_long</span>
+              <div style="font-weight:700; font-size:15px">Мои чеки</div>
+              <span style="margin-left:auto; font-weight:600; font-size:12px; color:#0f8a8a; cursor:pointer">Все</span>
+            </div>
+
+            <!-- pending (live) -->
+            <sc-for list="{{ pendingReceipts }}" as="p" hint-placeholder-count="0">
+              <div style="display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid #f3f5f8; background:#fffaf0; animation:liveIn .3s ease">
+                <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#fbeecd; color:#8a5a00; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:18px">hourglass_top</span></div>
+                <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px; font-variant-numeric:tabular-nums">{{ p.amountFmt }} ₽</div><div style="font-weight:500; font-size:12px; color:#8b94a3">{{ p.time }} · {{ p.file }}</div></div>
+                <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:#fbeecd; color:#8a5a00; flex-shrink:0"><span style="width:5px; height:5px; border-radius:50%; background:#d99413"></span>на проверке</span>
+              </div>
+            </sc-for>
+
+            <div style="display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid #f3f5f8">
+              <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#e3f4ec; color:#0f7a4f; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:18px">check_circle</span></div>
+              <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px; font-variant-numeric:tabular-nums">5 000 ₽</div><div style="font-weight:500; font-size:12px; color:#8b94a3">3 сентября · чек_авг.pdf</div></div>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:#e3f4ec; color:#0f7a4f; flex-shrink:0"><span style="width:5px; height:5px; border-radius:50%; background:#18a866"></span>подтверждён</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; padding:13px 18px">
+              <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#fce8e7; color:#c0362f; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:18px">cancel</span></div>
+              <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px; font-variant-numeric:tabular-nums">3 000 ₽</div><div style="font-weight:500; font-size:12px; color:#8b94a3">28 августа · неразборчиво</div></div>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:#fce8e7; color:#c0362f; flex-shrink:0"><span style="width:5px; height:5px; border-radius:50%; background:#e0584f"></span>отклонён</span>
+            </div>
+          </div>
+
+          <!-- Уведомления (live) -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:9px; padding:15px 18px; border-bottom:1px solid #eef2f7">
+              <span style="width:8px; height:8px; border-radius:50%; background:#0f8a8a; animation:tfpulse 2s infinite"></span>
+              <div style="font-weight:700; font-size:15px">Уведомления</div>
+              <sc-if value="{{ unreadShow }}"><span style="font-weight:700; font-size:11px; color:#fff; background:#e0584f; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ unread }}</span></sc-if>
+              <span onClick="{{ markAllRead }}" style="margin-left:auto; font-weight:600; font-size:12px; color:#0f8a8a; cursor:pointer">Прочитать всё</span>
+            </div>
+            <div style="max-height:240px; overflow-y:auto" class="tf-scroll">
+              <sc-for list="{{ liveNotifs }}" as="n" hint-placeholder-count="0">
+                <div style="display:flex; align-items:flex-start; gap:11px; padding:12px 18px; border-bottom:1px solid #f3f5f8; background:#f4fbfb; animation:liveIn .3s ease">
+                  <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#eef2f7"><span class="ms" style="font-size:18px; color:{{ n.color }}">{{ n.icon }}</span></div>
+                  <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px">{{ n.title }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3">{{ n.meta }}</div></div>
+                  <span style="width:8px; height:8px; border-radius:50%; background:#0f8a8a; margin-top:5px; flex-shrink:0"></span>
+                </div>
+              </sc-for>
+              <div style="display:flex; align-items:flex-start; gap:11px; padding:12px 18px; border-bottom:1px solid #f3f5f8">
+                <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#fde7e6"><span class="ms" style="font-size:18px; color:#c0362f">edit_note</span></div>
+                <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px">Нужны правки по ДЗ</div><div style="font-weight:500; font-size:12px; color:#8b94a3">«Производные функций» · 20 минут назад</div></div>
+                <span style="width:8px; height:8px; border-radius:50%; background:#0f8a8a; margin-top:5px; flex-shrink:0"></span>
+              </div>
+              <div style="display:flex; align-items:flex-start; gap:11px; padding:12px 18px; opacity:.6">
+                <div style="width:30px; height:30px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; background:#e3f4ec"><span class="ms" style="font-size:18px; color:#0f7a4f">check_circle</span></div>
+                <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px; color:#5a6472">Чек подтверждён</div><div style="font-weight:500; font-size:12px; color:#8b94a3">5 000 ₽ · вчера</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD MODAL ============ -->
+  <sc-if value="{{ uploadOpen }}">
+    <div onClick="{{ closeUpload }}" style="position:fixed; inset:0; background:rgba(20,24,33,.34); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:440px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); padding:26px; animation:modalIn .26s cubic-bezier(.4,0,.2,1)">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between"><div><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Загрузить чек</div><div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">Заявите сумму и приложите файл оплаты</div></div><span onClick="{{ closeUpload }}" class="ms" style="font-size:24px; color:#8b94a3; cursor:pointer">close</span></div>
+
+        <div style="margin-top:20px">
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Сумма оплаты</label>
+          <div style="position:relative">
+            <input value="{{ amount }}" onInput="{{ setAmount }}" inputmode="numeric" placeholder="0" style="width:100%; box-sizing:border-box; font-family:inherit; font-weight:700; font-size:18px; padding:12px 38px 12px 14px; border:1px solid #d4dae3; border-radius:11px; background:#fff; font-variant-numeric:tabular-nums" />
+            <span style="position:absolute; right:14px; top:50%; transform:translateY(-50%); font-weight:700; font-size:16px; color:#8b94a3">₽</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Файл чека</label>
+          <div onClick="{{ pickFile }}" style="border:1.5px dashed {{ fileBorder }}; border-radius:12px; padding:18px; display:flex; align-items:center; gap:12px; cursor:pointer; background:{{ fileBg }}; transition:background .15s">
+            <div style="width:40px; height:40px; flex-shrink:0; border-radius:10px; background:#e0f0f0; color:#0c6e6e; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">{{ fileIcon }}</span></div>
+            <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px">{{ fileTitle }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3">{{ fileHint }}</div></div>
+            <sc-if value="{{ hasFile }}"><span class="ms" style="font-size:20px; color:#18a866">check_circle</span></sc-if>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; display:flex; align-items:flex-start; gap:9px; background:#f0fafa; border:1px solid #d6ebeb; border-radius:11px; padding:11px 13px">
+          <span class="ms" style="font-size:18px; color:#0c6e6e; flex-shrink:0; margin-top:1px">info</span>
+          <div style="font-weight:500; font-size:12px; line-height:1.5; color:#0c6e6e">Чек уйдёт на проверку преподавателю. <b>Баланс изменится только после подтверждения</b> — до этого долг останется прежним.</div>
+        </div>
+
+        <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end">
+          <button onClick="{{ closeUpload }}" style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отмена</button>
+          <button onClick="{{ submitUpload }}" style="background:{{ submitBg }}; color:#fff; border:none; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:{{ submitCursor }}; opacity:{{ submitOpacity }}; display:inline-flex; align-items:center; gap:7px"><span class="ms" style="font-size:18px">send</span>Отправить на проверку</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;},&quot;realtime&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Поведение&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      unread: 1,
+      nextId: 1,
+      toasts: [],
+      liveNotifs: [],
+      pendingReceipts: [],
+      uploadOpen: false,
+      amount: '',
+      hasFile: false,
+      fileName: '',
+    };
+    this._timers = [];
+  }
+
+  componentDidMount() {
+    this._onResize = () => {
+      if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true });
+    };
+    window.addEventListener('resize', this._onResize);
+    if (this.props.realtime !== false) {
+      this._timers.push(setTimeout(() => this._pushEvent({
+        icon: 'event_available', color: '#0f8a8a',
+        title: 'Новое занятие в расписании', body: 'Среда, 10 сентября · 17:00',
+        meta: 'от Елены Соколовой · только что',
+      }), 4200));
+    }
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    this._timers.forEach(clearTimeout);
+  }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean'
+        && this.props.collapsed !== this.state.collapsed) {
+      this.setState({ collapsed: this.props.collapsed });
+    }
+  }
+
+  _pushEvent(ev) {
+    const id = this.state.nextId;
+    this.setState(s => ({
+      nextId: s.nextId + 1,
+      unread: s.unread + 1,
+      toasts: [{ id, icon: ev.icon, color: ev.color, title: ev.title, body: ev.body }, ...s.toasts].slice(0, 3),
+      liveNotifs: [{ id, icon: ev.icon, color: ev.color, title: ev.title, meta: ev.meta }, ...s.liveNotifs].slice(0, 4),
+    }));
+    this._timers.push(setTimeout(() => this._dismiss(id), 6000));
+  }
+  _toast(t) {
+    const id = this.state.nextId;
+    this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) }));
+    this._timers.push(setTimeout(() => this._dismiss(id), 5000));
+  }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _toggle() {
+    this.setState(s => {
+      const c = !s.collapsed;
+      try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {}
+      return { collapsed: c };
+    });
+  }
+
+  _openUpload() { this.setState({ uploadOpen: true, amount: '', hasFile: false, fileName: '' }); }
+  _closeUpload() { this.setState({ uploadOpen: false }); }
+  _pickFile() { this.setState({ hasFile: true, fileName: 'чек_сентябрь.pdf' }); }
+  _setAmount(e) {
+    const raw = (e && e.target ? e.target.value : '').replace(/[^0-9]/g, '');
+    this.setState({ amount: raw });
+  }
+  _submitUpload() {
+    const amt = parseInt(this.state.amount || '0', 10);
+    if (!amt || !this.state.hasFile) {
+      this._toast({ icon: 'error', color: '#e0584f', title: 'Заполните данные', body: 'Нужна сумма и файл чека' });
+      return;
+    }
+    const id = 'p' + this.state.nextId;
+    this.setState(s => ({
+      uploadOpen: false,
+      nextId: s.nextId + 1,
+      pendingReceipts: [{ id, amount: amt, time: 'только что', file: s.fileName || 'чек.pdf' }, ...s.pendingReceipts],
+    }));
+    this._toast({ icon: 'hourglass_top', color: '#d99413', title: 'Чек отправлен на проверку', body: amt.toLocaleString('ru-RU') + ' ₽ · баланс не изменится до подтверждения' });
+  }
+
+  fmt(n) { return n.toLocaleString('ru-RU'); }
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const amt = parseInt(this.state.amount || '0', 10);
+    const ready = amt > 0 && this.state.hasFile;
+    return {
+      collapsed,
+      expanded: !collapsed,
+      sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+
+      unread: this.state.unread,
+      unreadShow: this.state.unread > 0,
+      markAllRead: () => this.setState({ unread: 0 }),
+      liveNotifs: this.state.liveNotifs,
+
+      pendingReceipts: this.state.pendingReceipts.map(p => ({ ...p, amountFmt: this.fmt(p.amount) })),
+
+      uploadOpen: this.state.uploadOpen,
+      openUpload: () => this._openUpload(),
+      closeUpload: () => this._closeUpload(),
+      pickFile: () => this._pickFile(),
+      amount: this.state.amount ? this.fmt(amt) : '',
+      setAmount: (e) => this._setAmount(e),
+      hasFile: this.state.hasFile,
+      fileIcon: this.state.hasFile ? 'description' : 'cloud_upload',
+      fileTitle: this.state.hasFile ? this.state.fileName : 'Нажмите, чтобы выбрать файл',
+      fileHint: this.state.hasFile ? '240 КБ · PDF' : 'PDF, JPG или PNG до 10 МБ',
+      fileBorder: this.state.hasFile ? '#9cd0d0' : '#cdd5df',
+      fileBg: this.state.hasFile ? '#f0fafa' : '#fafbfc',
+      submitUpload: () => this._submitUpload(),
+      submitBg: ready ? '#0f8a8a' : '#9ec9c9',
+      submitCursor: ready ? 'pointer' : 'not-allowed',
+      submitOpacity: ready ? '1' : '.7',
+
+      submitHw1: () => this._toast({ icon: 'upload_file', color: '#0f8a8a', title: 'Сдать заново', body: 'Производные функций · прикрепите файлы' }),
+      submitHw2: () => this._toast({ icon: 'upload_file', color: '#0f8a8a', title: 'Сдать решение', body: 'Квадратные уравнения · вариант 4' }),
+
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

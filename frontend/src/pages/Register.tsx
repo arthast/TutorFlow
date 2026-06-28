@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
-import { ErrorMsg } from "../ui";
+import { Card, ErrorMsg } from "../ui";
 
 export default function Register() {
   const { register } = useAuth();
@@ -27,28 +27,27 @@ export default function Register() {
 
   return (
     <div className="auth-wrap">
-      <div className="card">
-        <h3>Регистрация</h3>
+      <Card title="Регистрация" icon="person_add">
         <ErrorMsg error={error} />
         <form onSubmit={onSubmit}>
           <div className="field">
-            <label>Я —</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as "teacher" | "student")}>
+            <label htmlFor="register-role">Я —</label>
+            <select id="register-role" value={role} onChange={(e) => setRole(e.target.value as "teacher" | "student")}>
               <option value="teacher">Преподаватель</option>
               <option value="student">Ученик</option>
             </select>
           </div>
           <div className="field">
-            <label>Имя</label>
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            <label htmlFor="register-name">Имя</label>
+            <input id="register-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
           </div>
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label htmlFor="register-email">Email</label>
+            <input id="register-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="field">
-            <label>Пароль (мин. 8 символов)</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+            <label htmlFor="register-password">Пароль (мин. 8 символов)</label>
+            <input id="register-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
           </div>
           <button className="primary" type="submit" disabled={busy} style={{ width: "100%" }}>
             {busy ? "Создание…" : "Создать аккаунт"}
@@ -57,7 +56,7 @@ export default function Register() {
         <div className="center-link">
           Уже есть аккаунт? <Link to="/login">Войти</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

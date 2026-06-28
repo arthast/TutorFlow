@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
-import { ErrorMsg } from "../ui";
+import { Card, ErrorMsg } from "../ui";
 
 export default function Login() {
   const { login } = useAuth();
@@ -25,17 +25,16 @@ export default function Login() {
 
   return (
     <div className="auth-wrap">
-      <div className="card">
-        <h3>Вход в TutorFlow</h3>
+      <Card title="Вход в TutorFlow" icon="login">
         <ErrorMsg error={error} />
         <form onSubmit={onSubmit}>
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label htmlFor="login-email">Email</label>
+            <input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="field">
-            <label>Пароль</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <label htmlFor="login-password">Пароль</label>
+            <input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           <button className="primary" type="submit" disabled={busy} style={{ width: "100%" }}>
             {busy ? "Вход…" : "Войти"}
@@ -44,7 +43,7 @@ export default function Login() {
         <div className="center-link">
           Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

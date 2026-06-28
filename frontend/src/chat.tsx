@@ -19,7 +19,7 @@ async function uploadOne(file: File): Promise<string> {
 
 // Личная переписка teacher<->student. Отправка остаётся REST; realtime только
 // ускоряет обновление списка/открытого окна поверх polling fallback.
-export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
+export function ChatCard({ contacts, id = "chat" }: { contacts: ChatContact[]; id?: string }) {
   const { user } = useAuth();
   const selfId = user?.user_id ?? "";
 
@@ -143,7 +143,7 @@ export function ChatCard({ contacts }: { contacts: ChatContact[] }) {
   }
 
   return (
-    <Card title="Сообщения">
+    <Card title="Сообщения" icon="chat_bubble" id={id}>
       <ErrorMsg error={error} />
       <div className="chat-layout">
         <div className="chat-dialogs">

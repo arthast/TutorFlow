@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import {
   api,
   openFile,
@@ -15,8 +16,9 @@ import {
   type TeacherDashboard,
   type Transaction,
 } from "../api";
-import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { AppShell, Card, ErrorMsg, FileChips, Icon, ListState, Notice, NotificationsCard, StatusPill, fmtDate, useAsync } from "../ui";
 import { ChatCard } from "../chat";
+import { teacherNav } from "./teacherNav";
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
   const ids: string[] = [];
@@ -44,19 +46,35 @@ export default function Teacher() {
   const studentList = students.data ?? [];
   const scheduled = (lessons.data ?? []).filter((l) => l.status === "scheduled").length;
   const report = dashboard.data;
+  const pendingReceipts = report?.pending_receipts_count ?? (receipts.data ?? []).length;
 
   return (
-    <>
-      <TopBar />
+    <AppShell
+      title="Сводка"
+      subtitle={new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+      navSection="Работа"
+      navItems={teacherNav("summary", {
+        students: report?.students_count ?? studentList.length,
+        lessons: report?.upcoming_lessons_count ?? scheduled,
+        assignments: report?.pending_submissions_count,
+        receipts: pendingReceipts,
+      })}
+      actions={
+        <a className="primary-action" href="#new-lesson">
+          <Icon name="add" />
+          <span>Новое занятие</span>
+        </a>
+      }
+    >
       <div className="container">
-        <div className="metrics">
-          <Metric label="Ученики" value={report?.students_count ?? studentList.length} />
-          <Metric label="Ближайшие занятия" value={report?.upcoming_lessons_count ?? scheduled} />
-          <Metric label="ДЗ на проверке" value={report?.pending_submissions_count ?? "—"} />
-          <Metric label="Чеки на проверку" value={report?.pending_receipts_count ?? (receipts.data ?? []).length} />
-          <Metric label="Общий долг" value={money(report?.total_debt_amount, "RUB")} />
-          <Metric label="Переплаты" value={money(report?.total_overpaid_amount, "RUB")} />
-          <Metric label="Должников" value={report?.students_with_debt_count ?? "—"} />
+        <div className="metrics" id="summary">
+          <Metric icon="group" label="Ученики" value={report?.students_count ?? studentList.length} />
+          <Metric icon="calendar_month" label="Ближайшие занятия" value={report?.upcoming_lessons_count ?? scheduled} />
+          <Metric icon="assignment_turned_in" label="ДЗ на проверке" value={report?.pending_submissions_count ?? "—"} />
+          <Metric icon="receipt_long" label="Чеки на проверку" value={pendingReceipts} />
+          <Metric icon="account_balance_wallet" label="Общий долг" value={money(report?.total_debt_amount, "RUB")} />
+          <Metric icon="payments" label="Переплаты" value={money(report?.total_overpaid_amount, "RUB")} />
+          <Metric icon="priority_high" label="Должников" value={report?.students_with_debt_count ?? "—"} />
         </div>
 
         <div className="grid">
@@ -81,14 +99,14 @@ export default function Teacher() {
           />
         </div>
       </div>
-    </>
+    </AppShell>
   );
 }
 
-function Metric({ label, value }: { label: string; value: number | string }) {
+function Metric({ icon, label, value }: { icon: string; label: string; value: number | string }) {
   return (
     <div className="metric">
-      <div className="label">{label}</div>
+      <div className="label"><Icon name={icon} />{label}</div>
       <div className="value">{value}</div>
     </div>
   );
@@ -104,7 +122,7 @@ function money(value?: number, currency = "RUB"): string {
 function TeacherDashboardCard({ dashboard }: { dashboard: Async<TeacherDashboard> }) {
   const data = dashboard.data;
   return (
-    <Card title="Сводка по ученикам">
+    <Card title="Сводка по ученикам" icon="monitoring">
       <div className="card-tools">
         <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
           {dashboard.loading ? "Обновление…" : "Обновить"}
@@ -176,10 +194,12 @@ function StudentsCard({ students, onChanged }: { students: Async<StudentLink[]>;
   }
 
   return (
-    <Card title="Ученики">
+    <Card title="Ученики" icon="group" id="students">
       {(students.data ?? []).map((s) => (
         <div className="row" key={s.id}>
-          <span>{s.display_name}{s.subject ? ` · ${s.subject}` : ""}</span>
+          <Link to={`/teacher/students/${s.student_id}`}>
+            {s.display_name}{s.subject ? ` · ${s.subject}` : ""}
+          </Link>
           <StatusPill status={s.status} />
         </div>
       ))}
@@ -336,7 +356,7 @@ function LessonsCard({
   }
 
   return (
-    <Card title="Занятия">
+    <Card title="Занятия" icon="calendar_month" id="lessons">
       {(lessons.data ?? []).map((l) => (
         <div key={l.id}>
           <div className="row">
@@ -380,7 +400,7 @@ function LessonsCard({
       <ListState query={lessons} empty="Занятий пока нет." />
       <Notice text={notice} />
 
-      <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
+      <form id="new-lesson" onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
         <p className="section-title">Создать занятие</p>
         <ErrorMsg error={error} />
         <div className="field">
@@ -451,14 +471,17 @@ function AssignmentsCard({
   }
 
   return (
-    <Card title="Домашние задания">
+    <Card title="Домашние задания" icon="assignment" id="assignments">
       {(assignments.data ?? []).map((a) => (
         <div key={a.id}>
           <div className="row">
             <button className="small" onClick={() => setOpenId(openId === a.id ? null : a.id)} style={{ flex: 1, textAlign: "left" }}>
               {a.title}
             </button>
-            <StatusPill status={a.status} />
+            <span className="btn-group">
+              <Link className="button-link small-link" to={`/teacher/assignments/${a.id}/review`}>Проверка</Link>
+              <StatusPill status={a.status} />
+            </span>
           </div>
           {openId === a.id && <AssignmentDetailView id={a.id} onChange={() => { assignments.reload(); onChanged(); }} />}
         </div>
@@ -705,7 +728,7 @@ function FinanceCard({
   }, [chargeRefresh?.seq]);
 
   return (
-    <Card title="Чеки на проверку">
+    <Card title="Чеки на проверку" icon="receipt_long" id="finance">
       <ErrorMsg error={error} />
       {(receipts.data ?? []).map((r) => (
         <div className="row" key={r.id}>

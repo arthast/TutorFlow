@@ -11,7 +11,7 @@ import {
   type StudentDashboard,
   type StudentSummary,
 } from "../api";
-import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
+import { AppShell, Card, ErrorMsg, FileChips, Icon, ListState, Notice, NotificationsCard, StatusPill, fmtDate, useAsync } from "../ui";
 import { ChatCard } from "../chat";
 
 const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
@@ -33,6 +33,7 @@ export default function Student() {
   const toSubmit = (assignments.data ?? []).filter((a) => TO_SUBMIT.has(a.status)).length;
   const report = dashboard.data;
   const activity = sumActivity(report?.summaries ?? []);
+  const activeAssignments = report ? activity.activeAssignments : toSubmit;
 
   // Контакты для чата: преподаватели ученика (имя — из summaries дашборда).
   const teacherContacts = useMemo(() => {
@@ -45,15 +46,33 @@ export default function Student() {
   }, [report?.summaries, teacherIds]);
 
   return (
-    <>
-      <TopBar />
+    <AppShell
+      title="Главная"
+      subtitle={new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+      navSection="Учёба"
+      accent="student"
+      navItems={[
+        { label: "Главная", icon: "dashboard", href: "#summary", active: true },
+        { label: "Мои занятия", icon: "calendar_month", href: "#lessons", badge: report ? activity.upcoming : (lessons.data ?? []).filter((l) => l.status === "scheduled").length },
+        { label: "Домашние задания", icon: "assignment", href: "#assignments", badge: activeAssignments },
+        { label: "Оплата", icon: "payments", href: "#upload-receipt" },
+        { label: "Мои чеки", icon: "receipt_long", href: "#receipts", badge: report?.pending_receipts_count ?? 0 },
+        { label: "Чат", icon: "chat_bubble", href: "/student/chat" },
+      ]}
+      actions={
+        <a className="primary-action" href="#upload-receipt">
+          <Icon name="upload_file" />
+          <span>Загрузить чек</span>
+        </a>
+      }
+    >
       <div className="container">
-        <div className="metrics">
-          <Metric label="Долг" value={money(report?.total_debt_amount, currencyOf(report))} />
-          <Metric label="Переплата" value={money(report?.total_overpaid_amount, currencyOf(report))} />
-          <Metric label="Чеки на проверке" value={`${report?.pending_receipts_count ?? 0} / ${money(report?.pending_receipts_amount, currencyOf(report))}`} />
-          <Metric label="Ближайшие занятия" value={report ? activity.upcoming : (lessons.data ?? []).length} />
-          <Metric label="ДЗ к сдаче" value={report ? activity.submitted : toSubmit} />
+        <div className="metrics" id="summary">
+          <Metric icon="account_balance_wallet" label="Долг" value={money(report?.total_debt_amount, currencyOf(report))} />
+          <Metric icon="payments" label="Переплата" value={money(report?.total_overpaid_amount, currencyOf(report))} />
+          <Metric icon="receipt_long" label="Чеки на проверке" value={`${report?.pending_receipts_count ?? 0} / ${money(report?.pending_receipts_amount, currencyOf(report))}`} />
+          <Metric icon="event_upcoming" label="Ближайшие занятия" value={report ? activity.upcoming : (lessons.data ?? []).filter((l) => l.status === "scheduled").length} />
+          <Metric icon="assignment" label="ДЗ к сдаче" value={activeAssignments} />
         </div>
 
         <div className="grid">
@@ -67,14 +86,14 @@ export default function Student() {
           <PasswordCard />
         </div>
       </div>
-    </>
+    </AppShell>
   );
 }
 
-function Metric({ label, value }: { label: string; value: number | string }) {
+function Metric({ icon, label, value }: { icon: string; label: string; value: number | string }) {
   return (
     <div className="metric">
-      <div className="label">{label}</div>
+      <div className="label"><Icon name={icon} />{label}</div>
       <div className="value">{value}</div>
     </div>
   );
@@ -125,7 +144,7 @@ function StudentDashboardCard({
   const activity = sumActivity(data?.summaries ?? []);
   const currency = currencyOf(data);
   return (
-    <Card title="Мой dashboard">
+    <Card title="Мой dashboard" icon="monitoring">
       <div className="card-tools">
         <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
           {dashboard.loading ? "Обновление…" : "Обновить"}
@@ -194,7 +213,7 @@ function StudentTeacherSummary({
 
 function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
   return (
-    <Card title="Мои занятия">
+    <Card title="Мои занятия" icon="calendar_month" id="lessons">
       {(lessons.data ?? []).map((l) => (
         <div key={l.id}>
           <div className="row">
@@ -215,7 +234,7 @@ function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
 function AssignmentsCard({ assignments, onChanged }: { assignments: Async<Assignment[]>; onChanged: () => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
   return (
-    <Card title="Мои домашние задания">
+    <Card title="Мои домашние задания" icon="assignment" id="assignments">
       {(assignments.data ?? []).map((a) => (
         <div key={a.id}>
           <div className="row">
@@ -333,7 +352,7 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
   }
 
   return (
-    <Card title="Загрузить чек оплаты">
+    <Card title="Загрузить чек оплаты" icon="upload_file" id="upload-receipt">
       <ErrorMsg error={error} />
       <Notice text={notice} />
       <form onSubmit={send}>
@@ -359,7 +378,7 @@ function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () 
 function ReceiptsListCard({ receipts }: { receipts: Async<Receipt[]> }) {
   const [error, setError] = useState<string | null>(null);
   return (
-    <Card title="Мои чеки">
+    <Card title="Мои чеки" icon="receipt_long" id="receipts">
       <ErrorMsg error={error} />
       {(receipts.data ?? []).map((r) => (
         <div className="row" key={r.id}>
@@ -399,7 +418,7 @@ function PasswordCard() {
   }
 
   return (
-    <Card title="Сменить пароль">
+    <Card title="Сменить пароль" icon="lock_reset">
       <ErrorMsg error={error} />
       <Notice text={notice} />
       <form onSubmit={change}>
