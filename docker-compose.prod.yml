@@ -1,0 +1,299 @@
+name: tutorflow-prod
+
+x-image-prefix: &image-prefix ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}
+x-image-tag: &image-tag ${IMAGE_TAG:-latest}
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    environment:
+      TUTORFLOW_DOMAIN: ${TUTORFLOW_DOMAIN:-netwatch-arsen-demo.ru}
+      CADDY_EMAIL: ${CADDY_EMAIL:-admin@netwatch-arsen-demo.ru}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - api-gateway
+      - realtime-service
+    networks: [tutorflow]
+
+  frontend:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks: [tutorflow]
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_USER}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [tutorflow]
+
+  migrator:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - sh
+      - -ec
+      - |
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db; do
+          svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
+          createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
+          for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
+            echo "== applying $$svc/$$(basename "$$f") -> $$db"
+            psql -v ON_ERROR_STOP=1 -h postgres -U "$$POSTGRES_USER" -d "$$db" -f "$$f"
+          done
+        done
+        echo "migrations done."
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  kafka:
+    image: apache/kafka:3.8.1
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      CLUSTER_ID: tutorflow-kafka-cluster-0
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    networks: [tutorflow]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [tutorflow]
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [tutorflow]
+
+  api-gateway:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-api-gateway:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-86400}
+      GATEWAY_CORS_ORIGIN: ${GATEWAY_CORS_ORIGIN:-https://netwatch-arsen-demo.ru}
+      FILE_SERVICE_URL: http://file-service:8085
+    depends_on:
+      - identity-service
+      - lesson-service
+      - assignment-service
+      - finance-service
+      - file-service
+      - notification-service
+      - report-service
+      - chat-service
+      - realtime-service
+    networks: [tutorflow]
+
+  identity-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-identity-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      IDENTITY_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/identity_db
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-86400}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  lesson-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-lesson-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      LESSON_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/lesson_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  assignment-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-assignment-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ASSIGNMENT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/assignment_db
+      ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS: ${ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS:-60000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  finance-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-finance-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      FINANCE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/finance_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  file-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-file-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      FILE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/file_db
+      FILE_STORAGE_BACKEND: ${FILE_STORAGE_BACKEND:-s3}
+      FILE_STORAGE_DIR: ${FILE_STORAGE_DIR:-/data/files}
+      FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
+      FILE_SECDIST_CONFIG: >-
+        {"s3_file_storage":{"endpoint":"${FILE_S3_ENDPOINT:-http://minio:9000}","access_key":"${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}","secret_key":"${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}","bucket":"${FILE_S3_BUCKET:-tutorflow-files}","region":"${FILE_S3_REGION:-us-east-1}"}}
+    volumes:
+      - filestorage:/data/files
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  notification-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-notification-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NOTIFICATION_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/notification_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  report-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-report-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      REPORT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/report_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  chat-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-chat-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      CHAT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chat_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  realtime-service:
+    image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-realtime-service:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      REALTIME_PORT: 8089
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+networks:
+  tutorflow:
+    driver: bridge
+
+volumes:
+  pgdata:
+  filestorage:
+  kafkadata:
+  miniodata:
+  redisdata:
+  caddy_data:
+  caddy_config:

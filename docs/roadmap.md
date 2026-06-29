@@ -666,6 +666,44 @@ Pre-5K checklist:
   offset -> replay`) на подготовленной среде и зафиксировать, что значения
   dashboard совпадают с baseline.
 
+### Этап 5K.1 — первый production deploy на Yandex Cloud  ⬜ В РАБОТЕ
+
+Цель: выкатить demo/MVP на один сервер и после успешного ручного запуска включить
+CI/CD. Сервер: `51.250.117.185`, пользователь `ilyaytrewq`, Ubuntu 24.04, 4 CPU,
+8 GB RAM, 100 GB disk. Домен: `netwatch-arsen-demo.ru` (DNS ещё не направлен на
+сервер). Frontend разворачивается на том же сервере.
+
+Принятые решения:
+- reverse proxy: Caddy, потому что он сам выпускает/обновляет TLS после настройки
+  DNS;
+- backend остаётся за gateway, наружу через proxy открываем HTTPS-домен;
+- realtime WebSocket делаем на том же домене через `/ws`, без отдельного
+  поддомена: так проще TLS/CORS/настройка клиента. WebSocket нужен только для
+  push-событий браузеру (чат, read markers, presence, уведомления), доменные
+  команды по-прежнему идут REST -> gateway;
+- первый запуск делаем вручную на сервере, затем фиксируем GitHub Actions CD;
+- CI/CD target: GitHub Actions собирает Docker images и публикует в GHCR, сервер
+  делает `docker compose pull && docker compose up -d`. Для push в GHCR в обычном
+  репозитории достаточно встроенного `GITHUB_TOKEN` с `packages: write`; отдельный
+  `GHCR_TOKEN` нужен только если политики GitHub не дают писать packages.
+
+План работ:
+1. Серверная база: установить Docker Engine + Compose plugin, добавить swap
+   4-8 GB, проверить `docker run hello-world`.
+2. Repo deploy-файлы: `.dockerignore`, `docker-compose.prod.yml`, `deploy/Caddyfile`,
+   production frontend Dockerfile/nginx или Caddy static serving, `docs/deploy.md`.
+3. Secrets: создать `/opt/tutorflow/.env` на сервере; взять совместимые значения из
+   локальной `.env`, но заменить dev-секреты на production-grade random где нужно
+   (`POSTGRES_PASSWORD`, `JWT_SECRET`, `MINIO_ROOT_PASSWORD`).
+4. Первый ручной deploy: `docker compose -f docker-compose.prod.yml up -d`,
+   проверить `/health`, WebSocket `/ws`, smoke через `GATEWAY_URL`.
+5. DNS/TLS: направить `A netwatch-arsen-demo.ru -> 51.250.117.185`, после
+   распространения DNS включить Caddy HTTPS и обновить frontend env на
+   `https://netwatch-arsen-demo.ru` / `wss://netwatch-arsen-demo.ru/ws`.
+6. CI/CD: добавить `.github/workflows/ci.yml` и `deploy.yml`; использовать
+   `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` и встроенный `GITHUB_TOKEN` для
+   GHCR. После успешного deploy добавить rollback/runbook.
+
 ### Этап 5L — lesson lifecycle + finance corrections  ✅ СДЕЛАНО (5L.1–5L.10)
 Полная спецификация и контракты: `docs/agent-lesson-lifecycle.md`. Согласовано с
 человеком (2026-06-24). Расширяем жизненный цикл занятия и связь с финансами.

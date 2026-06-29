@@ -1,0 +1,78 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://netwatch-arsen-demo.ru}
+        VITE_REALTIME_URL: ${VITE_REALTIME_URL:-wss://netwatch-arsen-demo.ru/ws}
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  lesson-service:
+    build:
+      context: .
+      dockerfile: services/lesson-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  assignment-service:
+    build:
+      context: .
+      dockerfile: services/assignment-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  finance-service:
+    build:
+      context: .
+      dockerfile: services/finance-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  file-service:
+    build:
+      context: .
+      dockerfile: services/file-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  report-service:
+    build:
+      context: .
+      dockerfile: services/report-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
+
+  realtime-service:
+    build:
+      context: .
+      dockerfile: services/realtime-service/Dockerfile
+      args:
+        BUILD_JOBS: ${BUILD_JOBS:-2}
