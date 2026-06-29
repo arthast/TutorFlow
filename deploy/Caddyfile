@@ -1,0 +1,19 @@
+{
+    email {$CADDY_EMAIL}
+}
+
+{$TUTORFLOW_DOMAIN} {
+    encode zstd gzip
+
+    @websocket path /ws*
+    reverse_proxy @websocket realtime-service:8089
+
+    @api path /health /auth* /me /users* /students* /lessons* /assignments* /payments* /notifications* /dashboard* /files* /chats*
+    reverse_proxy @api api-gateway:8080
+
+    reverse_proxy frontend:80
+}
+
+www.{$TUTORFLOW_DOMAIN} {
+    redir https://{$TUTORFLOW_DOMAIN}{uri} permanent
+}

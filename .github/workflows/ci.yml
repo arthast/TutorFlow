@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feat/deploy
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  python-tests:
+    name: Pytest collection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.txt websocket-client
+      - run: python -m pytest --collect-only -q tests
+
+  compose:
+    name: Production compose config
+    runs-on: ubuntu-latest
+    env:
+      TUTORFLOW_DOMAIN: netwatch-arsen-demo.ru
+      CADDY_EMAIL: admin@netwatch-arsen-demo.ru
+      TUTORFLOW_IMAGE_NAMESPACE: ghcr.io/arthast
+      IMAGE_TAG: ci
+      POSTGRES_USER: tutorflow
+      POSTGRES_PASSWORD: ci_postgres_password
+      JWT_SECRET: ci_jwt_secret_ci_jwt_secret_ci_jwt_secret
+      MINIO_ROOT_USER: tutorflow
+      MINIO_ROOT_PASSWORD: ci_minio_password
+      GATEWAY_CORS_ORIGIN: https://netwatch-arsen-demo.ru
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.prod.yml config >/tmp/tutorflow-prod.yml
+
