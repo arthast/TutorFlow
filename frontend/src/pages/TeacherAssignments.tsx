@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   api,
@@ -8,23 +8,40 @@ import {
   type StudentLink,
   type TeacherDashboard,
 } from "../api";
-import { AppShell, ErrorMsg, Icon, ListState, StatusPill, useAsync } from "../ui";
+import {
+  AppShell,
+  Button,
+  EmptyState,
+  ErrorMsg,
+  Field,
+  Icon,
+  Modal,
+  Select,
+  SkeletonRows,
+  StatusPill,
+  Tabs,
+  useAsync,
+  useToast,
+  type TabItem,
+} from "../ui";
+import { useRealtimeEvent } from "../realtime";
 import { teacherNav } from "./teacherNav";
 
 type AssignmentTab = "all" | "review" | "active" | "done";
 
 const ASSIGNMENT_STATUS: Record<string, {
-  label: string;
   category: Exclude<AssignmentTab, "all">;
   accent: string;
   icon: string;
   iconClass: string;
 }> = {
-  assigned: { label: "выдано", category: "active", accent: "#3b5bdb", icon: "assignment", iconClass: "assignment-icon-info" },
-  submitted: { label: "сдано", category: "review", accent: "#d99413", icon: "assignment_turned_in", iconClass: "assignment-icon-warning" },
-  needs_fix: { label: "нужны правки", category: "active", accent: "#d99413", icon: "edit_note", iconClass: "assignment-icon-warning" },
-  reviewed: { label: "выполнено", category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
-  accepted: { label: "зачтено", category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
+  assigned: { category: "active", accent: "#3b5bdb", icon: "assignment", iconClass: "assignment-icon-info" },
+  submitted: { category: "review", accent: "#d99413", icon: "assignment_turned_in", iconClass: "assignment-icon-warning" },
+  needs_fix: { category: "active", accent: "#d99413", icon: "edit_note", iconClass: "assignment-icon-warning" },
+  expired: { category: "active", accent: "#e0584f", icon: "event_busy", iconClass: "assignment-icon-danger" },
+  reviewed: { category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
+  accepted: { category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
+  done: { category: "done", accent: "#18a866", icon: "task_alt", iconClass: "assignment-icon-success" },
 };
 
 async function uploadAll(files: File[], purpose: string): Promise<string[]> {
@@ -42,25 +59,19 @@ async function uploadAll(files: File[], purpose: string): Promise<string[]> {
 function statusMeta(status: string) {
   return ASSIGNMENT_STATUS[status] ?? ASSIGNMENT_STATUS.assigned;
 }
-
 function studentName(students: StudentLink[], studentId: string): string {
-  return students.find((student) => student.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+  return students.find((s) => s.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
 }
-
 function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "??";
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "??";
 }
-
-function deadlineLabel(assignment: Assignment): string {
-  if (assignment.due_at) {
-    const date = new Date(assignment.due_at);
-    if (!isNaN(date.getTime())) {
-      return date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-    }
+function deadlineLabel(a: Assignment): string {
+  if (a.due_at) {
+    const date = new Date(a.due_at);
+    if (!isNaN(date.getTime())) return date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   }
-  return assignment.created_at ? `создано ${new Date(assignment.created_at).toLocaleDateString("ru-RU")}` : "без дедлайна";
+  return a.created_at ? `создано ${new Date(a.created_at).toLocaleDateString("ru-RU")}` : "без дедлайна";
 }
-
 function fileSize(file: File): string {
   if (file.size >= 1024 * 1024) return `${(file.size / (1024 * 1024)).toFixed(1)} МБ`;
   return `${Math.max(1, Math.round(file.size / 1024))} КБ`;
@@ -75,25 +86,40 @@ export default function TeacherAssignments() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const studentList = students.data ?? [];
+
+  useRealtimeEvent((event) => {
+    if (["assignment", "submission", "review"].some((t) => event.type.startsWith(t))) {
+      assignments.reload();
+      dashboard.reload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const counts = useMemo(() => {
     const base: Record<AssignmentTab, number> = { all: 0, review: 0, active: 0, done: 0 };
-    (assignments.data ?? []).forEach((assignment) => {
-      const category = statusMeta(assignment.status).category;
+    (assignments.data ?? []).forEach((a) => {
       base.all += 1;
-      base[category] += 1;
+      base[statusMeta(a.status).category] += 1;
     });
     return base;
   }, [assignments.data]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (assignments.data ?? []).filter((assignment) => {
-      const name = studentName(studentList, assignment.student_id).toLowerCase();
-      const matchesQuery = !q || assignment.title.toLowerCase().includes(q) || name.includes(q);
-      const matchesTab = tab === "all" || statusMeta(assignment.status).category === tab;
+    return (assignments.data ?? []).filter((a) => {
+      const name = studentName(studentList, a.student_id).toLowerCase();
+      const matchesQuery = !q || a.title.toLowerCase().includes(q) || name.includes(q);
+      const matchesTab = tab === "all" || statusMeta(a.status).category === tab;
       return matchesQuery && matchesTab;
     });
   }, [assignments.data, query, studentList, tab]);
+
+  const tabs: TabItem[] = [
+    { key: "all", label: "Все", count: counts.all },
+    { key: "review", label: "На проверку", count: counts.review },
+    { key: "active", label: "В работе", count: counts.active },
+    { key: "done", label: "Выполнено", count: counts.done },
+  ];
 
   return (
     <AppShell
@@ -106,45 +132,39 @@ export default function TeacherAssignments() {
         assignments: dashboard.data?.pending_submissions_count,
         receipts: dashboard.data?.pending_receipts_count,
       })}
-      actions={
-        <button className="primary-action" type="button" onClick={() => setCreateOpen(true)}>
-          <Icon name="add" />
-          <span>Выдать ДЗ</span>
-        </button>
-      }
+      actions={<Button variant="primary" icon="add" onClick={() => setCreateOpen(true)}>Выдать ДЗ</Button>}
     >
       <div className="container">
-        <div className="page-tabs-bar">
-          <div className="page-tabs">
-            {[
-              ["all", "Все"],
-              ["review", "На проверку"],
-              ["active", "В работе"],
-              ["done", "Выполнено"],
-            ].map(([value, label]) => (
-              <button className={tab === value ? "active" : ""} key={value} onClick={() => setTab(value as AssignmentTab)}>
-                {label}
-                <span>{counts[value as AssignmentTab]}</span>
-              </button>
+        <Tabs
+          items={tabs}
+          active={tab}
+          onChange={(k) => setTab(k as AssignmentTab)}
+          right={
+            <div className="search-field">
+              <Icon name="search" />
+              <input placeholder="Поиск по теме или ученику…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+          }
+        />
+
+        {assignments.loading && !assignments.data ? (
+          <div className="card"><SkeletonRows count={4} /></div>
+        ) : assignments.error ? (
+          <ErrorMsg error={assignments.error} />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="assignment" title="Заданий нет" hint="В этой вкладке пока пусто." />
+        ) : (
+          <div className="assignment-list">
+            {filtered.map((a) => (
+              <AssignmentRow assignment={a} students={studentList} key={a.id} />
             ))}
           </div>
-          <div className="search-field">
-            <Icon name="search" />
-            <input placeholder="Поиск по теме или ученику..." value={query} onChange={(event) => setQuery(event.target.value)} />
-          </div>
-        </div>
-
-        <div className="assignment-list">
-          {filtered.map((assignment) => (
-            <AssignmentRow assignment={assignment} students={studentList} key={assignment.id} />
-          ))}
-          <ListState query={{ ...assignments, data: filtered }} empty="В этой вкладке пока пусто." />
-        </div>
+        )}
       </div>
 
       {createOpen && (
         <CreateAssignmentModal
-          students={students.data ?? []}
+          students={studentList}
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
             assignments.reload();
@@ -161,6 +181,7 @@ function AssignmentRow({ assignment, students }: { assignment: Assignment; stude
   const meta = statusMeta(assignment.status);
   const name = studentName(students, assignment.student_id);
   const review = meta.category === "review";
+  const expired = assignment.status === "expired";
   return (
     <div className="assignment-list-row" style={{ borderLeftColor: meta.accent }}>
       <div className={"assignment-row-icon " + meta.iconClass}>
@@ -174,16 +195,18 @@ function AssignmentRow({ assignment, students }: { assignment: Assignment; stude
           )}
         </div>
         <div className="assignment-row-meta">
-          <span>
-            <span className="mini-avatar">{initials(name)}</span>
-            {name}
+          <span><span className="mini-avatar">{initials(name)}</span>{name}</span>
+          <span className={expired ? "deadline danger" : assignment.due_at ? "deadline" : ""}>
+            <Icon name="schedule" />{deadlineLabel(assignment)}
           </span>
-          <span className={assignment.due_at ? "deadline" : ""}><Icon name="schedule" />{deadlineLabel(assignment)}</span>
         </div>
       </div>
       <StatusPill status={assignment.status} />
-      <Link className={review ? "button-link small-link primary-link" : "button-link small-link"} to={`/teacher/assignments/${assignment.id}/review`}>
-        {review ? "Проверить" : "Подробнее"}
+      <Link
+        className={"button-like small " + (review ? "primary" : "secondary")}
+        to={`/teacher/assignments/${assignment.id}/review`}
+      >
+        {review ? "Проверить" : assignment.status === "assigned" ? "Подробнее" : "Открыть"}
       </Link>
     </div>
   );
@@ -198,6 +221,7 @@ function CreateAssignmentModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const toast = useToast();
   const [studentId, setStudentId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -208,8 +232,7 @@ function CreateAssignmentModal({
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  async function submit() {
     setError(null);
     setBusy(true);
     try {
@@ -221,88 +244,88 @@ function CreateAssignmentModal({
         due_at: dueDate && dueTime ? new Date(`${dueDate}T${dueTime}`).toISOString() : undefined,
         file_ids: fileIds.length ? fileIds : undefined,
       });
+      toast({ tone: "success", title: "Задание выдано", body: "Ученик получит уведомление" });
       onCreated();
     } catch (err) {
       setError((err as Error).message);
+      toast({ tone: "danger", title: "Не удалось выдать", body: (err as Error).message });
     } finally {
       setBusy(false);
     }
   }
 
   function removeFile(index: number) {
-    setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setFiles((cur) => cur.filter((_, i) => i !== index));
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <form className="modal-panel modal-panel-wide" onMouseDown={(event) => event.stopPropagation()} onSubmit={create}>
-        <div className="modal-heading">
-          <div>
-            <h2>Выдать домашнее задание</h2>
-            <p>Тема, материалы и дедлайн</p>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Закрыть"><Icon name="close" /></button>
+    <Modal
+      title="Выдать домашнее задание"
+      subtitle="Тема, материалы и дедлайн"
+      wide
+      onClose={onClose}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button type="button" onClick={onClose}>Отмена</Button>
+          <Button variant="primary" type="submit" icon="send" loading={busy} disabled={!studentId || !title.trim()}>
+            Выдать задание
+          </Button>
+        </>
+      }
+    >
+      <ErrorMsg error={error} />
+      <div className="modal-fields">
+        <Field label="Ученик">
+          <Select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
+            <option value="">— выбрать —</option>
+            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Тема задания">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Например: Квадратные уравнения · вариант 5" />
+        </Field>
+        <Field label="Описание">
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Что нужно сделать, на что обратить внимание…" />
+        </Field>
+        <div className="field-row modal-field-row">
+          <Field label="Дедлайн · дата">
+            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+          <Field label="Время" className="time-field">
+            <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+          </Field>
         </div>
-        <ErrorMsg error={error} />
-        <div className="modal-fields">
-          <div className="field">
-            <label>Ученик
-              <span className="select-wrap">
-                <select value={studentId} onChange={(event) => setStudentId(event.target.value)} required>
-                  <option value="">— выбрать —</option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.student_id}>{student.display_name}</option>
-                  ))}
-                </select>
-                <Icon name="expand_more" />
-              </span>
-            </label>
-          </div>
-          <div className="field"><label>Тема задания<input value={title} onChange={(event) => setTitle(event.target.value)} required placeholder="Например: Квадратные уравнения · вариант 5" /></label></div>
-          <div className="field"><label>Описание<textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Что нужно сделать, на что обратить внимание..." /></label></div>
-          <div className="field-row modal-field-row">
-            <label>Дедлайн · дата<input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} /></label>
-            <label className="time-field">Время<input type="time" value={dueTime} onChange={(event) => setDueTime(event.target.value)} /></label>
-          </div>
-          <div className="field">
-            <label>Материалы задания</label>
-            {files.length > 0 && (
-              <div className="attachment-list">
-                {files.map((file, index) => (
-                  <div className="attachment-item" key={file.name + index}>
-                    <Icon name={file.type.startsWith("image/") ? "image" : file.type.includes("pdf") ? "picture_as_pdf" : "description"} />
-                    <div>
-                      <strong>{file.name}</strong>
-                      <span>{fileSize(file)}</span>
-                    </div>
-                    <button type="button" className="icon-button compact" onClick={() => removeFile(index)} title="Удалить">
-                      <Icon name="close" />
-                    </button>
+        <Field label="Материалы задания" hint="PDF, изображения и др. — увидит ученик">
+          {files.length > 0 && (
+            <div className="attachment-list">
+              {files.map((file, index) => (
+                <div className="attachment-item" key={file.name + index}>
+                  <Icon name={file.type.startsWith("image/") ? "image" : file.type.includes("pdf") ? "picture_as_pdf" : "description"} />
+                  <div>
+                    <strong>{file.name}</strong>
+                    <span>{fileSize(file)}</span>
                   </div>
-                ))}
-              </div>
-            )}
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              hidden
-              onChange={(event) => setFiles(event.target.files ? Array.from(event.target.files) : [])}
-            />
-            <button type="button" className="upload-drop-button" onClick={() => inputRef.current?.click()}>
-              <Icon name="upload_file" />
-              <span>Прикрепить файл</span>
-            </button>
-          </div>
-        </div>
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Отмена</button>
-          <button className="primary" type="submit" disabled={busy}>
-            <Icon name="send" />
-            {busy ? "Выдача..." : "Выдать задание"}
+                  <button type="button" className="icon-button compact" onClick={() => removeFile(index)} title="Удалить">
+                    <Icon name="close" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => setFiles((cur) => [...cur, ...(e.target.files ? Array.from(e.target.files) : [])])}
+          />
+          <button type="button" className="upload-drop-button" onClick={() => inputRef.current?.click()}>
+            <Icon name="upload_file" />
+            <span>Прикрепить файл</span>
           </button>
-        </div>
-      </form>
-    </div>
+        </Field>
+      </div>
+    </Modal>
   );
 }

@@ -1,58 +1,89 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ApiError,
   api,
+  type FileMeta,
   type CompleteLessonResponse,
   type Lesson,
   type StudentLink,
   type TeacherDashboard,
 } from "../api";
-import { AppShell, Card, ErrorMsg, Icon, ListState, Notice, StatusPill, fmtDate, useAsync } from "../ui";
-import { initials, teacherNav, timeOnly } from "./teacherNav";
+import {
+  AppShell,
+  Avatar,
+  Button,
+  EmptyState,
+  ErrorMsg,
+  Field,
+  FileChips,
+  Icon,
+  Modal,
+  Segmented,
+  SkeletonRows,
+  StatusPill,
+  Select,
+  useAsync,
+  useToast,
+  type TabItem,
+} from "../ui";
+import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { teacherNav, money } from "./teacherNav";
 
-type Async<T> = ReturnType<typeof useAsync<T>>;
+type Segment = "scheduled" | "completed" | "cancelled" | "all";
 
-function toIso(local: string): string {
-  return new Date(local).toISOString();
-}
+const TONES = ["teacher", "student", "amber", "muted"] as const;
+type Tone = (typeof TONES)[number];
 
-function isoToLocalInput(iso: string): string {
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
+async function uploadAll(files: File[], purpose: string): Promise<string[]> {
+  const ids: string[] = [];
+  for (const f of files) {
+    const form = new FormData();
+    form.append("file", f);
+    form.append("purpose", purpose);
+    const meta = await api.upload<FileMeta>("/files", form);
+    ids.push(meta.id);
+  }
+  return ids;
 }
 
 function toIsoFromParts(date: string, time: string): string {
   return new Date(`${date}T${time}`).toISOString();
 }
-
 function addMinutesIso(date: string, time: string, minutes: number): string {
   const value = new Date(`${date}T${time}`);
   value.setMinutes(value.getMinutes() + minutes);
   return value.toISOString();
 }
-
-function studentName(students: StudentLink[], studentId: string): string {
-  return students.find((student) => student.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+function isoToDateInput(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
-
-function durationMinutes(lesson: Lesson): string {
+function isoToTimeInput(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(11, 16);
+}
+function timeOnly(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+function durationLabel(lesson: Lesson): string {
   const start = new Date(lesson.starts_at);
   const end = new Date(lesson.ends_at);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return "";
   return `${Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))} мин`;
 }
-
+function studentName(students: StudentLink[], studentId: string): string {
+  return students.find((s) => s.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+}
 function groupTitle(iso: string): string {
   const date = new Date(iso);
   if (isNaN(date.getTime())) return "Без даты";
   const today = new Date();
   const tomorrow = new Date();
   tomorrow.setDate(today.getDate() + 1);
-  const key = date.toDateString();
-  if (key === today.toDateString()) return "Сегодня";
-  if (key === tomorrow.toDateString()) return "Завтра";
+  if (date.toDateString() === today.toDateString()) return "Сегодня";
+  if (date.toDateString() === tomorrow.toDateString()) return "Завтра";
   return date.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 }
 
@@ -60,33 +91,57 @@ export default function TeacherLessons() {
   const dashboard = useAsync<TeacherDashboard>(() => api.get("/dashboard/teacher"), []);
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
-  const [filter, setFilter] = useState<"all" | "scheduled" | "completed" | "cancelled">("all");
+  const [segment, setSegment] = useState<Segment>("scheduled");
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   const list = lessons.data ?? [];
   const studentList = students.data ?? [];
+
+  function reloadAll() {
+    lessons.reload();
+    dashboard.reload();
+  }
+
+  useRealtimeEvent((event) => {
+    if (event.type.startsWith("lesson")) reloadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const counts = useMemo(
+    () => ({
+      scheduled: list.filter((l) => l.status === "scheduled").length,
+      completed: list.filter((l) => l.status === "completed").length,
+      cancelled: list.filter((l) => l.status === "cancelled").length,
+      all: list.length,
+    }),
+    [list],
+  );
+
+  const segments: TabItem[] = [
+    { key: "scheduled", label: "Ближайшие", count: counts.scheduled },
+    { key: "completed", label: "Проведённые", count: counts.completed },
+    { key: "cancelled", label: "Отменённые", count: counts.cancelled },
+    { key: "all", label: "Все", count: counts.all },
+  ];
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return list
-      .filter((lesson) => filter === "all" || lesson.status === filter)
-      .filter((lesson) => {
+      .filter((l) => segment === "all" || l.status === segment)
+      .filter((l) => {
         if (!q) return true;
-        return (
-          studentName(studentList, lesson.student_id).toLowerCase().includes(q) ||
-          (lesson.topic ?? "").toLowerCase().includes(q)
-        );
+        return studentName(studentList, l.student_id).toLowerCase().includes(q) || (l.topic ?? "").toLowerCase().includes(q);
       })
-      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [filter, list, query, studentList]);
+      .sort((a, b) => {
+        const diff = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+        return segment === "scheduled" ? diff : -diff;
+      });
+  }, [list, studentList, segment, query]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Lesson[]>();
-    filtered.forEach((lesson) => {
-      const title = groupTitle(lesson.starts_at);
-      map.set(title, [...(map.get(title) ?? []), lesson]);
-    });
+    filtered.forEach((l) => map.set(groupTitle(l.starts_at), [...(map.get(groupTitle(l.starts_at)) ?? []), l]));
     return [...map.entries()];
   }, [filtered]);
 
@@ -102,59 +157,52 @@ export default function TeacherLessons() {
         receipts: dashboard.data?.pending_receipts_count,
       })}
       actions={
-        <button className="primary-action" type="button" onClick={() => setCreateOpen(true)}>
-          <Icon name="add" />
-          <span>Новое занятие</span>
-        </button>
+        <Button variant="primary" icon="add" onClick={() => setCreateOpen(true)}>Новое занятие</Button>
       }
     >
       <div className="container">
         <div className="teacher-toolbar">
-          <div className="segmented">
-            <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Все</button>
-            <button className={filter === "scheduled" ? "active" : ""} onClick={() => setFilter("scheduled")}>Запланированные</button>
-            <button className={filter === "completed" ? "active" : ""} onClick={() => setFilter("completed")}>Завершённые</button>
-            <button className={filter === "cancelled" ? "active" : ""} onClick={() => setFilter("cancelled")}>Отменённые</button>
-          </div>
+          <Segmented items={segments} active={segment} onChange={(k) => setSegment(k as Segment)} />
           <div className="search-field">
             <Icon name="search" />
-            <input placeholder="Поиск по ученику или теме…" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <input placeholder="Поиск по ученику или теме…" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
         </div>
 
-        <Notice text={notice} />
-
-        <Card title="Расписание" icon="calendar_month">
-          {groups.map(([title, items]) => (
+        {lessons.loading && !lessons.data ? (
+          <div className="card"><SkeletonRows count={4} /></div>
+        ) : lessons.error ? (
+          <ErrorMsg error={lessons.error} />
+        ) : groups.length === 0 ? (
+          <EmptyState icon="event_busy" title="Здесь пусто" hint="В этом разделе пока нет занятий." />
+        ) : (
+          groups.map(([title, items]) => (
             <div className="lesson-group" key={title}>
               <div className="lesson-group-title">
                 <span>{title}</span>
                 <span className="hint">{items.length} занят.</span>
               </div>
-              {items.map((lesson) => (
-                <LessonRow
+              {items.map((lesson, i) => (
+                <LessonCard
                   key={lesson.id}
                   lesson={lesson}
-                  lessons={lessons}
-                  students={studentList}
-                  dashboard={dashboard}
+                  tone={TONES[i % TONES.length]}
+                  name={studentName(studentList, lesson.student_id)}
+                  onChanged={reloadAll}
                 />
               ))}
             </div>
-          ))}
-          <ListState query={{ ...lessons, data: filtered }} empty="В этом разделе пока нет занятий." />
-        </Card>
+          ))
+        )}
       </div>
 
       {createOpen && (
         <CreateLessonModal
-          students={students}
+          students={studentList}
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
-            setNotice("Занятие создано.");
-            lessons.reload();
-            dashboard.reload();
             setCreateOpen(false);
+            reloadAll();
           }}
         />
       )}
@@ -162,146 +210,131 @@ export default function TeacherLessons() {
   );
 }
 
-function LessonRow({
+function LessonCard({
   lesson,
-  lessons,
-  students,
-  dashboard,
+  tone,
+  name,
+  onChanged,
 }: {
   lesson: Lesson;
-  lessons: Async<Lesson[]>;
-  students: StudentLink[];
-  dashboard: Async<TeacherDashboard>;
+  tone: Tone;
+  name: string;
+  onChanged: () => void;
 }) {
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const toast = useToast();
+  const online = useOnlineStatus(lesson.student_id);
+  const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const name = studentName(students, lesson.student_id);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  async function reload() {
-    lessons.reload();
-    dashboard.reload();
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
+
+  function fail(err: unknown) {
+    const isConflict = err instanceof ApiError && err.status === 409;
+    toast({
+      tone: "danger",
+      title: isConflict ? "Время занято" : "Не удалось",
+      body: (err as Error).message,
+    });
   }
 
-  async function complete() {
-    setBusy("complete");
-    setError(null);
-    setNotice(null);
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    setMenuOpen(false);
     try {
+      await action();
+      onChanged();
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function complete() {
+    run(async () => {
       const result = await api.post<CompleteLessonResponse>(`/lessons/${lesson.id}/complete`);
-      setNotice(result.charge_status === "pending" ? "Занятие завершено, начисление создаётся." : "Занятие завершено.");
-      reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(null);
-    }
+      toast({
+        tone: "success",
+        title: "Занятие завершено",
+        body: result.charge_status === "pending" ? `${name} · начисление создаётся` : name,
+      });
+    });
   }
-
-  async function cancel() {
-    setBusy("cancel");
-    setError(null);
-    setNotice(null);
-    try {
+  function cancel() {
+    run(async () => {
       await api.post(`/lessons/${lesson.id}/cancel`);
-      setNotice("Занятие отменено.");
-      reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(null);
-    }
+      toast({ tone: "warning", title: "Занятие отменено", body: name });
+    });
+  }
+  function reactivate() {
+    run(async () => {
+      await api.post(`/lessons/${lesson.id}/reactivate`);
+      toast({ tone: "info", title: "Занятие восстановлено", body: `${name} · снова запланировано` });
+    });
   }
 
-  async function reactivate() {
-    setBusy("reactivate");
-    setError(null);
-    setNotice(null);
-    try {
-      await api.post(`/lessons/${lesson.id}/reactivate`);
-      setNotice("Занятие восстановлено.");
-      reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(null);
-    }
+  const actions: { icon: string; label: string; danger?: boolean; run: () => void }[] = [];
+  if (lesson.status === "scheduled") {
+    actions.push({ icon: "schedule", label: "Перенести время", run: () => { setMenuOpen(false); setRescheduleOpen(true); } });
+    actions.push({ icon: "cancel", label: "Отменить занятие", danger: true, run: cancel });
+  } else if (lesson.status === "completed") {
+    actions.push({ icon: "cancel", label: "Отменить занятие", danger: true, run: cancel });
+  } else if (lesson.status === "cancelled") {
+    actions.push({ icon: "restart_alt", label: "Восстановить", run: reactivate });
   }
 
   return (
-    <div className="lesson-list-row">
+    <div className={"lesson-card status-" + lesson.status}>
       <div className="lesson-time">
         <strong>{timeOnly(lesson.starts_at)}</strong>
-        <span>{durationMinutes(lesson)}</span>
+        <span>{durationLabel(lesson)}</span>
       </div>
-      <div className="avatar">{initials(name)}</div>
+      <Avatar name={name} tone={tone} presence={online && lesson.status === "scheduled" ? "online" : undefined} />
       <div className="lesson-info">
         <div className="lesson-title">{name}</div>
-        <div className="muted">{lesson.topic || "Занятие"} · {fmtDate(lesson.starts_at)}</div>
-        <ErrorMsg error={error} />
-        <Notice text={notice} />
+        <div className="muted">{lesson.topic || "Занятие"}</div>
+        <FileChips fileIds={lesson.file_ids} label="Материалы" />
       </div>
+      {typeof lesson.price === "number" && <span className="lesson-price">{money(lesson.price)}</span>}
       <StatusPill status={lesson.status} />
-      <div className="btn-group">
-        {lesson.status === "scheduled" && <button className="small primary" disabled={!!busy} onClick={complete}>{busy === "complete" ? "…" : "Завершить"}</button>}
-        <div className="action-menu-wrap">
-          <button className="icon-button compact" type="button" onClick={() => setMenuOpen((value) => !value)} title="Действия">
-            <Icon name="more_vert" />
-          </button>
-          {menuOpen && (
-            <div className="action-menu">
-              {lesson.status === "scheduled" && (
-                <>
-                  <button type="button" onClick={() => { setMenuOpen(false); setRescheduleOpen(true); }}>
-                    <Icon name="schedule" />Перенести
-                  </button>
-                  <button type="button" className="danger-menu-item" disabled={!!busy} onClick={() => { setMenuOpen(false); cancel(); }}>
-                    <Icon name="event_busy" />Отменить
-                  </button>
-                </>
-              )}
-              {lesson.status === "completed" && (
-                <button type="button" className="danger-menu-item" disabled={!!busy} onClick={() => { setMenuOpen(false); cancel(); }}>
-                  <Icon name="event_busy" />Отменить
-                </button>
-              )}
-              {lesson.status === "cancelled" && (
-                <button type="button" disabled={!!busy} onClick={() => { setMenuOpen(false); reactivate(); }}>
-                  <Icon name="restore" />Восстановить
-                </button>
-              )}
-              {!["scheduled", "completed", "cancelled"].includes(lesson.status) && (
-                <button type="button" disabled><Icon name="info" />Нет действий</button>
-              )}
-            </div>
-          )}
-        </div>
+      {lesson.status === "scheduled" && (
+        <Button variant="primary" size="sm" loading={busy} onClick={complete}>Завершить</Button>
+      )}
+      {lesson.status === "cancelled" && (
+        <Button variant="secondary" size="sm" loading={busy} onClick={reactivate}>Восстановить</Button>
+      )}
+      <div className="action-menu-wrap" ref={menuRef}>
+        <button className="icon-button compact" type="button" title="Действия" onClick={() => setMenuOpen((v) => !v)}>
+          <Icon name="more_horiz" />
+        </button>
+        {menuOpen && (
+          <div className="action-menu">
+            {actions.map((a) => (
+              <button key={a.label} type="button" className={a.danger ? "danger-menu-item" : ""} disabled={busy} onClick={a.run}>
+                <Icon name={a.icon} />{a.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
       {rescheduleOpen && (
-        <RescheduleLessonModal
+        <RescheduleModal
           lesson={lesson}
-          studentName={name}
-          busy={busy === "reschedule"}
+          name={name}
           onClose={() => setRescheduleOpen(false)}
-          onSubmit={async (starts, ends) => {
-            setBusy("reschedule");
-            setError(null);
-            setNotice(null);
-            try {
-              await api.post(`/lessons/${lesson.id}/reschedule`, {
-                new_starts_at: toIso(starts),
-                new_ends_at: toIso(ends),
-              });
-              setNotice("Занятие перенесено.");
-              setRescheduleOpen(false);
-              reload();
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              setBusy(null);
-            }
+          onDone={() => {
+            setRescheduleOpen(false);
+            onChanged();
           }}
         />
       )}
@@ -309,180 +342,181 @@ function LessonRow({
   );
 }
 
-function RescheduleLessonModal({
-  lesson,
-  studentName,
-  busy,
-  onClose,
-  onSubmit,
-}: {
-  lesson: Lesson;
-  studentName: string;
-  busy: boolean;
-  onClose: () => void;
-  onSubmit: (starts: string, ends: string) => Promise<void>;
-}) {
-  const [starts, setStarts] = useState(isoToLocalInput(lesson.starts_at));
-  const [ends, setEnds] = useState(isoToLocalInput(lesson.ends_at));
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    await onSubmit(starts, ends);
-  }
-
-  return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <form className="modal-panel" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
-        <div className="modal-heading">
-          <div>
-            <h2>Перенести занятие</h2>
-            <p>{studentName} · {lesson.topic || "Занятие"}</p>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
-            <Icon name="close" />
-          </button>
-        </div>
-        <div className="modal-fields">
-          <div className="field">
-            <label>Новое начало
-              <input type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} required />
-            </label>
-          </div>
-          <div className="field">
-            <label>Новый конец
-              <input type="datetime-local" value={ends} onChange={(event) => setEnds(event.target.value)} required />
-            </label>
-          </div>
-        </div>
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Отмена</button>
-          <button className="primary" type="submit" disabled={busy}>
-            <Icon name="schedule" />
-            {busy ? "Перенос…" : "Перенести"}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+const DURATIONS = [
+  { key: "45", label: "45 минут" },
+  { key: "60", label: "60 минут" },
+  { key: "90", label: "90 минут" },
+];
 
 function CreateLessonModal({
   students,
   onClose,
   onCreated,
 }: {
-  students: Async<StudentLink[]>;
+  students: StudentLink[];
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const toast = useToast();
   const [studentId, setStudentId] = useState("");
+  const [topic, setTopic] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState("60");
-  const [topic, setTopic] = useState("");
   const [price, setPrice] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
+  const selected = students.find((s) => s.student_id === studentId);
+  const ratePlaceholder = typeof selected?.hourly_rate === "number" ? `из ставки · ${Math.round(selected.hourly_rate)} ₽` : "из ставки";
+
+  async function submit() {
     setBusy(true);
     setError(null);
     try {
+      const fileIds = await uploadAll(files, "lesson_material");
       await api.post("/lessons", {
         student_id: studentId,
         starts_at: toIsoFromParts(date, time),
         ends_at: addMinutesIso(date, time, Number(duration)),
         topic: topic || undefined,
         price: price ? Number(price) : undefined,
+        file_ids: fileIds.length ? fileIds : undefined,
       });
-      setStudentId("");
-      setDate("");
-      setTime("");
-      setDuration("60");
-      setTopic("");
-      setPrice("");
+      toast({ tone: "success", title: "Занятие создано", body: "Добавлено в расписание" });
       onCreated();
     } catch (err) {
+      const conflict = err instanceof ApiError && err.status === 409;
       setError((err as Error).message);
+      if (conflict) toast({ tone: "danger", title: "Время занято", body: (err as Error).message });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <form className="modal-panel" onMouseDown={(event) => event.stopPropagation()} onSubmit={create}>
-        <div className="modal-heading">
-          <div>
-            <h2>Новое занятие</h2>
-            <p>Запланируйте занятие с учеником</p>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
-            <Icon name="close" />
-          </button>
+    <Modal
+      title="Новое занятие"
+      subtitle="Запланируйте занятие с учеником"
+      onClose={onClose}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button type="button" onClick={onClose}>Отмена</Button>
+          <Button variant="primary" type="submit" icon="event_available" loading={busy} disabled={!studentId || !date || !time}>
+            Создать занятие
+          </Button>
+        </>
+      }
+    >
+      <ErrorMsg error={error} />
+      <div className="modal-fields">
+        <Field label="Ученик">
+          <Select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
+            <option value="">— выбрать —</option>
+            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Тема занятия">
+          <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Например: Алгебра · производные" />
+        </Field>
+        <div className="field-row modal-field-row">
+          <Field label="Дата">
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          </Field>
+          <Field label="Время" className="time-field">
+            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+          </Field>
         </div>
-
-        <ErrorMsg error={error} />
-
-        <div className="modal-fields">
-          <div className="field">
-            <label>Ученик
-              <span className="select-wrap">
-                <select value={studentId} onChange={(event) => setStudentId(event.target.value)} required>
-                  <option value="">— выбрать —</option>
-                  {(students.data ?? []).map((student) => (
-                    <option key={student.id} value={student.student_id}>{student.display_name}</option>
-                  ))}
-                </select>
-                <Icon name="expand_more" />
-              </span>
-            </label>
-          </div>
-
-          <div className="field">
-            <label>Тема занятия
-              <input value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Например: Алгебра · производные" />
-            </label>
-          </div>
-
-          <div className="field-row modal-field-row">
-            <label>Дата
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
-            </label>
-            <label className="time-field">Время
-              <input type="time" value={time} onChange={(event) => setTime(event.target.value)} required />
-            </label>
-          </div>
-
-          <div className="field-row modal-field-row">
-            <label>Длительность
-              <span className="select-wrap">
-                <select value={duration} onChange={(event) => setDuration(event.target.value)} required>
-                  <option value="45">45 минут</option>
-                  <option value="60">60 минут</option>
-                  <option value="90">90 минут</option>
-                </select>
-                <Icon name="expand_more" />
-              </span>
-            </label>
-            <label>Стоимость
-              <span className="amount-input">
-                <input type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="из ставки" />
-                <span>₽</span>
-              </span>
-            </label>
-          </div>
+        <div className="field-row modal-field-row">
+          <Field label="Длительность">
+            <Select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              {DURATIONS.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+            </Select>
+          </Field>
+          <Field label="Стоимость">
+            <span className="amount-input">
+              <input type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={ratePlaceholder} />
+              <span>₽</span>
+            </span>
+          </Field>
         </div>
+        <Field label="Материалы (необязательно)" hint="PDF, изображения и др. — увидит ученик">
+          <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+        </Field>
+      </div>
+    </Modal>
+  );
+}
 
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Отмена</button>
-          <button className="primary" type="submit" disabled={busy || students.loading}>
-            <Icon name="event_available" />
-            {busy ? "Создание…" : "Создать занятие"}
-          </button>
+function RescheduleModal({
+  lesson,
+  name,
+  onClose,
+  onDone,
+}: {
+  lesson: Lesson;
+  name: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const toast = useToast();
+  const [date, setDate] = useState(isoToDateInput(lesson.starts_at));
+  const [time, setTime] = useState(isoToTimeInput(lesson.starts_at));
+  const initialDuration = Math.max(0, Math.round((new Date(lesson.ends_at).getTime() - new Date(lesson.starts_at).getTime()) / 60000));
+  const [duration, setDuration] = useState(String(initialDuration || 60));
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/lessons/${lesson.id}/reschedule`, {
+        new_starts_at: toIsoFromParts(date, time),
+        new_ends_at: addMinutesIso(date, time, Number(duration)),
+      });
+      toast({ tone: "info", title: "Время перенесено", body: `${name} · ученик уведомлён` });
+      onDone();
+    } catch (err) {
+      const conflict = err instanceof ApiError && err.status === 409;
+      setError((err as Error).message);
+      if (conflict) toast({ tone: "danger", title: "Время занято", body: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      title="Перенести занятие"
+      subtitle={`${name} · ${lesson.topic || "Занятие"}`}
+      onClose={onClose}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button type="button" onClick={onClose}>Отмена</Button>
+          <Button variant="primary" type="submit" icon="schedule" loading={busy} disabled={!date || !time}>Перенести</Button>
+        </>
+      }
+    >
+      <ErrorMsg error={error} />
+      <div className="modal-fields">
+        <div className="field-row modal-field-row">
+          <Field label="Дата">
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          </Field>
+          <Field label="Время" className="time-field">
+            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+          </Field>
         </div>
-      </form>
-    </div>
+        <Field label="Длительность">
+          <Select value={duration} onChange={(e) => setDuration(e.target.value)}>
+            {DURATIONS.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+          </Select>
+        </Field>
+      </div>
+    </Modal>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   api,
@@ -7,7 +7,21 @@ import {
   type Submission,
   type TeacherDashboard,
 } from "../api";
-import { AppShell, ErrorMsg, FileChips, Icon, Notice, StatusPill, fmtDate, useAsync } from "../ui";
+import {
+  AppShell,
+  Button,
+  CommentThread,
+  ErrorMsg,
+  FileChips,
+  Icon,
+  SkeletonRows,
+  StatusPill,
+  fmtDate,
+  useAsync,
+  useToast,
+} from "../ui";
+import { useAuth } from "../auth";
+import { useRealtimeEvent } from "../realtime";
 import { initials, teacherNav } from "./teacherNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
@@ -17,17 +31,21 @@ function latestSubmission(submissions?: Submission[]): Submission | null {
   if (!submissions || submissions.length === 0) return null;
   return [...submissions].sort((a, b) => new Date(b.submitted_at ?? "").getTime() - new Date(a.submitted_at ?? "").getTime())[0];
 }
-
 function studentName(students: StudentLink[], studentId?: string): string {
   if (!studentId) return "Ученик";
-  return students.find((student) => student.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+  return students.find((s) => s.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
 }
 
 export default function TeacherAssignmentReview() {
   const { assignmentId } = useParams();
+  const { user } = useAuth();
   const dashboard = useAsync<TeacherDashboard>(() => api.get("/dashboard/teacher"), []);
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const detail = useAsync<AssignmentDetail>(() => api.get(`/assignments/${assignmentId}`), [assignmentId]);
+
+  useRealtimeEvent((event) => {
+    if (["assignment", "submission", "review"].some((t) => event.type.startsWith(t))) detail.reload();
+  }, [detail.reload]);
 
   if (!assignmentId) return <Navigate to="/teacher/assignments" replace />;
 
@@ -46,7 +64,7 @@ export default function TeacherAssignmentReview() {
         assignments: dashboard.data?.pending_submissions_count,
         receipts: dashboard.data?.pending_receipts_count,
       })}
-      actions={<Link className="button-link" to="/teacher/assignments"><Icon name="arrow_back" />Домашние задания</Link>}
+      actions={<Link className="button-like" to="/teacher/assignments"><Icon name="arrow_back" />Домашние задания</Link>}
     >
       <div className="review-layout">
         <div className="dashboard-column">
@@ -67,7 +85,7 @@ export default function TeacherAssignmentReview() {
               </div>
             </div>
             <ErrorMsg error={detail.error} />
-            {detail.loading && !assignment && <p className="hint">Загрузка...</p>}
+            {detail.loading && !assignment && <SkeletonRows count={2} />}
           </section>
 
           <section className="review-card">
@@ -79,7 +97,7 @@ export default function TeacherAssignmentReview() {
             {submission ? (
               <>
                 <div className="submission-summary">
-                  <div className="avatar">{initials(name)}</div>
+                  <div className="avatar tone-student">{initials(name)}</div>
                   <div>
                     <strong>{name}</strong>
                     <span>Статус решения: <StatusPill status={submission.status} /></span>
@@ -100,22 +118,23 @@ export default function TeacherAssignmentReview() {
 
           <section className="review-card">
             <div className="review-section-heading">
-              <Icon name="history" />
-              <h3>История сдач</h3>
+              <Icon name="forum" />
+              <h3>Комментарии</h3>
             </div>
-            <div className="review-timeline">
-              {submission && <TimelineItem tone="warning" title="Сдано на проверку" meta={fmtDate(submission.submitted_at) || "дата не указана"} />}
-              {(assignment?.comments ?? []).map((comment) => (
-                <TimelineItem tone="danger" title="Комментарий преподавателя" meta={`${fmtDate(comment.created_at)} · ${comment.text}`} key={comment.id} />
-              ))}
-              {assignment && <TimelineItem tone="info" title="Выдано задание" meta={fmtDate(assignment.created_at) || "дата не указана"} last />}
-              {!assignment && !detail.loading && <p className="hint">Задание не найдено.</p>}
-            </div>
+            <CommentThread
+              comments={assignment?.comments ?? []}
+              teacherId={assignment?.teacher_id}
+              selfId={user?.user_id}
+              onSubmit={async (text) => {
+                await api.post(`/assignments/${assignmentId}/comments`, { text });
+                detail.reload();
+              }}
+            />
           </section>
         </div>
 
         <div className="dashboard-column sticky-column">
-          <ReviewPanel assignmentId={assignmentId} detail={detail} submission={submission} />
+          <ReviewPanel assignmentId={assignmentId} detail={detail} submission={submission} name={name} />
         </div>
       </div>
     </AppShell>
@@ -126,25 +145,22 @@ function ReviewPanel({
   assignmentId,
   detail,
   submission,
+  name,
 }: {
   assignmentId: string;
   detail: Async<AssignmentDetail>;
   submission: Submission | null;
+  name: string;
 }) {
+  const toast = useToast();
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [comment, setComment] = useState("");
-  const [reviewFile, setReviewFile] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const canSubmit = useMemo(() => !!verdict && (verdict !== "needs_fix" || comment.trim().length > 0), [comment, verdict]);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setError(null);
-    setNotice(null);
+  async function submit() {
     if (!canSubmit) {
-      setError(verdict ? "Для возврата на правки нужен комментарий." : "Выберите результат проверки.");
+      toast({ tone: "danger", title: verdict ? "Нужен комментарий" : "Выберите результат", body: verdict ? "Опишите, что исправить" : "Принять или вернуть на правки" });
       return;
     }
     setBusy(true);
@@ -153,11 +169,16 @@ function ReviewPanel({
         status: verdict,
         comment: comment.trim() || undefined,
       });
-      setNotice(verdict === "needs_fix" ? "Работа возвращена на правки." : "Работа принята.");
+      toast(
+        verdict === "needs_fix"
+          ? { tone: "warning", title: "Отправлено на правки", body: `${name} получит комментарий` }
+          : { tone: "success", title: "Работа принята", body: `${name} · статус «выполнено»` },
+      );
       setComment("");
+      setVerdict(null);
       detail.reload();
     } catch (err) {
-      setError((err as Error).message);
+      toast({ tone: "danger", title: "Не удалось сохранить", body: (err as Error).message });
     } finally {
       setBusy(false);
     }
@@ -171,66 +192,49 @@ function ReviewPanel({
     <section className="review-verdict-panel">
       <h2>Проверка работы</h2>
       <p>Выберите результат и оставьте комментарий</p>
-      <ErrorMsg error={error} />
-      <Notice text={notice} />
       {!submission && <p className="hint">Проверка станет доступна после отправки решения.</p>}
 
-      <form onSubmit={submit}>
-        <div className="review-options">
-          <button type="button" className={verdict === "reviewed" ? "review-option active" : "review-option"} onClick={() => setVerdict("reviewed")}>
-            <span><Icon name={verdict === "reviewed" ? "check_circle" : "check"} /></span>
-            <strong>Принять работу</strong>
-          </button>
-          <button type="button" className={verdict === "needs_fix" ? "review-option warning active" : "review-option warning"} onClick={() => setVerdict("needs_fix")}>
-            <span><Icon name={verdict === "needs_fix" ? "edit_note" : "edit"} /></span>
-            <strong>Вернуть на правки</strong>
-          </button>
-        </div>
-
-        <div className="field">
-          <label>Комментарий {verdict === "needs_fix" ? "(обязательно)" : "(необязательно)"}
-            <textarea
-              value={comment}
-              onChange={(event) => setComment(event.target.value)}
-              placeholder={verdict === "needs_fix" ? "Что нужно исправить..." : "Похвалите или дайте совет..."}
-            />
-          </label>
-        </div>
-
-        <div className="quick-replies">
-          {quick.map((text) => (
-            <button type="button" className="small" key={text} onClick={() => setComment((current) => (current ? `${current} ${text}` : text))}>
-              {text}
-            </button>
-          ))}
-        </div>
-
-        <button type="button" className={"review-attach" + (reviewFile ? " active" : "")} onClick={() => setReviewFile((value) => !value)}>
-          <Icon name={reviewFile ? "check_circle" : "attach_file"} />
-          {reviewFile ? "разметка_проверка.pdf · 210 КБ" : "Прикрепить файл"}
+      <div className="review-options">
+        <button type="button" className={verdict === "reviewed" ? "review-option active" : "review-option"} onClick={() => setVerdict("reviewed")}>
+          <span><Icon name={verdict === "reviewed" ? "check_circle" : "check"} /></span>
+          <strong>Принять работу</strong>
         </button>
-
-        <button className="primary review-submit" type="submit" disabled={busy || !submission || !canSubmit}>
-          <Icon name={verdict === "reviewed" ? "check" : "send"} />
-          {busy ? "Сохранение..." : verdict === "needs_fix" ? "Отправить на правки" : "Принять работу"}
+        <button type="button" className={verdict === "needs_fix" ? "review-option warning active" : "review-option warning"} onClick={() => setVerdict("needs_fix")}>
+          <span><Icon name={verdict === "needs_fix" ? "edit_note" : "edit"} /></span>
+          <strong>Вернуть на правки</strong>
         </button>
-        <div className="review-notify"><Icon name="notifications_active" />Ученик получит уведомление о результате</div>
-      </form>
+      </div>
+
+      <div className="field">
+        <label>Комментарий {verdict === "needs_fix" ? "(обязательно)" : "(необязательно)"}
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={verdict === "needs_fix" ? "Что нужно исправить…" : "Похвалите или дайте совет…"}
+          />
+        </label>
+      </div>
+
+      <div className="quick-replies">
+        {quick.map((text) => (
+          <button type="button" className="small" key={text} onClick={() => setComment((cur) => (cur ? `${cur} ${text}` : text))}>
+            {text}
+          </button>
+        ))}
+      </div>
+
+      <Button
+        variant={verdict === "needs_fix" ? "secondary" : "primary"}
+        className="review-submit"
+        block
+        icon={verdict === "needs_fix" ? "send" : "check"}
+        loading={busy}
+        disabled={!submission || !canSubmit}
+        onClick={submit}
+      >
+        {verdict === "needs_fix" ? "Отправить на правки" : "Принять работу"}
+      </Button>
+      <div className="review-notify"><Icon name="notifications_active" />Ученик получит уведомление о результате</div>
     </section>
-  );
-}
-
-function TimelineItem({ tone, title, meta, last }: { tone: "warning" | "danger" | "info"; title: string; meta: string; last?: boolean }) {
-  return (
-    <div className="timeline-item">
-      <div className="timeline-marker">
-        <span className={"timeline-dot " + tone}></span>
-        {!last && <i></i>}
-      </div>
-      <div>
-        <strong>{title}</strong>
-        <span>{meta}</span>
-      </div>
-    </div>
   );
 }

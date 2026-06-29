@@ -14,6 +14,9 @@
   --role-accent: #3b5bdb;
   --role-accent-strong: #2f49b8;
   --role-accent-soft: #e9edfd;
+  --info: #3b5bdb;
+  --info-text: #2f49b8;
+  --info-soft: #e9edfd;
   --success: #18a866;
   --success-text: #0f7a4f;
   --success-soft: #e3f4ec;
@@ -23,8 +26,32 @@
   --danger: #e0584f;
   --danger-text: #c0362f;
   --danger-soft: #fde7e6;
+
+  /* Типографическая шкала (Manrope) */
+  --font-sans: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --fs-display: 34px;
+  --fs-h1: 24px;
+  --fs-h2: 20px;
+  --fs-h3: 16px;
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-caption: 12px;
+
+  /* Шаг 4px / сетка 8 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
   --radius: 14px;
   --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 24, 33, .06), 0 1px 1px rgba(20, 24, 33, .04);
+  --shadow-md: 0 4px 16px rgba(20, 24, 33, .08);
+  --shadow-lg: 0 12px 32px rgba(20, 24, 33, .12);
   --shadow: 0 4px 16px rgba(20, 24, 33, 0.05);
 }
 
@@ -539,6 +566,14 @@ a { color: var(--role-accent); text-decoration: none; }
 .modal-field-row .time-field {
   flex: 0 0 130px;
 }
+/* Поля, обёрнутые в примитив <Field> (.field), как flex-потомки ряда */
+.field-row > .field {
+  flex: 1;
+  margin-bottom: 0;
+}
+.field-row > .field.time-field {
+  flex: 0 0 140px;
+}
 .select-wrap,
 .amount-input {
   position: relative;
@@ -674,6 +709,25 @@ button.small {
   border-radius: 9px;
 }
 button:disabled { opacity: .55; cursor: default; transform: none; }
+/* Ссылки-кнопки (Link) выглядят как кнопки */
+.button-like {
+  padding: 9px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  text-decoration: none;
+}
+.button-like.small { padding: 6px 10px; font-size: 12.5px; border-radius: 9px; }
+.button-like.primary {
+  background: var(--role-accent);
+  color: #fff;
+  border-color: var(--role-accent);
+}
+.button-like.primary:hover {
+  background: var(--role-accent-strong);
+  border-color: var(--role-accent-strong);
+}
 .primary-action {
   padding: 9px 16px;
   border-radius: 10px;
@@ -933,6 +987,9 @@ button:disabled { opacity: .55; cursor: default; transform: none; }
 .assignment-icon-info { background: var(--role-accent-soft); color: var(--role-accent-strong); }
 .assignment-icon-warning { background: var(--warning-soft); color: var(--warning-text); }
 .assignment-icon-success { background: var(--success-soft); color: var(--success-text); }
+.assignment-icon-danger { background: var(--danger-soft); color: var(--danger-text); }
+.assignment-row-meta .deadline.danger,
+.assignment-row-meta .deadline.danger .ms { color: var(--danger-text); }
 .assignment-row-main { min-width: 0; }
 .assignment-row-title {
   display: flex;
@@ -1258,6 +1315,42 @@ button:disabled { opacity: .55; cursor: default; transform: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Карточка-строка занятия (левый акцент по статусу) */
+.lesson-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--role-accent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lesson-card + .lesson-card { margin-top: 10px; }
+.lesson-card .lesson-time { width: 62px; flex-shrink: 0; }
+.lesson-card .lesson-info { flex: 1; min-width: 0; }
+.lesson-card > .pill,
+.lesson-card > button,
+.lesson-card > .button-like,
+.lesson-card > .action-menu-wrap { flex-shrink: 0; }
+.lesson-card.status-completed { border-left-color: var(--success); }
+.lesson-card.status-cancelled { border-left-color: var(--border-strong); opacity: .72; }
+.lesson-card.status-cancelled .lesson-time strong { color: var(--text-hint); }
+.lesson-price {
+  font-weight: 700;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .lesson-card { flex-wrap: wrap; }
+  .lesson-card .lesson-info { flex-basis: calc(100% - 120px); }
+  .lesson-card > .pill,
+  .lesson-card > button,
+  .lesson-card > .button-like { margin-left: 76px; }
 }
 .inline-form {
   display: grid;
@@ -2222,6 +2315,100 @@ button:disabled { opacity: .55; cursor: default; transform: none; }
   font-weight: 600;
 }
 
+/* Тред комментариев (teacher + student) — review и сдача ДЗ */
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.comment-item {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+.comment-body {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 13px;
+}
+.comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.comment-author { font-weight: 700; font-size: 12.5px; }
+.comment-author.teacher { color: var(--accent-strong); }
+.comment-author.student { color: var(--success-text); }
+.comment-time { font-size: 11px; font-weight: 500; color: var(--text-hint); }
+.comment-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 3px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.comment-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.comment-form textarea {
+  flex: 1;
+  min-height: 42px;
+  max-height: 120px;
+  resize: vertical;
+  background: var(--surface-3);
+  line-height: 1.4;
+}
+
+/* Студенческая строка ДЗ: кликабельная основная зона + панель */
+button.assignment-row-main {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+button.assignment-row-main:hover { background: transparent; }
+.assignment-title-text {
+  font-weight: 800;
+  font-size: 15px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.submit-box {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.notice-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  font-weight: 600;
+  font-size: 13px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.notice-row .ms { font-size: 19px; }
+.notice-row.danger { background: var(--danger-soft); color: var(--danger-text); }
+.notice-row.success { background: var(--success-soft); color: var(--success-text); }
+
 .auth-page {
   min-height: 100vh;
   display: grid;
@@ -2705,6 +2892,422 @@ button:disabled { opacity: .55; cursor: default; transform: none; }
 }
 
 .topbar { display: none; }
+
+/* ============================================================
+   Примитивы дизайн-системы (Phase 0)
+   ============================================================ */
+
+/* --- Кнопки: варианты + размеры --- */
+button.has-icon,
+.button-like.has-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+button .ms { font-size: 18px; }
+button.secondary,
+.button-like.secondary {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+button.secondary:hover,
+.button-like.secondary:hover { background: #e3e9f1; }
+button.ghost,
+.button-like.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--role-accent);
+}
+button.ghost:hover,
+.button-like.ghost:hover { background: color-mix(in srgb, var(--role-accent-soft) 55%, transparent); }
+button.danger,
+.button-like.danger {
+  background: var(--surface);
+  color: var(--danger-text);
+  border-color: #f4cdca;
+}
+button.danger:hover,
+.button-like.danger:hover { background: #fdf3f2; }
+button.lg,
+.button-like.lg { padding: 12px 22px; font-size: 15px; border-radius: 11px; }
+button.block,
+.button-like.block { width: 100%; }
+.spin { animation: tfspin .8s linear infinite; }
+@keyframes tfspin { to { transform: rotate(360deg); } }
+
+/* --- Поля --- */
+.field-error {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--danger-text);
+  margin-top: 6px;
+}
+input.invalid, select.invalid, textarea.invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger-soft) 80%, transparent);
+}
+
+/* --- Бейджи и счётчики --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 11.5px;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.badge .ms { font-size: 14px; }
+.badge-info { background: var(--info-soft); color: var(--info-text); }
+.badge-success { background: var(--success-soft); color: var(--success-text); }
+.badge-warning { background: var(--warning-soft); color: var(--warning-text); }
+.badge-danger { background: var(--danger-soft); color: var(--danger-text); }
+.counter {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  background: var(--role-accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+.counter-danger { background: var(--danger); }
+.counter-warning { background: var(--warning-soft); color: var(--warning-text); }
+.counter-muted { background: var(--surface-2); color: var(--text-hint); }
+
+/* --- Аватары: тоны, размеры, присутствие --- */
+.avatar.avatar-sm { width: 30px; height: 30px; border-radius: 8px; font-size: 12px; }
+.avatar.avatar-lg { width: 44px; height: 44px; border-radius: 12px; font-size: 15px; }
+.avatar.tone-teacher { background: var(--accent-soft); color: var(--accent-strong); box-shadow: none; }
+.avatar.tone-student { background: var(--success-soft); color: var(--success-text); box-shadow: none; }
+.avatar.tone-amber { background: var(--warning-soft); color: var(--warning-text); box-shadow: none; }
+.avatar.tone-muted { background: var(--surface-2); color: var(--text-muted); box-shadow: none; }
+.avatar-wrap { position: relative; flex-shrink: 0; display: inline-flex; }
+.avatar-online {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--success);
+  border: 2px solid #fff;
+}
+.avatar-online.away { background: #c4ccd6; }
+
+/* --- Тосты (layout под ToastProvider) --- */
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  animation: toastIn .28s cubic-bezier(.4, 0, .2, 1);
+}
+.toast > .ms { font-size: 20px; margin-top: 1px; flex-shrink: 0; color: var(--role-accent); }
+.toast-main { flex: 1; min-width: 0; }
+.toast-close {
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #b8c0cc;
+  flex-shrink: 0;
+}
+.toast-close:hover { background: none; color: var(--text-muted); }
+.toast.info { border-left-color: var(--info); }
+.toast.info > .ms { color: var(--info); }
+.toast.success { border-left-color: var(--success); }
+.toast.success > .ms { color: var(--success); }
+.toast.warning { border-left-color: var(--warning); }
+.toast.warning > .ms { color: var(--warning); }
+.toast.danger { border-left-color: var(--danger); }
+.toast.danger > .ms { color: var(--danger); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* --- Скелетоны --- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .6), transparent);
+  animation: tfshimmer 1.3s infinite;
+}
+@keyframes tfshimmer { 100% { transform: translateX(100%); } }
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 0;
+  border-top: 1px solid #f3f5f8;
+}
+.skeleton-row:first-child { border-top: none; }
+.skeleton-avatar { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; }
+.skeleton-lines { flex: 1; min-width: 0; }
+
+/* --- Пустые состояния (общий) --- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 34px 20px;
+  color: var(--text-hint);
+}
+.empty-state > .ms {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--text-muted);
+}
+.empty-state strong { color: var(--text-muted); font-size: 15px; font-weight: 700; }
+.empty-state p { margin: 0; font-size: 13px; }
+.empty-state.success > .ms { background: var(--success-soft); color: var(--success-text); }
+
+/* --- Дашборд: KPI-подписи --- */
+.metric-value-row { display: flex; align-items: baseline; gap: 9px; margin-top: 10px; }
+.metric-value-row .value { margin-top: 0; }
+.metric-pill { font-weight: 600; font-size: 12.5px; padding: 2px 9px; border-radius: var(--radius-pill); }
+.metric-pill.warning { color: var(--warning-text); background: var(--warning-soft); }
+.metric-pill.success { color: var(--success-text); background: var(--success-soft); }
+.metric-pill.info { color: var(--info-text); background: var(--info-soft); }
+.metric.warn .value { color: var(--warning-text); }
+.metric-sub { font-weight: 500; font-size: 12px; color: var(--text-hint); margin-top: 3px; }
+.metric-sub.pos { color: var(--success-text); }
+
+/* --- Дашборд: строки и шапки секций --- */
+.card-head-chip {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+.card-head-link {
+  margin-left: auto;
+  padding: 4px 6px;
+  border: none;
+  background: none;
+  width: auto;
+  height: auto;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--role-accent);
+}
+.card-head-link:hover { background: none; text-decoration: underline; }
+.card-heading .ms.warn { color: var(--warning); }
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: tfpulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes tfpulse {
+  0% { box-shadow: 0 0 0 0 rgba(24, 168, 102, .45); }
+  70% { box-shadow: 0 0 0 6px rgba(24, 168, 102, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(24, 168, 102, 0); }
+}
+
+.dash-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 20px;
+  border-top: 1px solid #f3f5f8;
+}
+.dash-row:first-of-type { border-top: none; }
+.dash-row.clickable { cursor: pointer; transition: background .15s; }
+.dash-row.clickable:hover { background: var(--surface-3); }
+.dash-row.dim { opacity: .6; }
+.dash-time {
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  width: 46px;
+  flex-shrink: 0;
+}
+.dash-main { flex: 1; min-width: 0; }
+.dash-main .t {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-main .s {
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--text-hint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-amount {
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.dash-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+}
+.dash-icon .ms { font-size: 18px; }
+.dash-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 15px 20px 6px;
+}
+.dash-head .lbl {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-hint);
+}
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--role-accent);
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+/* full-bleed строки/шапки внутри карточки */
+.card > .dash-row, .card > div > .dash-row,
+.card > .dash-head, .card > div > .dash-head,
+.card > .empty-state, .card > div > .empty-state,
+.card > .skeleton-row, .card > div > .skeleton-row,
+.card > .card-scroll {
+  margin-left: 0;
+  margin-right: 0;
+}
+.card-scroll { max-height: 320px; overflow-y: auto; }
+
+/* Тоновые иконки-плитки в строках дашборда */
+.dash-icon.lg { width: 38px; height: 38px; border-radius: 10px; }
+.dash-icon.lg .ms { font-size: 20px; }
+.dash-icon.tone-info { background: var(--info-soft); color: var(--info-text); }
+.dash-icon.tone-success { background: var(--success-soft); color: var(--success-text); }
+.dash-icon.tone-warning,
+.dash-icon.tone-amber { background: var(--warning-soft); color: var(--warning-text); }
+.dash-icon.tone-danger { background: var(--danger-soft); color: var(--danger-text); }
+.dash-icon.tone-muted { background: var(--surface-2); color: var(--text-muted); }
+
+.card-head-chip.warning { color: var(--warning-text); background: var(--warning-soft); }
+.assignment-title-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ====== Дашборд ученика ====== */
+.student-top {
+  display: grid;
+  grid-template-columns: 1fr 1.45fr;
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+.balance-hero .label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.balance-hero .label .ms { font-size: 19px; }
+.balance-lock {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  font-size: 11px;
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+.balance-lock .ms { font-size: 13px; }
+.balance-foot {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, .16);
+  display: flex;
+  gap: 24px;
+}
+.balance-foot-label { font-weight: 500; font-size: 11.5px; color: color-mix(in srgb, #fff 60%, var(--role-accent-soft)); }
+.balance-foot-value { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; margin-top: 2px; color: #fff; }
+
+.next-lesson {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+}
+.next-lesson-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-hint);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.next-lesson-head .ms { font-size: 19px; }
+.next-lesson-when { font-weight: 800; font-size: 24px; margin-top: 14px; letter-spacing: -0.01em; }
+.next-lesson-topic { font-weight: 600; font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+.next-lesson-foot {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: auto;
+  padding-top: 18px;
+}
+.next-lesson-foot .dash-main { flex: 1; min-width: 0; }
+.online-text { color: var(--success-text); font-weight: 600; }
+
+@media (max-width: 1180px) {
+  .student-top { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .dash-row { padding-left: 14px; padding-right: 14px; }
+  .dash-head { padding-left: 14px; padding-right: 14px; }
+}
 
 @media (max-width: 1180px) {
   .metrics, .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

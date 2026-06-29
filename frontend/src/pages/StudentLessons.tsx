@@ -1,22 +1,76 @@
 import { useMemo, useState } from "react";
 import { api, reports, type Lesson, type StudentDashboard } from "../api";
-import { AppShell, Card, FileChips, Icon, ListState, StatusPill, useAsync } from "../ui";
-import { lessonInterval, money, studentNav } from "./studentNav";
+import {
+  AppShell,
+  Avatar,
+  EmptyState,
+  ErrorMsg,
+  FileChips,
+  Segmented,
+  SkeletonRows,
+  StatusPill,
+  useAsync,
+  type TabItem,
+} from "../ui";
+import { money, studentNav } from "./studentNav";
+
+type Segment = "scheduled" | "completed" | "cancelled" | "all";
 
 function teacherName(dashboard: StudentDashboard | null, teacherId: string): string {
-  return dashboard?.summaries.find((summary) => summary.teacher_id === teacherId)?.teacher_name ?? teacherId.slice(0, 8);
+  return dashboard?.summaries.find((s) => s.teacher_id === teacherId)?.teacher_name ?? "Преподаватель";
+}
+function timeOnly(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+function dateLabel(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+}
+function durationLabel(lesson: Lesson): string {
+  const start = new Date(lesson.starts_at);
+  const end = new Date(lesson.ends_at);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return "";
+  return `${Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))} мин`;
 }
 
 export default function StudentLessons() {
   const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
-  const [status, setStatus] = useState("scheduled");
+  const [segment, setSegment] = useState<Segment>("scheduled");
 
-  const activeAssignments = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.active_assignments_count, 0) ?? 0;
-  const upcomingLessons = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.upcoming_lessons_count, 0) ?? 0;
+  const list = lessons.data ?? [];
+  const activeAssignments = dashboard.data?.summaries.reduce((s, i) => s + i.activity.active_assignments_count, 0) ?? 0;
+  const upcomingLessons = dashboard.data?.summaries.reduce((s, i) => s + i.activity.upcoming_lessons_count, 0) ?? 0;
+
+  const counts = useMemo(
+    () => ({
+      scheduled: list.filter((l) => l.status === "scheduled").length,
+      completed: list.filter((l) => l.status === "completed").length,
+      cancelled: list.filter((l) => l.status === "cancelled").length,
+      all: list.length,
+    }),
+    [list],
+  );
+
+  const segments: TabItem[] = [
+    { key: "scheduled", label: "Ближайшие", count: counts.scheduled },
+    { key: "completed", label: "Проведённые", count: counts.completed },
+    { key: "cancelled", label: "Отменённые", count: counts.cancelled },
+    { key: "all", label: "Все", count: counts.all },
+  ];
+
   const filtered = useMemo(
-    () => (lessons.data ?? []).filter((lesson) => status === "all" || lesson.status === status),
-    [lessons.data, status],
+    () =>
+      list
+        .filter((l) => segment === "all" || l.status === segment)
+        .sort((a, b) => {
+          const diff = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+          return segment === "scheduled" ? diff : -diff;
+        }),
+    [list, segment],
   );
 
   return (
@@ -33,38 +87,35 @@ export default function StudentLessons() {
     >
       <div className="container">
         <div className="teacher-toolbar">
-          <div className="segmented">
-            {[
-              ["scheduled", "Ближайшие"],
-              ["completed", "Проведённые"],
-              ["cancelled", "Отменённые"],
-              ["all", "Все"],
-            ].map(([value, label]) => (
-              <button className={status === value ? "active" : ""} key={value} onClick={() => setStatus(value)}>
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented items={segments} active={segment} onChange={(k) => setSegment(k as Segment)} />
         </div>
 
-        <Card title="Занятия" icon="calendar_month">
-          {filtered.map((lesson) => (
-            <div className="resource-row" key={lesson.id}>
-              <div className="resource-icon"><Icon name="school" /></div>
-              <div className="resource-main">
-                <div className="summary-title">{lesson.topic || "Занятие"}</div>
-                <div className="summary-grid">
-                  <span>{teacherName(dashboard.data, lesson.teacher_id)}</span>
-                  <span>{lessonInterval(lesson.starts_at, lesson.ends_at)}</span>
-                  {typeof lesson.price === "number" && <span>{money(lesson.price)}</span>}
+        {lessons.loading && !lessons.data ? (
+          <div className="card"><SkeletonRows count={4} /></div>
+        ) : lessons.error ? (
+          <ErrorMsg error={lessons.error} />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="event_busy" title="Здесь пусто" hint="В этом разделе пока нет занятий." />
+        ) : (
+          filtered.map((lesson) => (
+            <div className={"lesson-card status-" + lesson.status} key={lesson.id}>
+              <div className="lesson-time">
+                <strong>{timeOnly(lesson.starts_at)}</strong>
+                <span>{durationLabel(lesson)}</span>
+              </div>
+              <Avatar name={teacherName(dashboard.data, lesson.teacher_id)} tone="teacher" />
+              <div className="lesson-info">
+                <div className="lesson-title">{lesson.topic || "Занятие"}</div>
+                <div className="muted">
+                  {teacherName(dashboard.data, lesson.teacher_id)} · {dateLabel(lesson.starts_at)}
                 </div>
                 <FileChips fileIds={lesson.file_ids} label="Материалы" />
               </div>
+              {typeof lesson.price === "number" && <span className="lesson-price">{money(lesson.price)}</span>}
               <StatusPill status={lesson.status} />
             </div>
-          ))}
-          <ListState query={{ ...lessons, data: filtered }} empty="Занятия не найдены." />
-        </Card>
+          ))
+        )}
       </div>
     </AppShell>
   );
