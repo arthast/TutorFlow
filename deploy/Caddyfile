@@ -13,3 +13,7 @@
 
     reverse_proxy frontend:80
 }
+
+www.{$TUTORFLOW_DOMAIN} {
+    redir https://{$TUTORFLOW_DOMAIN}{uri} permanent
+}

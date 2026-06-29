@@ -5,6 +5,7 @@
 - Server: `51.250.117.185`
 - User: `ilyaytrewq`
 - Domain: `netwatch-arsen-demo.ru`
+- `www.netwatch-arsen-demo.ru` redirects to `netwatch-arsen-demo.ru`
 - App root on server: `/opt/tutorflow`
 
 Frontend and backend are served from one domain. Caddy routes:
@@ -53,6 +54,7 @@ For the final HTTPS deploy, create this DNS record:
 
 ```text
 A netwatch-arsen-demo.ru -> 51.250.117.185
+A www.netwatch-arsen-demo.ru -> 51.250.117.185
 ```
 
 Copy deploy files to `/opt/tutorflow`:
