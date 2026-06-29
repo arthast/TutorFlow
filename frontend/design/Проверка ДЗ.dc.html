@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&amp;display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <a href="TutorFlow — Прототип.dc.html" title="К обзору прототипа" style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; text-decoration:none; cursor:pointer">T</a>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:#8b94a3"><span style="cursor:pointer; transition:color .15s" style-hover="color:#3b5bdb">Домашние задания</span><span class="ms" style="font-size:18px">chevron_right</span><span style="color:#14181f; font-weight:700">Проверка работы</span></div>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; margin-left:auto; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:24px 26px 60px">
+      <div style="max-width:1000px; margin:0 auto; display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start">
+
+        <!-- ===== LEFT ===== -->
+        <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+
+          <!-- assignment -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:22px 24px">
+            <div style="display:flex; align-items:flex-start; gap:14px">
+              <div style="width:44px; height:44px; flex-shrink:0; border-radius:12px; background:#e9edfd; color:#3b5bdb; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:24px">assignment</span></div>
+              <div style="flex:1; min-width:0">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Производные функций</div><span style="display:inline-flex; align-items:center; gap:6px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12px; background:{{ stBg }}; color:{{ stColor }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ stDot }}"></span>{{ stLabel }}</span></div>
+                <div style="display:flex; align-items:center; gap:16px; margin-top:8px; font-weight:500; font-size:13px; color:#5a6472; flex-wrap:wrap">
+                  <span style="display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px; color:#8b94a3">person</span>Игорь Петров · 8 класс</span>
+                  <span style="display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px; color:#8b94a3">event</span>дедлайн сегодня, 22:00</span>
+                </div>
+                <p style="font-weight:500; font-size:14px; line-height:1.6; color:#3a414c; margin:14px 0 0">Решите задачи 1–8 на нахождение производной. Распишите шаги, особенно в задаче 5 (производная сложной функции). Ответы пришлите одним PDF или фото.</p>
+                <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap">
+                  <span style="display:inline-flex; align-items:center; gap:7px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:9px; padding:7px 11px; font-weight:500; font-size:12.5px; color:#5a6472; cursor:pointer"><span class="ms" style="font-size:18px; color:#3b5bdb">picture_as_pdf</span>условие_дз.pdf <span style="color:#aab2bf">· 180 КБ</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- submission -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden">
+            <div style="display:flex; align-items:center; gap:10px; padding:16px 22px; border-bottom:1px solid #eef2f7">
+              <span class="ms" style="font-size:20px; color:#0f8a8a">upload_file</span>
+              <div style="font-weight:700; font-size:16px">Решение ученика</div>
+              <span style="margin-left:auto; font-weight:500; font-size:12.5px; color:#8b94a3">сдано сегодня в 19:05</span>
+            </div>
+            <div style="padding:18px 22px">
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:center; gap:13px; border:1px solid #e6eaf0; border-radius:12px; padding:12px 14px; cursor:pointer; transition:background .15s" style-hover="background:#f8fafc">
+                  <div style="width:40px; height:40px; flex-shrink:0; border-radius:10px; background:#fde7e6; color:#c0362f; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">picture_as_pdf</span></div>
+                  <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px">решение_производные.pdf</div><div style="font-weight:500; font-size:12px; color:#8b94a3">2 страницы · 420 КБ</div></div>
+                  <button onClick="{{ openFile }}" style="width:36px; height:36px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:19px">visibility</span></button>
+                  <button onClick="{{ openFile }}" style="width:36px; height:36px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:19px">download</span></button>
+                </div>
+                <div style="display:flex; align-items:center; gap:13px; border:1px solid #e6eaf0; border-radius:12px; padding:12px 14px; cursor:pointer; transition:background .15s" style-hover="background:#f8fafc">
+                  <div style="width:40px; height:40px; flex-shrink:0; border-radius:10px; background:#e0f0f0; color:#0c6e6e; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">image</span></div>
+                  <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13.5px">задача_5_фото.jpg</div><div style="font-weight:500; font-size:12px; color:#8b94a3">1.4 МБ · фото</div></div>
+                  <button onClick="{{ openFile }}" style="width:36px; height:36px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:19px">visibility</span></button>
+                  <button onClick="{{ openFile }}" style="width:36px; height:36px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:19px">download</span></button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:flex-start; gap:8px; margin-top:14px; font-weight:500; font-size:12.5px; color:#5a6472; line-height:1.5"><span class="ms" style="font-size:16px; color:#8b94a3; margin-top:1px">chat</span><span>Комментарий ученика: «Не уверен в задаче 5, проверьте пожалуйста»</span></div>
+            </div>
+          </div>
+
+          <!-- history -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+            <div style="font-weight:700; font-size:14px; margin-bottom:14px">История сдач</div>
+            <div>
+              <div style="display:flex; gap:13px">
+                <div style="display:flex; flex-direction:column; align-items:center"><div style="width:11px; height:11px; border-radius:50%; background:#d99413; margin-top:3px"></div><div style="width:2px; flex:1; background:#e6eaf0; margin:3px 0"></div></div>
+                <div style="padding-bottom:16px"><div style="font-weight:600; font-size:13px">Сдано на проверку · попытка 2</div><div style="font-weight:500; font-size:12px; color:#8b94a3">сегодня в 19:05 · 2 файла</div></div>
+              </div>
+              <div style="display:flex; gap:13px">
+                <div style="display:flex; flex-direction:column; align-items:center"><div style="width:11px; height:11px; border-radius:50%; background:#e0584f; margin-top:3px"></div><div style="width:2px; flex:1; background:#e6eaf0; margin:3px 0"></div></div>
+                <div style="padding-bottom:16px"><div style="font-weight:600; font-size:13px">Возвращено на доработку</div><div style="font-weight:500; font-size:12px; color:#8b94a3">вчера в 20:10 · «ошибка в задаче 3»</div></div>
+              </div>
+              <div style="display:flex; gap:13px">
+                <div style="display:flex; flex-direction:column; align-items:center"><div style="width:11px; height:11px; border-radius:50%; background:#3b5bdb; margin-top:3px"></div></div>
+                <div><div style="font-weight:600; font-size:13px">Выдано задание</div><div style="font-weight:500; font-size:12px; color:#8b94a3">5 сентября</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== RIGHT: verdict ===== -->
+        <div style="position:sticky; top:0">
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:22px 22px; box-shadow:0 4px 16px rgba(20,24,33,.05)">
+            <div style="font-weight:800; font-size:17px; letter-spacing:-0.01em">Проверка работы</div>
+            <div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">Выберите результат и оставьте комментарий</div>
+
+            <div style="margin-top:18px; display:flex; flex-direction:column; gap:10px">
+              <div onClick="{{ pickAccept }}" style="border:1.5px solid {{ acceptBorder }}; background:{{ acceptBg }}; border-radius:13px; padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:all .15s">
+                <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; background:{{ acceptIconBg }}; color:{{ acceptIconColor }}; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">{{ acceptIcon }}</span></div>
+                <div style="flex:1"><div style="font-weight:700; font-size:14.5px; color:{{ acceptTextColor }}">Принять работу</div></div>
+              </div>
+              <div onClick="{{ pickRevise }}" style="border:1.5px solid {{ reviseBorder }}; background:{{ reviseBg }}; border-radius:13px; padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:all .15s">
+                <div style="width:38px; height:38px; flex-shrink:0; border-radius:10px; background:{{ reviseIconBg }}; color:{{ reviseIconColor }}; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">{{ reviseIcon }}</span></div>
+                <div style="flex:1"><div style="font-weight:700; font-size:14.5px; color:{{ reviseTextColor }}">Вернуть на правки</div></div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px">
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Комментарий {{ commentReq }}</label>
+              <textarea value="{{ commentText }}" onInput="{{ setComment }}" placeholder="{{ commentPlaceholder }}" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; min-height:90px; resize:vertical; line-height:1.5"></textarea>
+              <div style="display:flex; gap:7px; margin-top:9px; flex-wrap:wrap">
+                <sc-for list="{{ quickReplies }}" as="q" hint-placeholder-count="3">
+                  <span onClick="{{ q.add }}" style="font-weight:600; font-size:12px; color:#3b5bdb; background:#eef2fb; border:1px solid #dbe3f7; border-radius:999px; padding:5px 11px; cursor:pointer; transition:background .15s" style-hover="background:#e2e9f9">{{ q.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+
+            <div onClick="{{ attachReview }}" style="margin-top:14px; display:flex; align-items:center; gap:10px; border:1.5px dashed {{ reviewFileBorder }}; border-radius:11px; padding:11px 14px; cursor:pointer; color:#5a6472; background:{{ reviewFileBg }}; transition:background .15s" style-hover="background:#f8fafc">
+              <span class="ms" style="font-size:20px; color:{{ reviewFileIconColor }}">{{ reviewFileIcon }}</span>
+              <span style="font-weight:600; font-size:13px">{{ reviewFileLabel }}</span>
+            </div>
+
+            <button onClick="{{ submit }}" style="margin-top:18px; width:100%; box-sizing:border-box; background:{{ submitBg }}; color:#fff; border:none; padding:13px; border-radius:12px; font-weight:700; font-size:14.5px; font-family:inherit; cursor:{{ submitCursor }}; opacity:{{ submitOpacity }}; display:inline-flex; align-items:center; justify-content:center; gap:8px"><span class="ms" style="font-size:20px">{{ submitIcon }}</span>{{ submitLabel }}</button>
+            <div style="display:flex; align-items:center; gap:7px; margin-top:12px; font-weight:500; font-size:11.5px; color:#8b94a3; justify-content:center"><span class="ms" style="font-size:15px">notifications_active</span>Ученик получит уведомление о результате</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      verdict: null,        // 'accept' | 'revise'
+      comment: '',
+      reviewFile: false,
+      status: 'submitted',  // submitted | done | revise
+      nextId: 1,
+      toasts: [],
+    };
+    this._timers = [];
+  }
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 5000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _addComment(text) {
+    this.setState(s => {
+      const prev = typeof s.comment === 'string' ? s.comment : '';
+      return { comment: prev ? (prev.replace(/\s+$/, '') + ' ' + text) : text };
+    });
+  }
+
+  _submit() {
+    const v = this.state.verdict;
+    if (!v) { this._toast({ icon: 'error', color: '#e0584f', title: 'Выберите результат', body: 'Принять или вернуть на правки' }); return; }
+    if (v === 'revise' && !this.state.comment.trim()) { this._toast({ icon: 'error', color: '#e0584f', title: 'Нужен комментарий', body: 'Опишите, что исправить' }); return; }
+    if (v === 'accept') {
+      this.setState({ status: 'done' });
+      this._toast({ icon: 'check_circle', color: '#18a866', title: 'Работа принята', body: 'Игорь Петров · статус «выполнено»' });
+    } else {
+      this.setState({ status: 'revise' });
+      this._toast({ icon: 'edit_note', color: '#d99413', title: 'Отправлено на правки', body: 'Игорь Петров получит комментарий' });
+    }
+  }
+
+  STATUS = {
+    submitted: { label: 'сдано',       dot: '#d99413', bg: '#fbeecd', color: '#8a5a00' },
+    done:      { label: 'выполнено',   dot: '#18a866', bg: '#e3f4ec', color: '#0f7a4f' },
+    revise:    { label: 'нужны правки', dot: '#d99413', bg: '#fbeecd', color: '#8a5a00' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const v = this.state.verdict;
+    const accept = v === 'accept';
+    const revise = v === 'revise';
+    const st = this.STATUS[this.state.status];
+
+    const quick = accept
+      ? [{ label: 'Отлично, всё верно!' }, { label: 'Молодец 👍' }, { label: 'Чисто оформлено' }]
+      : revise
+      ? [{ label: 'Проверь задачу 5' }, { label: 'Ошибка в знаке' }, { label: 'Распиши шаги подробнее' }]
+      : [{ label: 'Отлично, всё верно!' }, { label: 'Проверь задачу 5' }, { label: 'Распиши шаги' }];
+
+    const canSubmit = v && (v === 'accept' || this.state.comment.trim().length > 0);
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+
+      stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
+
+      pickAccept: () => this.setState({ verdict: 'accept' }),
+      pickRevise: () => this.setState({ verdict: 'revise' }),
+
+      acceptBorder: accept ? '#18a866' : '#e6eaf0',
+      acceptBg: accept ? '#f0faf4' : '#fff',
+      acceptIconBg: accept ? '#18a866' : '#e3f4ec',
+      acceptIconColor: accept ? '#fff' : '#0f7a4f',
+      acceptIcon: accept ? 'check_circle' : 'check',
+      acceptTextColor: accept ? '#0f7a4f' : '#14181f',
+
+      reviseBorder: revise ? '#d99413' : '#e6eaf0',
+      reviseBg: revise ? '#fffaf0' : '#fff',
+      reviseIconBg: revise ? '#d99413' : '#fbeecd',
+      reviseIconColor: revise ? '#fff' : '#8a5a00',
+      reviseIcon: revise ? 'edit_note' : 'edit',
+      reviseTextColor: revise ? '#8a5a00' : '#14181f',
+
+      commentText: (typeof this.state.comment === 'string' ? this.state.comment : ''),
+      setComment: (e) => this.setState({ comment: e && e.target ? e.target.value : '' }),
+      commentReq: revise ? '(обязательно)' : '(необязательно)',
+      commentPlaceholder: revise ? 'Что нужно исправить…' : 'Похвалите или дайте совет…',
+      quickReplies: quick.map(q => ({ label: q.label, add: () => this._addComment(q.label) })),
+
+      attachReview: () => this.setState(s => ({ reviewFile: !s.reviewFile })),
+      reviewFile: this.state.reviewFile,
+      reviewFileLabel: this.state.reviewFile ? 'разметка_проверка.pdf · 210 КБ' : 'Прикрепить файл',
+      reviewFileIcon: this.state.reviewFile ? 'check_circle' : 'attach_file',
+      reviewFileIconColor: this.state.reviewFile ? '#18a866' : '#8b94a3',
+      reviewFileBorder: this.state.reviewFile ? '#9cd0a8' : '#cdd5df',
+      reviewFileBg: this.state.reviewFile ? '#f0faf4' : 'transparent',
+
+      submit: () => this._submit(),
+      submitLabel: revise ? 'Отправить на правки' : (accept ? 'Принять работу' : 'Отправить результат'),
+      submitIcon: revise ? 'send' : (accept ? 'check' : 'send'),
+      submitBg: canSubmit ? (revise ? '#d99413' : '#3b5bdb') : '#aeb9e8',
+      submitCursor: canSubmit ? 'pointer' : 'not-allowed',
+      submitOpacity: canSubmit ? '1' : '.75',
+
+      openFile: () => this._toast({ icon: 'description', color: '#3b5bdb', title: 'Открываю файл', body: 'решение ученика' }),
+
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -24,10 +24,38 @@ npm run build                 # tsc + vite build (проверка типов и
 - `src/api.ts` — клиент к gateway: Bearer-токен, разбор единого envelope ошибок,
   типы по `docs/api-contracts/gateway.openapi.yaml`.
 - `src/auth.tsx` — контекст авторизации (login/register, `/me`, роль).
-- `src/pages/Teacher.tsx` — панель преподавателя: ученики, занятия, ДЗ (проверка
-  и комментарии), чеки (подтвердить/отклонить), долг ученика.
-- `src/pages/Student.tsx` — панель ученика: занятия, ДЗ (сдать), загрузка чека,
-  список своих чеков со статусами, смена пароля.
+- `src/pages/Teacher.tsx` / `src/pages/Student.tsx` — главные dashboard-экраны.
+- `src/pages/TeacherLessons.tsx`, `TeacherStudentCard.tsx`,
+  `TeacherAssignmentReview.tsx`, `ChatPage.tsx` — страницы по дизайн-референсам.
+- `src/pages/TeacherStudents.tsx`, `TeacherAssignments.tsx`,
+  `TeacherFinance.tsx`, `TeacherReceipts.tsx`, `TeacherSettings.tsx` — рабочие
+  skeleton-страницы без отдельных референсов.
+- `src/pages/StudentLessons.tsx`, `StudentAssignments.tsx`,
+  `StudentPayments.tsx`, `StudentReceipts.tsx`, `StudentSettings.tsx` — рабочие
+  skeleton-страницы ученика без отдельных референсов.
+
+## Routes
+
+```text
+/teacher
+/teacher/students
+/teacher/students/:studentId
+/teacher/lessons
+/teacher/assignments
+/teacher/assignments/:assignmentId/review
+/teacher/finance
+/teacher/receipts
+/teacher/chat
+/teacher/settings
+
+/student
+/student/lessons
+/student/assignments
+/student/payments
+/student/receipts
+/student/chat
+/student/settings
+```
 
 ## Поток оплаты
 

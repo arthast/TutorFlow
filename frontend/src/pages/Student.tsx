@@ -1,412 +1,386 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   api,
-  openFile,
   reports,
   type Assignment,
-  type AssignmentDetail,
-  type FileMeta,
   type Lesson,
   type Receipt,
   type StudentDashboard,
   type StudentSummary,
 } from "../api";
-import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
-import { ChatCard } from "../chat";
-
-const TO_SUBMIT = new Set(["assigned", "needs_fix"]);
-
-export default function Student() {
-  const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
-  const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
-  const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
-  const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
-
-  // teacher_id для чека берём из занятий/ДЗ ученика (баланса у ученика нет).
-  const teacherIds = useMemo(() => {
-    const ids = new Set<string>();
-    (lessons.data ?? []).forEach((l) => ids.add(l.teacher_id));
-    (assignments.data ?? []).forEach((a) => ids.add(a.teacher_id));
-    return [...ids];
-  }, [lessons.data, assignments.data]);
-
-  const toSubmit = (assignments.data ?? []).filter((a) => TO_SUBMIT.has(a.status)).length;
-  const report = dashboard.data;
-  const activity = sumActivity(report?.summaries ?? []);
-
-  // Контакты для чата: преподаватели ученика (имя — из summaries дашборда).
-  const teacherContacts = useMemo(() => {
-    const names = new Map<string, string>();
-    (report?.summaries ?? []).forEach((s) => {
-      if (s.teacher_id) names.set(s.teacher_id, s.teacher_name || s.teacher_id.slice(0, 8));
-    });
-    teacherIds.forEach((id) => { if (!names.has(id)) names.set(id, id.slice(0, 8)); });
-    return [...names].map(([id, name]) => ({ id, name }));
-  }, [report?.summaries, teacherIds]);
-
-  return (
-    <>
-      <TopBar />
-      <div className="container">
-        <div className="metrics">
-          <Metric label="Долг" value={money(report?.total_debt_amount, currencyOf(report))} />
-          <Metric label="Переплата" value={money(report?.total_overpaid_amount, currencyOf(report))} />
-          <Metric label="Чеки на проверке" value={`${report?.pending_receipts_count ?? 0} / ${money(report?.pending_receipts_amount, currencyOf(report))}`} />
-          <Metric label="Ближайшие занятия" value={report ? activity.upcoming : (lessons.data ?? []).length} />
-          <Metric label="ДЗ к сдаче" value={report ? activity.submitted : toSubmit} />
-        </div>
-
-        <div className="grid">
-          <StudentDashboardCard dashboard={dashboard} lessons={lessons.data ?? []} />
-          <NotificationsCard />
-          <AssignmentsCard assignments={assignments} onChanged={dashboard.reload} />
-          <ReceiptCard teacherIds={teacherIds} onSent={() => { receipts.reload(); dashboard.reload(); }} />
-          <ReceiptsListCard receipts={receipts} />
-          <LessonsCard lessons={lessons} />
-          <ChatCard contacts={teacherContacts} />
-          <PasswordCard />
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="metric">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-    </div>
-  );
-}
+import {
+  AppShell,
+  Avatar,
+  Card,
+  Counter,
+  EmptyState,
+  Icon,
+  ListRow,
+  MessagesCard,
+  NotificationsPanel,
+  SkeletonRows,
+  StatusPill,
+  fmtDate,
+  useAsync,
+} from "../ui";
+import { useAuth } from "../auth";
+import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { studentNav, money } from "./studentNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
 
-function money(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "—";
-  return `${Math.round(value)} ${currency}`;
-}
+// ДЗ, которые ученику нужно сдать (активные).
+const TO_SUBMIT = new Set(["assigned", "needs_fix", "in_progress"]);
+// ДЗ, проверенные преподавателем.
+const REVIEWED = new Set(["reviewed", "accepted", "done"]);
 
-function lessonInterval(startsAt?: string, endsAt?: string): string {
-  if (!startsAt) return "—";
-  const start = fmtDate(startsAt);
-  if (!endsAt) return start;
-  const end = new Date(endsAt);
-  if (isNaN(end.getTime())) return `${start} - ${endsAt}`;
-  return `${start} - ${end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+function sumActivity(summaries: StudentSummary[]) {
+  return summaries.reduce(
+    (acc, item) => ({
+      upcoming: acc.upcoming + item.activity.upcoming_lessons_count,
+      activeAssignments: acc.activeAssignments + item.activity.active_assignments_count,
+    }),
+    { upcoming: 0, activeAssignments: 0 },
+  );
 }
 
 function currencyOf(dashboard: StudentDashboard | null): string {
   return dashboard?.summaries.find((s) => s.finance.currency)?.finance.currency ?? "RUB";
 }
 
-function sumActivity(summaries: StudentSummary[]) {
-  return summaries.reduce(
-    (acc, item) => ({
-      upcoming: acc.upcoming + item.activity.upcoming_lessons_count,
-      completed: acc.completed + item.activity.completed_lessons_count,
-      cancelled: acc.cancelled + item.activity.cancelled_lessons_count,
-      activeAssignments: acc.activeAssignments + item.activity.active_assignments_count,
-      submitted: acc.submitted + item.activity.submitted_assignments_count,
-      reviewed: acc.reviewed + item.activity.reviewed_assignments_count,
-    }),
-    { upcoming: 0, completed: 0, cancelled: 0, activeAssignments: 0, submitted: 0, reviewed: 0 },
+function dayLabel(iso?: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === today.toDateString()) return `Сегодня, ${time}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `Завтра, ${time}`;
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) + `, ${time}`;
+}
+
+export default function Student() {
+  const { user } = useAuth();
+  const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
+  const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
+  const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
+  const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
+
+  const report = dashboard.data;
+  const currency = currencyOf(report);
+  const activity = sumActivity(report?.summaries ?? []);
+
+  function reloadAll() {
+    dashboard.reload();
+    lessons.reload();
+    assignments.reload();
+    receipts.reload();
+  }
+
+  useRealtimeEvent((event) => {
+    if (["lesson", "receipt", "assignment", "submission", "review", "notification"].some((t) => event.type.startsWith(t))) {
+      reloadAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const scheduled = useMemo(
+    () =>
+      (lessons.data ?? [])
+        .filter((l) => l.status === "scheduled")
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [lessons.data],
+  );
+  const nextLesson = scheduled[0];
+
+  const assignmentList = assignments.data ?? [];
+  const toSubmit = assignmentList.filter((a) => TO_SUBMIT.has(a.status));
+  const reviewed = assignmentList.filter((a) => REVIEWED.has(a.status));
+  const activeAssignments = report ? activity.activeAssignments : toSubmit.length;
+
+  const teacherContacts = useMemo(
+    () =>
+      (report?.summaries ?? [])
+        .filter((s) => s.teacher_id)
+        .map((s) => ({ id: s.teacher_id, name: s.teacher_name || "Преподаватель" })),
+    [report?.summaries],
+  );
+
+  return (
+    <AppShell
+      title={greeting(user?.display_name)}
+      subtitle={new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+      navSection="Учёба"
+      accent="student"
+      navItems={studentNav("summary", {
+        lessons: report ? activity.upcoming : scheduled.length,
+        assignments: activeAssignments,
+        receipts: report?.pending_receipts_count ?? 0,
+      })}
+      actions={
+        <Link className="primary-action" to="/student/payments">
+          <Icon name="upload_file" />
+          <span>Загрузить чек</span>
+        </Link>
+      }
+    >
+      <div className="container">
+        {/* Верхний ряд: баланс (read-only) + ближайшее занятие */}
+        <div className="student-top">
+          <BalanceCard report={report} currency={currency} loading={dashboard.loading} />
+          <NextLessonCard lesson={nextLesson} loading={lessons.loading && !lessons.data} contacts={teacherContacts} />
+        </div>
+
+        <div className="grid">
+          {/* LEFT */}
+          <div className="dashboard-column">
+            <ActiveAssignmentsCard assignments={assignments} toSubmit={toSubmit} />
+            <ReviewedCard reviewed={reviewed} loading={assignments.loading && !assignments.data} />
+          </div>
+
+          {/* RIGHT */}
+          <div className="dashboard-column">
+            <MyReceiptsCard receipts={receipts} />
+            <NotificationsPanel />
+            <MessagesCard contacts={teacherContacts} chatHref="/student/chat" />
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }
 
-function StudentDashboardCard({
-  dashboard,
-  lessons,
+function greeting(name?: string): string {
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  return first ? `Привет, ${first}!` : "Главная";
+}
+
+/* ============ Баланс (только просмотр) ============ */
+
+function BalanceCard({
+  report,
+  currency,
+  loading,
 }: {
-  dashboard: Async<StudentDashboard>;
-  lessons: Lesson[];
+  report: StudentDashboard | null;
+  currency: string;
+  loading: boolean;
 }) {
-  const data = dashboard.data;
-  const activity = sumActivity(data?.summaries ?? []);
-  const currency = currencyOf(data);
+  const debt = report?.total_debt_amount ?? 0;
+  const overpaid = report?.total_overpaid_amount ?? 0;
+
+  let value = money(0, currency);
+  let caption = "нет задолженности";
+  if (debt > 0) {
+    value = money(debt, currency);
+    caption = "к оплате преподавателю";
+  } else if (overpaid > 0) {
+    value = money(overpaid, currency);
+    caption = "переплата · зачтётся в счёт занятий";
+  }
+
   return (
-    <Card title="Мой dashboard">
-      <div className="card-tools">
-        <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
-          {dashboard.loading ? "Обновление…" : "Обновить"}
-        </button>
-        <span className="hint">Обновлено: {fmtDate(data?.updated_at) || "—"}</span>
+    <div className="balance-hero">
+      <div className="label">
+        <Icon name="account_balance_wallet" />
+        <span>Мой баланс</span>
+        <span className="balance-lock"><Icon name="lock" />только просмотр</span>
       </div>
-      {dashboard.error && <ErrorMsg error={dashboard.error} />}
-      {dashboard.loading && !data && <p className="hint">Загрузка…</p>}
-      {data && (
+      <div className="value">{loading && !report ? "…" : value}</div>
+      <div className="hint">{caption}</div>
+      <div className="balance-foot">
+        <div>
+          <div className="balance-foot-label">Чеки на проверке</div>
+          <div className="balance-foot-value">{report?.pending_receipts_count ?? 0}</div>
+        </div>
+        <div>
+          <div className="balance-foot-label">На сумму</div>
+          <div className="balance-foot-value">{money(report?.pending_receipts_amount, currency)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============ Ближайшее занятие ============ */
+
+function NextLessonCard({
+  lesson,
+  loading,
+  contacts,
+}: {
+  lesson?: Lesson;
+  loading: boolean;
+  contacts: { id: string; name: string }[];
+}) {
+  const teacherName = lesson ? contacts.find((c) => c.id === lesson.teacher_id)?.name ?? "Преподаватель" : "";
+  const online = useOnlineStatus(lesson?.teacher_id);
+
+  return (
+    <section className="next-lesson">
+      <div className="next-lesson-head">
+        <Icon name="event_upcoming" />
+        <span>Ближайшее занятие</span>
+        {lesson && <span style={{ marginLeft: "auto" }}><StatusPill status={lesson.status} /></span>}
+      </div>
+      {loading ? (
+        <div style={{ padding: "8px 0" }}><SkeletonRows count={1} /></div>
+      ) : !lesson ? (
+        <EmptyState icon="event_busy" title="Занятий не запланировано" hint="Новые занятия появятся здесь." />
+      ) : (
         <>
-          <div className="summary-grid summary-grid-wide">
-            <span>Должен: <strong>{money(data.total_debt_amount, currency)}</strong></span>
-            <span>Переплата: <strong>{money(data.total_overpaid_amount, currency)}</strong></span>
-            <span>На проверке: {data.pending_receipts_count} чек(ов) / {money(data.pending_receipts_amount, currency)}</span>
-            <span>Ближайшие занятия: {activity.upcoming}</span>
-            <span>Проведённые занятия: {activity.completed}</span>
-            <span>Активные ДЗ: {activity.activeAssignments}</span>
-            <span>Сданные ДЗ: {activity.submitted}</span>
-            <span>Проверенные ДЗ: {activity.reviewed}</span>
+          <div className="next-lesson-when">{dayLabel(lesson.starts_at)}</div>
+          <div className="next-lesson-topic">{lesson.topic || "Занятие"}</div>
+          <div className="next-lesson-foot">
+            <Avatar name={teacherName} tone="teacher" presence={online ? "online" : undefined} />
+            <div className="dash-main">
+              <div className="t">{teacherName}</div>
+              <div className={"s" + (online ? " online-text" : "")}>{online ? "онлайн" : "не в сети"}</div>
+            </div>
+            <Link className="button-like small has-icon" to="/student/chat">
+              <Icon name="chat_bubble" />Написать
+            </Link>
           </div>
-          {data.summaries.map((summary) => (
-            <StudentTeacherSummary
-              key={summary.teacher_id}
-              summary={summary}
-              lessons={lessons}
-            />
-          ))}
-          {data.summaries.length === 0 && <p className="hint">Dashboard пока пуст.</p>}
         </>
+      )}
+    </section>
+  );
+}
+
+/* ============ Активные задания ============ */
+
+function ActiveAssignmentsCard({
+  assignments,
+  toSubmit,
+}: {
+  assignments: Async<Assignment[]>;
+  toSubmit: Assignment[];
+}) {
+  return (
+    <Card
+      title="Активные задания"
+      icon="assignment"
+      actions={
+        <>
+          {toSubmit.length > 0 && <span className="card-head-chip warning">{toSubmit.length} ждут сдачи</span>}
+          <Link className="card-head-link" to="/student/assignments">Все задания</Link>
+        </>
+      }
+    >
+      {assignments.loading && !assignments.data ? (
+        <SkeletonRows count={2} />
+      ) : assignments.error ? (
+        <EmptyState icon="error" title="Не удалось загрузить" hint={assignments.error} />
+      ) : toSubmit.length === 0 ? (
+        <EmptyState tone="success" icon="task_alt" title="Нет заданий к сдаче" hint="Все домашние работы сданы." />
+      ) : (
+        toSubmit.map((a) => <AssignmentRow key={a.id} assignment={a} />)
       )}
     </Card>
   );
 }
 
-function StudentTeacherSummary({
-  summary,
-  lessons,
-}: {
-  summary: StudentSummary;
-  lessons: Lesson[];
-}) {
-  const nextLesson = lessons.find(
-    (lesson) =>
-      lesson.teacher_id === summary.teacher_id &&
-      lesson.status === "scheduled" &&
-      lesson.starts_at === summary.activity.next_lesson_at,
-  );
-  const teacherName = summary.teacher_name || `Преподаватель ${summary.teacher_id.slice(0, 8)}`;
+function AssignmentRow({ assignment }: { assignment: Assignment }) {
+  const needsFix = assignment.status === "needs_fix";
   return (
-    <div className="summary-row">
-      <div>
-        <div className="summary-title">{teacherName}</div>
-        <div className="summary-grid">
-          <span>Долг: <strong>{money(summary.finance.debt_amount, summary.finance.currency)}</strong></span>
-          <span>Переплата: <strong>{money(summary.finance.overpaid_amount, summary.finance.currency)}</strong></span>
-          <span>Чеки: {summary.finance.pending_receipts_count} / {money(summary.finance.pending_receipts_amount, summary.finance.currency)}</span>
-          <span>Последняя оплата: {fmtDate(summary.finance.last_payment_at) || "—"}</span>
-          <span>Следующее занятие: {lessonInterval(summary.activity.next_lesson_at, nextLesson?.ends_at)}</span>
-          <span>Последнее занятие: {fmtDate(summary.activity.last_lesson_at) || "—"}</span>
-        </div>
-      </div>
-      <div className="hint">обн. {fmtDate(summary.updated_at) || "—"}</div>
-    </div>
-  );
-}
-
-function LessonsCard({ lessons }: { lessons: Async<Lesson[]> }) {
-  return (
-    <Card title="Мои занятия">
-      {(lessons.data ?? []).map((l) => (
-        <div key={l.id}>
-          <div className="row">
-            <span>{l.topic || "Занятие"} · {lessonInterval(l.starts_at, l.ends_at)}</span>
-            <span className="btn-group" style={{ alignItems: "center" }}>
-              {typeof l.price === "number" && <span className="muted">{Math.round(l.price)} ₽</span>}
-              <StatusPill status={l.status} />
-            </span>
-          </div>
-          <FileChips fileIds={l.file_ids} label="Материалы урока" />
-        </div>
-      ))}
-      <ListState query={lessons} empty="Занятий пока нет." />
-    </Card>
-  );
-}
-
-function AssignmentsCard({ assignments, onChanged }: { assignments: Async<Assignment[]>; onChanged: () => void }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  return (
-    <Card title="Мои домашние задания">
-      {(assignments.data ?? []).map((a) => (
-        <div key={a.id}>
-          <div className="row">
-            <button className="small" onClick={() => setOpenId(openId === a.id ? null : a.id)} style={{ flex: 1, textAlign: "left" }}>
-              {a.title}
-            </button>
-            <StatusPill status={a.status} />
-          </div>
-          {openId === a.id && <SubmitView id={a.id} onChange={() => { assignments.reload(); onChanged(); }} />}
-        </div>
-      ))}
-      <ListState query={assignments} empty="Заданий пока нет." />
-    </Card>
-  );
-}
-
-function SubmitView({ id, onChange }: { id: string; onChange: () => void }) {
-  const detail = useAsync<AssignmentDetail>(() => api.get(`/assignments/${id}`), [id]);
-  const [text, setText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const fileIds: string[] = [];
-      for (const f of files) {
-        const form = new FormData();
-        form.append("file", f);
-        form.append("purpose", "submission_file");
-        const meta = await api.upload<FileMeta>("/files", form);
-        fileIds.push(meta.id);
+    <ListRow
+      leading={
+        <span className={"dash-icon lg " + (needsFix ? "tone-danger" : "tone-info")}>
+          <Icon name={needsFix ? "edit_note" : "description"} />
+        </span>
       }
-      await api.post(`/assignments/${id}/submit`, {
-        text_answer: text || undefined,
-        file_ids: fileIds.length ? fileIds : undefined,
-      });
-      setNotice("Решение отправлено.");
-      setText(""); setFiles([]);
-      detail.reload();
-      onChange();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const d = detail.data;
-  return (
-    <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
-      <ErrorMsg error={error} />
-      <Notice text={notice} />
-      {detail.loading && !d && <p className="hint">Загрузка…</p>}
-      {d?.description && <p className="muted">{d.description}</p>}
-      <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
-      {(d?.submissions ?? []).map((s) => <FileChips key={s.id} fileIds={s.file_ids} label="Мои файлы решения" />)}
-      {(d?.comments ?? []).map((c) => (
-        <div className="row" key={c.id}><span className="muted">Комментарий: {c.text}</span></div>
-      ))}
-      <form onSubmit={submit}>
-        <div className="field"><label>Текст решения<textarea placeholder="Текст решения" value={text} onChange={(e) => setText(e.target.value)} /></label></div>
-        <div className="field">
-          <label>Файлы решения (можно несколько)
-            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
-          </label>
-        </div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Отправка…" : "Отправить решение"}</button>
-      </form>
-    </div>
+      title={
+        <span className="assignment-title-line">
+          {assignment.title}
+          <StatusPill status={assignment.status} />
+        </span>
+      }
+      subtitle={assignment.due_at ? `Дедлайн ${fmtDate(assignment.due_at)}` : "Без срока"}
+    >
+      <Link className="button-like primary small" to="/student/assignments">
+        {needsFix ? "Сдать заново" : "Сдать решение"}
+      </Link>
+    </ListRow>
   );
 }
 
-function ReceiptCard({ teacherIds, onSent }: { teacherIds: string[]; onSent: () => void }) {
-  const [teacherId, setTeacherId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+/* ============ Недавно проверено ============ */
 
-  const effectiveTeacher = teacherId || (teacherIds.length === 1 ? teacherIds[0] : "");
-
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    if (!effectiveTeacher) { setError("Не удалось определить преподавателя"); return; }
-    if (!file) { setError("Прикрепите файл чека"); return; }
-    setBusy(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("purpose", "payment_receipt");
-      const meta = await api.upload<FileMeta>("/files", form);
-      await api.post("/payments/receipts", {
-        teacher_id: effectiveTeacher,
-        file_id: meta.id,
-        amount: Number(amount),
-      });
-      setNotice("Чек отправлен — ждёт подтверждения преподавателя.");
-      setAmount(""); setFile(null);
-      (e.target as HTMLFormElement).reset();
-      onSent();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function ReviewedCard({ reviewed, loading }: { reviewed: Assignment[]; loading: boolean }) {
   return (
-    <Card title="Загрузить чек оплаты">
-      <ErrorMsg error={error} />
-      <Notice text={notice} />
-      <form onSubmit={send}>
-        {teacherIds.length > 1 && (
-          <div className="field">
-            <label>Преподаватель
-              <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)} required>
-                <option value="">— выбрать —</option>
-                {teacherIds.map((id) => <option key={id} value={id}>{id.slice(0, 8)}…</option>)}
-              </select>
-            </label>
-          </div>
-        )}
-        <div className="field"><label>Сумма ₽<input type="number" min="0" placeholder="сумма" value={amount} onChange={(e) => setAmount(e.target.value)} required /></label></div>
-        <div className="field"><label>Файл чека<input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required /></label></div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Отправка…" : "Отправить чек"}</button>
-      </form>
-      <p className="hint">Это заявка об оплате: баланс/долг ведёт преподаватель и подтверждает чек вручную.</p>
+    <Card title="Недавно проверено" icon="grading">
+      {loading ? (
+        <SkeletonRows count={2} />
+      ) : reviewed.length === 0 ? (
+        <EmptyState icon="grading" title="Пока нет проверенных работ" />
+      ) : (
+        reviewed.slice(0, 4).map((a) => (
+          <ListRow
+            key={a.id}
+            leading={<span className="dash-icon lg tone-success"><Icon name="task_alt" /></span>}
+            title={a.title}
+            subtitle={a.due_at ? `Срок был ${fmtDate(a.due_at)}` : "Проверено преподавателем"}
+          >
+            <StatusPill status={a.status} />
+          </ListRow>
+        ))
+      )}
     </Card>
   );
 }
 
-function ReceiptsListCard({ receipts }: { receipts: Async<Receipt[]> }) {
-  const [error, setError] = useState<string | null>(null);
+/* ============ Мои чеки ============ */
+
+const RECEIPT_ICON: Record<string, { icon: string; tone: string }> = {
+  pending_review: { icon: "hourglass_top", tone: "tone-amber" },
+  pending: { icon: "hourglass_top", tone: "tone-amber" },
+  confirmed: { icon: "check_circle", tone: "tone-success" },
+  rejected: { icon: "cancel", tone: "tone-danger" },
+};
+
+function MyReceiptsCard({ receipts }: { receipts: Async<Receipt[]> }) {
+  const list = (receipts.data ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime());
+  const pending = list.filter((r) => r.status === "pending_review" || r.status === "pending").length;
+
   return (
-    <Card title="Мои чеки">
-      <ErrorMsg error={error} />
-      {(receipts.data ?? []).map((r) => (
-        <div className="row" key={r.id}>
-          <span>{Math.round(r.amount)} ₽ · {fmtDate(r.submitted_at)}</span>
-          <span className="btn-group" style={{ alignItems: "center" }}>
-            <button className="small" onClick={() => openFile(r.file_id).catch((e) => setError((e as Error).message))}>Файл</button>
-            <StatusPill status={r.status} />
-          </span>
+    <Card
+      title="Мои чеки"
+      icon="receipt_long"
+      actions={
+        <>
+          {pending > 0 && <Counter value={pending} tone="warning" />}
+          <Link className="card-head-link" to="/student/receipts">Все</Link>
+        </>
+      }
+    >
+      {receipts.loading && !receipts.data ? (
+        <SkeletonRows count={3} />
+      ) : receipts.error ? (
+        <EmptyState icon="error" title="Не удалось загрузить" hint={receipts.error} />
+      ) : list.length === 0 ? (
+        <EmptyState icon="receipt_long" title="Чеков пока нет" hint="Загрузите чек об оплате на странице «Оплата»." />
+      ) : (
+        <div className="card-scroll">
+          {list.slice(0, 8).map((r) => {
+            const meta = RECEIPT_ICON[r.status] ?? { icon: "receipt_long", tone: "tone-muted" };
+            return (
+              <ListRow
+                key={r.id}
+                leading={<span className={"dash-icon " + meta.tone}><Icon name={meta.icon} /></span>}
+                title={`${Math.round(r.amount)} ${r.currency ?? "₽"}`}
+                subtitle={fmtDate(r.submitted_at) || "—"}
+              >
+                <StatusPill status={r.status} />
+              </ListRow>
+            );
+          })}
         </div>
-      ))}
-      <ListState query={receipts} empty="Чеков пока нет." />
-    </Card>
-  );
-}
-
-function PasswordCard() {
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function change(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      await api.post("/auth/change-password", { current_password: current, new_password: next });
-      setNotice("Пароль обновлён.");
-      setCurrent(""); setNext("");
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card title="Сменить пароль">
-      <ErrorMsg error={error} />
-      <Notice text={notice} />
-      <form onSubmit={change}>
-        <div className="field"><label>Текущий пароль<input type="password" placeholder="текущий пароль" value={current} onChange={(e) => setCurrent(e.target.value)} required /></label></div>
-        <div className="field"><label>Новый пароль (мин. 8)<input type="password" placeholder="новый пароль" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} required /></label></div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Обновление…" : "Обновить"}</button>
-      </form>
+      )}
     </Card>
   );
 }

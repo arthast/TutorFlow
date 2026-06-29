@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+</style>
+</helmet>
+
+<div style="background:#f6f8fb; min-height:100vh; padding-bottom:100px">
+
+  <!-- Header -->
+  <div style="position:sticky; top:0; z-index:20; background:rgba(246,248,251,.86); backdrop-filter:blur(10px); border-bottom:1px solid #e6eaf0">
+    <div style="max-width:1100px; margin:0 auto; padding:14px 36px; display:flex; align-items:center; gap:12px">
+      <div style="width:28px; height:28px; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px">T</div>
+      <span style="font-weight:800; font-size:16px; letter-spacing:-0.01em">TutorFlow</span>
+      <span style="font-weight:600; font-size:13px; color:#8b94a3">Дизайн-система</span>
+      <span style="margin-left:auto; font-weight:600; font-size:12px; color:#2f49b8; background:#e9edfd; padding:5px 11px; border-radius:999px">Направление B · Рабочая панель</span>
+    </div>
+  </div>
+
+  <div style="max-width:1100px; margin:0 auto; padding:0 36px">
+
+    <!-- Intro -->
+    <section style="padding:56px 0 8px">
+      <div style="font-weight:800; font-size:34px; letter-spacing:-0.02em; max-width:680px; line-height:1.15">Спокойный рабочий инструмент для репетиторов и учеников</div>
+      <p style="font-weight:400; font-size:15px; line-height:1.65; color:#5a6472; max-width:620px; margin:18px 0 0">Прохладная нейтральная база, один синий акцент, много воздуха. Минимум украшений — максимум читаемости. Цвет работает только там, где несёт смысл: статусы, деньги, действия.</p>
+      <div style="display:flex; gap:28px; flex-wrap:wrap; margin-top:28px">
+        <div><div style="font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#8b94a3">Шрифт</div><div style="font-weight:700; font-size:15px; margin-top:4px">Manrope</div></div>
+        <div><div style="font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#8b94a3">Базовый шаг</div><div style="font-weight:700; font-size:15px; margin-top:4px">4px · сетка 8</div></div>
+        <div><div style="font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#8b94a3">Акцент</div><div style="font-weight:700; font-size:15px; margin-top:4px; color:#3b5bdb">#3B5BDB</div></div>
+        <div><div style="font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#8b94a3">Радиусы</div><div style="font-weight:700; font-size:15px; margin-top:4px">10 · 14 · 999</div></div>
+      </div>
+    </section>
+
+    <!-- ============ ЦВЕТ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">01 — Основа</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 0">Цвет</h2>
+      <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; max-width:600px; margin:10px 0 24px">Нейтральная шкала несёт 90% интерфейса. Акцент — для главного действия и выделения. Статусные цвета подобраны под контраст AA на светлом фоне.</p>
+
+      <div style="font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:#8b94a3; margin-bottom:12px">Нейтральные</div>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:28px">
+        <div><div style="height:64px; border-radius:12px; background:#f6f8fb; border:1px solid #e6eaf0"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Фон</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#F6F8FB</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#ffffff; border:1px solid #e6eaf0"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Поверхность</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#FFFFFF</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#eef2f7; border:1px solid #e6eaf0"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Заливка</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#EEF2F7</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#8b94a3"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Подпись</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#8B94A3</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#5a6472"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Текст 2</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#5A6472</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#14181f"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Текст</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#14181F</div></div>
+      </div>
+
+      <div style="font-weight:700; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:#8b94a3; margin-bottom:12px">Акцент и статусы</div>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px">
+        <div><div style="height:64px; border-radius:12px; background:#3b5bdb"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Акцент</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#3B5BDB</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#e9edfd; border:1px solid #dbe2fb"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Инфо · фон</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#E9EDFD</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#18a866"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Успех</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#18A866</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#d99413"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Внимание</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#D99413</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#e0584f"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Ошибка</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#E0584F</div></div>
+        <div><div style="height:64px; border-radius:12px; background:#0f8a8a"></div><div style="font-weight:600; font-size:12.5px; margin-top:8px">Роль ученика</div><div style="font-weight:400; font-size:11.5px; color:#8b94a3">#0F8A8A</div></div>
+      </div>
+    </section>
+
+    <!-- ============ ТИПОГРАФИКА ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">02 — Основа</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Типографика</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:8px 28px">
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0; border-bottom:1px solid #eef2f7"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">Display · 34/800</span><span style="font-weight:800; font-size:34px; letter-spacing:-0.02em">Ближайшие занятия</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0; border-bottom:1px solid #eef2f7"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">H1 · 24/700</span><span style="font-weight:700; font-size:24px; letter-spacing:-0.01em">Кабинет преподавателя</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0; border-bottom:1px solid #eef2f7"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">H2 · 20/700</span><span style="font-weight:700; font-size:20px">Домашние задания</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0; border-bottom:1px solid #eef2f7"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">Body · 15/400</span><span style="font-weight:400; font-size:15px; color:#2a313c">Алгебра, сегодня в 17:00 — повторяем квадратные уравнения и разбираем домашнюю работу.</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0; border-bottom:1px solid #eef2f7"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">Small · 13/500</span><span style="font-weight:500; font-size:13px; color:#5a6472">Обновлено 2 минуты назад · 6 учеников онлайн</span></div>
+        <div style="display:flex; align-items:baseline; gap:20px; padding:18px 0"><span style="width:140px; flex-shrink:0; font-weight:600; font-size:12px; color:#8b94a3">Числа · tabular</span><span style="font-weight:800; font-size:26px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em">12 400 ₽ · 1 290 · −1 500</span></div>
+      </div>
+    </section>
+
+    <!-- ============ СЕТКА И ОТСТУПЫ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">03 — Основа</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Отступы, радиусы, тени</h2>
+      <div style="display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:16px">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:22px">
+          <div style="font-weight:700; font-size:13px; margin-bottom:16px">Шкала отступов</div>
+          <div style="display:flex; align-items:flex-end; gap:10px">
+            <div style="text-align:center"><div style="width:4px; height:4px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">4</div></div>
+            <div style="text-align:center"><div style="width:8px; height:8px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">8</div></div>
+            <div style="text-align:center"><div style="width:12px; height:12px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">12</div></div>
+            <div style="text-align:center"><div style="width:16px; height:16px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">16</div></div>
+            <div style="text-align:center"><div style="width:24px; height:24px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">24</div></div>
+            <div style="text-align:center"><div style="width:32px; height:32px; background:#3b5bdb; margin:0 auto"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">32</div></div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:22px">
+          <div style="font-weight:700; font-size:13px; margin-bottom:16px">Радиусы</div>
+          <div style="display:flex; align-items:center; gap:14px">
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#eef2f7; border:1px solid #e6eaf0; border-radius:10px"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">10</div></div>
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#eef2f7; border:1px solid #e6eaf0; border-radius:14px"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">14</div></div>
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#eef2f7; border:1px solid #e6eaf0; border-radius:999px"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">999</div></div>
+          </div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:22px">
+          <div style="font-weight:700; font-size:13px; margin-bottom:16px">Тени</div>
+          <div style="display:flex; align-items:center; gap:16px">
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#fff; border-radius:10px; box-shadow:0 1px 2px rgba(20,24,33,.06), 0 1px 1px rgba(20,24,33,.04)"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">sm</div></div>
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#fff; border-radius:10px; box-shadow:0 4px 16px rgba(20,24,33,.08)"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">md</div></div>
+            <div style="text-align:center"><div style="width:46px; height:46px; background:#fff; border-radius:10px; box-shadow:0 12px 32px rgba(20,24,33,.12)"></div><div style="font-size:11px; color:#8b94a3; margin-top:8px">lg</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ КНОПКИ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">04 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Кнопки</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:28px; display:flex; flex-direction:column; gap:20px">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+          <button style="background:#3b5bdb; color:#fff; border:none; padding:10px 18px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#2f49b8">Создать занятие</button>
+          <button style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#e3e9f1">Перенести</button>
+          <button style="background:transparent; color:#3b5bdb; border:none; padding:10px 14px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#f3f5fe">Подробнее</button>
+          <button style="background:#fff; color:#c0362f; border:1px solid #f4cdca; padding:10px 18px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; transition:background .15s" style-hover="background:#fdf3f2">Отменить занятие</button>
+          <button style="background:#3b5bdb; color:#fff; border:none; padding:10px 18px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:8px"><span class="ms" style="font-size:18px">add</span>Новый ученик</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+          <button style="background:#3b5bdb; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer">Small</button>
+          <button style="background:#3b5bdb; color:#fff; border:none; padding:12px 22px; border-radius:11px; font-weight:600; font-size:15px; font-family:inherit; cursor:pointer">Large</button>
+          <button style="background:#eef2f7; color:#fff; border:1px solid #e6eaf0; padding:10px 18px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:not-allowed; opacity:.55; color:#8b94a3">Недоступно</button>
+          <button style="background:#fff; color:#5a6472; border:1px solid #e6eaf0; width:40px; height:40px; border-radius:10px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center"><span class="ms" style="font-size:20px">more_horiz</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ПОЛЯ ВВОДА ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">05 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Поля ввода</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:28px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:22px">
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Имя ученика</label>
+          <input value="Марк Лебедев" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff; color:#14181f" />
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Предмет</label>
+          <div style="position:relative">
+            <select style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff; color:#14181f; appearance:none"><option>Математика</option><option>Физика</option></select>
+            <span class="ms" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; pointer-events:none">expand_more</span>
+          </div>
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Поиск</label>
+          <div style="position:relative">
+            <span class="ms" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3">search</span>
+            <input placeholder="Имя, предмет…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px 10px 38px; border:1px solid #d4dae3; border-radius:10px; background:#fff" />
+          </div>
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">В фокусе</label>
+          <input value="17:00" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px; border:1.5px solid #3b5bdb; border-radius:10px; background:#fff; box-shadow:0 0 0 3px #e9edfd" />
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Ошибка</label>
+          <input value="abc" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px; border:1.5px solid #e0584f; border-radius:10px; background:#fff" />
+          <div style="font-weight:500; font-size:12px; color:#c0362f; margin-top:6px">Введите сумму числом</div>
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Комментарий</label>
+          <textarea style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff; min-height:42px; resize:vertical">Хорошая работа, поправь пункт 3.</textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ СТАТУСЫ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">06 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 0">Система статусов</h2>
+      <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; max-width:600px; margin:10px 0 24px">Единый язык бейджей на весь продукт: точка-цвет + короткая подпись. Цвет повторяет смысл (синий — в работе, зелёный — закрыто хорошо, жёлтый — ждёт, красный — проблема, серый — неактивно).</p>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:24px 28px; display:flex; flex-direction:column; gap:18px">
+        <div style="display:flex; align-items:center; gap:14px"><span style="width:96px; flex-shrink:0; font-weight:600; font-size:13px; color:#8b94a3">Занятие</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e9edfd; color:#2f49b8"><span style="width:6px; height:6px; border-radius:50%; background:#3b5bdb"></span>запланировано</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e3f4ec; color:#0f7a4f"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>завершено</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#eef2f7; color:#5a6472"><span style="width:6px; height:6px; border-radius:50%; background:#9aa3b2"></span>отменено</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap"><span style="width:96px; flex-shrink:0; font-weight:600; font-size:13px; color:#8b94a3">Домашка</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e9edfd; color:#2f49b8"><span style="width:6px; height:6px; border-radius:50%; background:#3b5bdb"></span>выдано</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fbeecd; color:#8a5a00"><span style="width:6px; height:6px; border-radius:50%; background:#d99413"></span>сдано</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fbeecd; color:#8a5a00"><span style="width:6px; height:6px; border-radius:50%; background:#d99413"></span>нужны правки</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e3f4ec; color:#0f7a4f"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>проверено</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e3f4ec; color:#0f7a4f"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>выполнено</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fce8e7; color:#c0362f"><span style="width:6px; height:6px; border-radius:50%; background:#e0584f"></span>просрочено</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:14px"><span style="width:96px; flex-shrink:0; font-weight:600; font-size:13px; color:#8b94a3">Чек</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fbeecd; color:#8a5a00"><span style="width:6px; height:6px; border-radius:50%; background:#d99413"></span>на проверке</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e3f4ec; color:#0f7a4f"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>подтверждён</span>
+          <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fce8e7; color:#c0362f"><span style="width:6px; height:6px; border-radius:50%; background:#e0584f"></span>отклонён</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ КАРТОЧКИ + МЕТРИКИ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">07 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Карточки и метрики</h2>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px 20px">
+          <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:18px">group</span><span style="font-weight:600; font-size:12.5px">Ученики</span></div>
+          <div style="font-weight:800; font-size:28px; margin-top:10px; font-variant-numeric:tabular-nums">14</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px 20px">
+          <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:18px">calendar_month</span><span style="font-weight:600; font-size:12.5px">Занятий на неделе</span></div>
+          <div style="font-weight:800; font-size:28px; margin-top:10px; font-variant-numeric:tabular-nums">23</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px 20px">
+          <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:18px">receipt_long</span><span style="font-weight:600; font-size:12.5px">Чеки на проверку</span></div>
+          <div style="display:flex; align-items:baseline; gap:8px; margin-top:10px"><div style="font-weight:800; font-size:28px; font-variant-numeric:tabular-nums; color:#8a5a00">3</div><span style="font-weight:600; font-size:12px; color:#d99413; background:#fbeecd; padding:2px 8px; border-radius:999px">ждут</span></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:18px 20px">
+          <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:18px">account_balance_wallet</span><span style="font-weight:600; font-size:12.5px">Суммарный долг</span></div>
+          <div style="font-weight:800; font-size:28px; margin-top:10px; font-variant-numeric:tabular-nums">48 200 ₽</div>
+        </div>
+      </div>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:22px 24px; max-width:520px">
+        <div style="display:flex; align-items:center; justify-content:space-between"><div style="font-weight:700; font-size:16px">Карточка с заголовком</div><span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e3f4ec; color:#0f7a4f"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>активно</span></div>
+        <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; margin:12px 0 0">Базовый контейнер: белая поверхность, hairline-граница, радиус 14, внутренний отступ 22–24. Тени — только для всплывающих слоёв.</p>
+      </div>
+    </section>
+
+    <!-- ============ СПИСКИ / ТАБЛИЦЫ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">08 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Списки и таблицы</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.1fr 40px; gap:16px; padding:13px 22px; background:#fafbfd; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3">
+          <div>Ученик</div><div>Предмет</div><div style="text-align:right">Долг</div><div>Статус</div><div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.1fr 40px; gap:16px; padding:14px 22px; border-bottom:1px solid #eef2f7; align-items:center">
+          <div style="display:flex; align-items:center; gap:11px"><div style="width:34px; height:34px; border-radius:9px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center">МЛ</div><div><div style="font-weight:600; font-size:14px">Марк Лебедев</div><div style="font-weight:500; font-size:12px; color:#8b94a3">9 класс</div></div></div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472">Математика</div>
+          <div style="text-align:right; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums">8 000 ₽</div>
+          <div><span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#e9edfd; color:#2f49b8"><span style="width:6px; height:6px; border-radius:50%; background:#3b5bdb"></span>запланировано</span></div>
+          <div style="text-align:center; color:#8b94a3"><span class="ms" style="font-size:20px">chevron_right</span></div>
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.1fr 40px; gap:16px; padding:14px 22px; border-bottom:1px solid #eef2f7; align-items:center">
+          <div style="display:flex; align-items:center; gap:11px"><div style="width:34px; height:34px; border-radius:9px; background:#e3f4ec; color:#0f7a4f; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center">АК</div><div><div style="font-weight:600; font-size:14px">Аня Климова</div><div style="font-weight:500; font-size:12px; color:#8b94a3">11 класс</div></div></div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472">Физика</div>
+          <div style="text-align:right; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; color:#0f7a4f">−1 500 ₽</div>
+          <div><span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fbeecd; color:#8a5a00"><span style="width:6px; height:6px; border-radius:50%; background:#d99413"></span>чек на проверке</span></div>
+          <div style="text-align:center; color:#8b94a3"><span class="ms" style="font-size:20px">chevron_right</span></div>
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1.1fr 40px; gap:16px; padding:14px 22px; align-items:center">
+          <div style="display:flex; align-items:center; gap:11px"><div style="width:34px; height:34px; border-radius:9px; background:#eef2f7; color:#5a6472; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center">ИП</div><div><div style="font-weight:600; font-size:14px">Игорь Петров</div><div style="font-weight:500; font-size:12px; color:#8b94a3">8 класс</div></div></div>
+          <div style="font-weight:500; font-size:14px; color:#5a6472">Математика</div>
+          <div style="text-align:right; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums">14 000 ₽</div>
+          <div><span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:#fce8e7; color:#c0362f"><span style="width:6px; height:6px; border-radius:50%; background:#e0584f"></span>просрочено</span></div>
+          <div style="text-align:center; color:#8b94a3"><span class="ms" style="font-size:20px">chevron_right</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ВКЛАДКИ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">09 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Вкладки и переключатели</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:24px 28px; display:flex; flex-direction:column; gap:26px">
+        <div style="display:flex; gap:26px; border-bottom:1px solid #e6eaf0">
+          <div style="font-weight:600; font-size:14px; color:#3b5bdb; padding:0 2px 12px; border-bottom:2px solid #3b5bdb; margin-bottom:-1px">Все занятия</div>
+          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px">Запланированные</div>
+          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px">Завершённые</div>
+          <div style="font-weight:600; font-size:14px; color:#8b94a3; padding:0 2px 12px">Отменённые</div>
+        </div>
+        <div style="display:inline-flex; align-self:flex-start; background:#eef2f7; border-radius:10px; padding:3px">
+          <div style="font-weight:600; font-size:13px; padding:7px 16px; border-radius:8px; background:#fff; color:#14181f; box-shadow:0 1px 2px rgba(20,24,33,.08)">Преподаватель</div>
+          <div style="font-weight:600; font-size:13px; padding:7px 16px; border-radius:8px; color:#5a6472">Ученик</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ МОДАЛКА + ТОСТЫ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">10 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Модальное окно, тосты, уведомления</h2>
+      <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:16px">
+        <!-- modal preview -->
+        <div style="position:relative; background:#eef2f7; border:1px solid #e6eaf0; border-radius:14px; padding:30px; display:flex; align-items:center; justify-content:center; overflow:hidden; min-height:300px">
+          <div style="position:absolute; inset:0; background:rgba(20,24,33,.28)"></div>
+          <div style="position:relative; width:380px; background:#fff; border-radius:16px; box-shadow:0 24px 60px rgba(20,24,33,.28); padding:24px">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between"><div style="font-weight:700; font-size:18px">Подтвердить чек</div><span class="ms" style="font-size:22px; color:#8b94a3; cursor:pointer">close</span></div>
+            <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; margin:12px 0 18px">Аня Климова заявила оплату <b style="color:#14181f">5 000 ₽</b>. После подтверждения сумма спишется с долга ученика.</p>
+            <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:10px; margin-bottom:20px"><span class="ms" style="font-size:22px; color:#3b5bdb">description</span><div style="flex:1"><div style="font-weight:600; font-size:13px">чек_оплата.pdf</div><div style="font-weight:500; font-size:12px; color:#8b94a3">240 КБ</div></div><span style="font-weight:600; font-size:13px; color:#3b5bdb; cursor:pointer">Открыть</span></div>
+            <div style="display:flex; gap:10px; justify-content:flex-end"><button style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:9px 16px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отклонить</button><button style="background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Подтвердить</button></div>
+          </div>
+        </div>
+        <!-- toasts + notifications -->
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid #18a866; border-radius:12px; padding:13px 15px; box-shadow:0 8px 24px rgba(20,24,33,.08)"><span class="ms" style="font-size:20px; color:#18a866; margin-top:1px">check_circle</span><div style="flex:1"><div style="font-weight:700; font-size:13.5px">Чек подтверждён</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">Долг Ани Климовой обновлён</div></div><span class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer">close</span></div>
+          <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid #3b5bdb; border-radius:12px; padding:13px 15px; box-shadow:0 8px 24px rgba(20,24,33,.08)"><span class="ms" style="font-size:20px; color:#3b5bdb; margin-top:1px">chat_bubble</span><div style="flex:1"><div style="font-weight:700; font-size:13.5px">Новое сообщение</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">Марк: «Можно перенести на 18:00?»</div></div></div>
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:4px 4px 4px 0; margin-top:4px">
+            <div style="display:flex; align-items:flex-start; gap:11px; padding:12px 14px 12px 16px; border-bottom:1px solid #eef2f7"><span style="width:8px; height:8px; border-radius:50%; background:#3b5bdb; margin-top:6px; flex-shrink:0"></span><div style="flex:1"><div style="font-weight:600; font-size:13.5px">Сдана домашняя работа</div><div style="font-weight:500; font-size:12px; color:#8b94a3">Игорь · 5 минут назад</div></div></div>
+            <div style="display:flex; align-items:flex-start; gap:11px; padding:12px 14px 12px 16px; opacity:.65"><span style="width:8px; height:8px; border-radius:50%; background:transparent; border:1.5px solid #c4ccd6; margin-top:5px; flex-shrink:0"></span><div style="flex:1"><div style="font-weight:600; font-size:13.5px; color:#5a6472">Занятие завершено</div><div style="font-weight:500; font-size:12px; color:#8b94a3">Аня · вчера</div></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ПРИСУТСТВИЕ ============ -->
+    <section style="padding:56px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3">11 — Компоненты</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 24px">Аватары, присутствие, счётчики</h2>
+      <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; padding:26px 28px; display:flex; align-items:center; gap:34px; flex-wrap:wrap">
+        <div style="position:relative; width:44px; height:44px"><div style="width:44px; height:44px; border-radius:12px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:15px; display:flex; align-items:center; justify-content:center">МЛ</div><span style="position:absolute; right:-3px; bottom:-3px; width:13px; height:13px; border-radius:50%; background:#18a866; border:2.5px solid #fff"></span></div>
+        <div style="position:relative; width:44px; height:44px"><div style="width:44px; height:44px; border-radius:12px; background:#eef2f7; color:#5a6472; font-weight:700; font-size:15px; display:flex; align-items:center; justify-content:center">АК</div><span style="position:absolute; right:-3px; bottom:-3px; width:13px; height:13px; border-radius:50%; background:#c4ccd6; border:2.5px solid #fff"></span></div>
+        <div style="display:flex; align-items:center; gap:10px"><span class="ms" style="font-size:24px; color:#5a6472; position:relative">notifications</span><span style="background:#e0584f; color:#fff; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box">3</span></div>
+        <div style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:#0f7a4f"><span style="width:8px; height:8px; border-radius:50%; background:#18a866"></span>онлайн</div>
+        <div style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:#8b94a3"><span style="width:8px; height:8px; border-radius:50%; background:#c4ccd6"></span>был(а) недавно</div>
+        <span style="background:#3b5bdb; color:#fff; font-weight:700; font-size:12px; min-width:20px; height:20px; padding:0 6px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">12</span>
+      </div>
+    </section>
+
+    <!-- ============ НАВИГАЦИЯ — ВАРИАНТЫ ============ -->
+    <section style="padding:64px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#3b5bdb">Выбор макета</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 0">Навигация — 3 варианта</h2>
+      <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; max-width:620px; margin:10px 0 0">Один и тот же кабинет в трёх каркасах. Выбери — на нём построю все экраны. Контент в превью разный нарочно, чтобы видеть каждый раздел в деле.</p>
+
+      <!-- Вариант 1: Сайдбар -->
+      <div style="margin-top:28px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант 1 · Классический сайдбар</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Разделы слева, привычно для LMS. Хорошо масштабируется, удобно на десктопе.</span></div>
+      <div style="margin-top:12px; background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05); display:flex; height:452px">
+        <div style="width:236px; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; padding:18px 14px">
+          <div style="display:flex; align-items:center; gap:10px; padding:4px 8px 18px"><div style="width:28px; height:28px; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px">T</div><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em">TutorFlow</span></div>
+          <div style="display:flex; flex-direction:column; gap:2px">
+            <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px"><span class="ms" style="font-size:20px">dashboard</span>Сводка</div>
+            <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:10px; background:#f3f5fe; color:#3b5bdb; font-weight:700; font-size:13.5px"><span class="ms" style="font-size:20px">group</span>Ученики</div>
+            <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px"><span class="ms" style="font-size:20px">calendar_month</span>Занятия</div>
+            <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px"><span class="ms" style="font-size:20px">assignment</span>Домашние задания</div>
+            <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px"><span class="ms" style="font-size:20px">account_balance_wallet</span>Финансы</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px"><span style="display:flex; align-items:center; gap:11px"><span class="ms" style="font-size:20px">chat_bubble</span>Чаты</span><span style="background:#e0584f; color:#fff; font-weight:700; font-size:10.5px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">2</span></div>
+          </div>
+          <div style="margin-top:auto; display:flex; align-items:center; gap:10px; padding:8px; border-top:1px solid #eef2f7"><div style="width:32px; height:32px; border-radius:9px; background:#14181f; color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">ЕС</div><div style="min-width:0"><div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Преподаватель</div></div></div>
+        </div>
+        <div style="flex:1; background:#f6f8fb; display:flex; flex-direction:column; min-width:0">
+          <div style="background:#fff; border-bottom:1px solid #e6eaf0; padding:14px 24px; display:flex; align-items:center; gap:14px">
+            <div><div style="font-weight:700; font-size:18px">Ученики</div></div>
+            <div style="position:relative; margin-left:auto; width:220px"><span class="ms" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:18px; color:#8b94a3">search</span><input placeholder="Поиск ученика…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px 10px 8px 34px; border:1px solid #d4dae3; border-radius:9px"></div>
+            <button style="background:#3b5bdb; color:#fff; border:none; padding:8px 14px; border-radius:9px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px">add</span>Новый ученик</button>
+            <span class="ms" style="font-size:22px; color:#5a6472">notifications</span>
+          </div>
+          <div style="padding:18px 24px; overflow:hidden">
+            <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; overflow:hidden">
+              <div style="display:grid; grid-template-columns:2fr 1.1fr 1fr 1.2fr; gap:14px; padding:11px 18px; background:#fafbfd; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3"><div>Ученик</div><div>Предмет</div><div style="text-align:right">Долг</div><div>Статус</div></div>
+              <div style="display:grid; grid-template-columns:2fr 1.1fr 1fr 1.2fr; gap:14px; padding:12px 18px; border-bottom:1px solid #eef2f7; align-items:center"><div style="display:flex; align-items:center; gap:10px"><div style="width:30px; height:30px; border-radius:8px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">МЛ</div><span style="font-weight:600; font-size:13.5px">Марк Лебедев</span></div><div style="font-weight:500; font-size:13px; color:#5a6472">Математика</div><div style="text-align:right; font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums">8 000 ₽</div><div><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#e9edfd; color:#2f49b8"><span style="width:5px; height:5px; border-radius:50%; background:#3b5bdb"></span>запланировано</span></div></div>
+              <div style="display:grid; grid-template-columns:2fr 1.1fr 1fr 1.2fr; gap:14px; padding:12px 18px; border-bottom:1px solid #eef2f7; align-items:center"><div style="display:flex; align-items:center; gap:10px"><div style="width:30px; height:30px; border-radius:8px; background:#e3f4ec; color:#0f7a4f; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">АК</div><span style="font-weight:600; font-size:13.5px">Аня Климова</span></div><div style="font-weight:500; font-size:13px; color:#5a6472">Физика</div><div style="text-align:right; font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums; color:#0f7a4f">−1 500 ₽</div><div><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#fbeecd; color:#8a5a00"><span style="width:5px; height:5px; border-radius:50%; background:#d99413"></span>чек на проверке</span></div></div>
+              <div style="display:grid; grid-template-columns:2fr 1.1fr 1fr 1.2fr; gap:14px; padding:12px 18px; align-items:center"><div style="display:flex; align-items:center; gap:10px"><div style="width:30px; height:30px; border-radius:8px; background:#eef2f7; color:#5a6472; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">ИП</div><span style="font-weight:600; font-size:13.5px">Игорь Петров</span></div><div style="font-weight:500; font-size:13px; color:#5a6472">Математика</div><div style="text-align:right; font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums">14 000 ₽</div><div><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#fce8e7; color:#c0362f"><span style="width:5px; height:5px; border-radius:50%; background:#e0584f"></span>просрочено</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вариант 2: Icon-rail -->
+      <div style="margin-top:36px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант 2 · Компактный icon-рейл</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Узкий рельс с иконками — максимум места под данные. Подписи во всплывающей подсказке.</span></div>
+      <div style="margin-top:12px; background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05); display:flex; height:452px">
+        <div style="width:68px; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px">
+          <div style="width:32px; height:32px; border-radius:9px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; margin-bottom:10px">T</div>
+          <div style="width:44px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:#5a6472"><span class="ms" style="font-size:22px">dashboard</span></div>
+          <div style="width:44px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:#5a6472"><span class="ms" style="font-size:22px">group</span></div>
+          <div style="width:44px; height:40px; border-radius:11px; background:#f3f5fe; color:#3b5bdb; display:flex; align-items:center; justify-content:center"><span class="ms" style="font-size:22px">calendar_month</span></div>
+          <div style="width:44px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:#5a6472"><span class="ms" style="font-size:22px">assignment</span></div>
+          <div style="width:44px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:#5a6472"><span class="ms" style="font-size:22px">account_balance_wallet</span></div>
+          <div style="width:44px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:#5a6472; position:relative"><span class="ms" style="font-size:22px">chat_bubble</span><span style="position:absolute; top:5px; right:6px; width:7px; height:7px; border-radius:50%; background:#e0584f; border:1.5px solid #fff"></span></div>
+          <div style="margin-top:auto; width:32px; height:32px; border-radius:9px; background:#14181f; color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">ЕС</div>
+        </div>
+        <div style="flex:1; background:#f6f8fb; display:flex; flex-direction:column; min-width:0">
+          <div style="background:#fff; border-bottom:1px solid #e6eaf0; padding:14px 24px; display:flex; align-items:center; gap:14px"><div style="font-weight:700; font-size:18px">Сводка</div><span style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-left:4px; margin-top:3px">Понедельник, 8 сентября</span><span class="ms" style="margin-left:auto; font-size:22px; color:#5a6472">notifications</span><div style="width:32px; height:32px; border-radius:9px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">ЕС</div></div>
+          <div style="padding:18px 24px; display:flex; flex-direction:column; gap:14px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px">
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:14px 16px"><div style="font-weight:600; font-size:12px; color:#8b94a3">Ученики</div><div style="font-weight:800; font-size:24px; margin-top:6px">14</div></div>
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:14px 16px"><div style="font-weight:600; font-size:12px; color:#8b94a3">Сегодня занятий</div><div style="font-weight:800; font-size:24px; margin-top:6px">5</div></div>
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:14px 16px"><div style="font-weight:600; font-size:12px; color:#8b94a3">Чеки</div><div style="font-weight:800; font-size:24px; margin-top:6px; color:#8a5a00">3</div></div>
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:14px 16px"><div style="font-weight:600; font-size:12px; color:#8b94a3">Долг</div><div style="font-weight:800; font-size:24px; margin-top:6px; font-variant-numeric:tabular-nums">48 200 ₽</div></div>
+            </div>
+            <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; padding:16px 18px">
+              <div style="font-weight:700; font-size:14px; margin-bottom:12px">Ближайшие занятия</div>
+              <div style="display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #eef2f7"><div style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; width:48px">17:00</div><div style="flex:1; font-weight:600; font-size:13.5px">Марк Лебедев · Алгебра</div><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#e9edfd; color:#2f49b8"><span style="width:5px; height:5px; border-radius:50%; background:#3b5bdb"></span>запланировано</span></div>
+              <div style="display:flex; align-items:center; gap:12px; padding:9px 0"><div style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; width:48px">18:30</div><div style="flex:1; font-weight:600; font-size:13.5px">Аня Климова · Механика</div><span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-weight:600; font-size:12px; background:#e9edfd; color:#2f49b8"><span style="width:5px; height:5px; border-radius:50%; background:#3b5bdb"></span>запланировано</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вариант 3: Верхняя панель -->
+      <div style="margin-top:36px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант 3 · Верхняя панель + вкладки</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Без сайдбара, контент во всю ширину. Легче и «легендарнее», но хуже растёт при большом числе разделов.</span></div>
+      <div style="margin-top:12px; background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05); height:452px; display:flex; flex-direction:column">
+        <div style="background:#fff; border-bottom:1px solid #e6eaf0; padding:13px 26px; display:flex; align-items:center; gap:14px">
+          <div style="display:flex; align-items:center; gap:9px"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px">TutorFlow</span></div>
+          <span class="ms" style="margin-left:auto; font-size:22px; color:#5a6472">notifications</span>
+          <div style="display:flex; align-items:center; gap:9px"><div style="width:30px; height:30px; border-radius:8px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">ЕС</div><span style="font-weight:600; font-size:13px">Елена С.</span></div>
+        </div>
+        <div style="background:#fff; border-bottom:1px solid #e6eaf0; padding:0 26px; display:flex; gap:26px">
+          <div style="font-weight:600; font-size:13.5px; color:#5a6472; padding:11px 2px">Сводка</div>
+          <div style="font-weight:600; font-size:13.5px; color:#5a6472; padding:11px 2px">Ученики</div>
+          <div style="font-weight:600; font-size:13.5px; color:#5a6472; padding:11px 2px">Занятия</div>
+          <div style="font-weight:600; font-size:13.5px; color:#5a6472; padding:11px 2px">Домашки</div>
+          <div style="font-weight:700; font-size:13.5px; color:#3b5bdb; padding:11px 2px; border-bottom:2px solid #3b5bdb">Финансы</div>
+          <div style="font-weight:600; font-size:13.5px; color:#5a6472; padding:11px 2px">Чаты</div>
+        </div>
+        <div style="flex:1; background:#f6f8fb; padding:20px 26px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px"><div style="font-weight:700; font-size:18px">Чеки на проверку</div><span style="font-weight:600; font-size:12px; color:#8a5a00; background:#fbeecd; padding:3px 10px; border-radius:999px">3 ждут</span></div>
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:12px; overflow:hidden; max-width:680px">
+            <div style="display:flex; align-items:center; gap:14px; padding:13px 18px; border-bottom:1px solid #eef2f7"><div style="width:32px; height:32px; border-radius:8px; background:#e3f4ec; color:#0f7a4f; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">АК</div><div style="flex:1"><div style="font-weight:600; font-size:13.5px">Аня Климова</div><div style="font-weight:500; font-size:12px; color:#8b94a3">сегодня в 14:20 · чек_оплата.pdf</div></div><div style="font-weight:700; font-size:14px; font-variant-numeric:tabular-nums">5 000 ₽</div><button style="background:#3b5bdb; color:#fff; border:none; padding:7px 13px; border-radius:8px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer">Подтвердить</button><button style="background:#fff; color:#5a6472; border:1px solid #e6eaf0; padding:7px 13px; border-radius:8px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer">Открыть</button></div>
+            <div style="display:flex; align-items:center; gap:14px; padding:13px 18px"><div style="width:32px; height:32px; border-radius:8px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center">МЛ</div><div style="flex:1"><div style="font-weight:600; font-size:13.5px">Марк Лебедев</div><div style="font-weight:500; font-size:12px; color:#8b94a3">вчера в 19:05 · чек.jpg</div></div><div style="font-weight:700; font-size:14px; font-variant-numeric:tabular-nums">8 000 ₽</div><button style="background:#3b5bdb; color:#fff; border:none; padding:7px 13px; border-radius:8px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer">Подтвердить</button><button style="background:#fff; color:#5a6472; border:1px solid #e6eaf0; padding:7px 13px; border-radius:8px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer">Открыть</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ИДЕНТИЧНОСТЬ РОЛЕЙ — ВАРИАНТЫ ============ -->
+    <section style="padding:64px 0 0">
+      <div style="font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#3b5bdb">Выбор подхода</div>
+      <h2 style="font-weight:700; font-size:24px; letter-spacing:-0.01em; margin:6px 0 0">Идентичность ролей — 3 варианта</h2>
+      <p style="font-weight:400; font-size:14px; line-height:1.6; color:#5a6472; max-width:620px; margin:10px 0 0">Как отличать кабинет преподавателя от кабинета ученика. От нейтрального до выраженного. Акцент ученика — спокойный бирюзовый #0F8A8A.</p>
+
+      <!-- Вариант A -->
+      <div style="margin-top:28px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант A · Единый каркас + чип роли</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Один акцент на всех. Роль обозначена маленьким чипом. Максимально спокойно и дёшево в поддержке.</span></div>
+      <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px">TutorFlow</span><span style="margin-left:auto; font-weight:600; font-size:11.5px; color:#2f49b8; background:#e9edfd; padding:4px 10px; border-radius:999px">Преподаватель</span></div>
+          <div style="padding:18px; display:flex; flex-direction:column; gap:9px"><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; background:#f3f5fe; color:#3b5bdb; border-radius:9px; font-weight:700; font-size:13px"><span class="ms" style="font-size:19px">group</span>Ученики</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">calendar_month</span>Занятия</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">account_balance_wallet</span>Финансы</div></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px">TutorFlow</span><span style="margin-left:auto; font-weight:600; font-size:11.5px; color:#2f49b8; background:#e9edfd; padding:4px 10px; border-radius:999px">Ученик</span></div>
+          <div style="padding:18px; display:flex; flex-direction:column; gap:9px"><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; background:#f3f5fe; color:#3b5bdb; border-radius:9px; font-weight:700; font-size:13px"><span class="ms" style="font-size:19px">assignment</span>Мои задания</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">calendar_month</span>Мои занятия</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">upload_file</span>Оплата</div></div>
+        </div>
+      </div>
+
+      <!-- Вариант B -->
+      <div style="margin-top:36px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант B · Акцент по роли</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Преподаватель — синий, ученик — бирюзовый. Сразу понятно, в каком ты кабинете. Чуть больше работы со стилями.</span></div>
+      <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px; background:#f3f5fe"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px; color:#2f49b8">TutorFlow</span><span style="margin-left:auto; font-weight:700; font-size:11.5px; color:#fff; background:#3b5bdb; padding:4px 10px; border-radius:999px">Преподаватель</span></div>
+          <div style="padding:18px; display:flex; flex-direction:column; gap:9px"><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; background:#e9edfd; color:#2f49b8; border-radius:9px; font-weight:700; font-size:13px"><span class="ms" style="font-size:19px">group</span>Ученики</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">calendar_month</span>Занятия</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">account_balance_wallet</span>Финансы</div></div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px; background:#e7f4f4"><div style="width:26px; height:26px; border-radius:7px; background:#0f8a8a; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px; color:#0c6e6e">TutorFlow</span><span style="margin-left:auto; font-weight:700; font-size:11.5px; color:#fff; background:#0f8a8a; padding:4px 10px; border-radius:999px">Ученик</span></div>
+          <div style="padding:18px; display:flex; flex-direction:column; gap:9px"><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; background:#e0f0f0; color:#0c6e6e; border-radius:9px; font-weight:700; font-size:13px"><span class="ms" style="font-size:19px">assignment</span>Мои задания</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">calendar_month</span>Мои занятия</div><div style="display:flex; align-items:center; gap:10px; padding:8px 11px; color:#5a6472; font-weight:600; font-size:13px"><span class="ms" style="font-size:19px">upload_file</span>Оплата</div></div>
+        </div>
+      </div>
+
+      <!-- Вариант C -->
+      <div style="margin-top:36px; display:flex; align-items:baseline; gap:10px"><span style="font-weight:700; font-size:15px">Вариант C · Цветная полоса роли</span><span style="font-weight:500; font-size:13px; color:#8b94a3">Нейтральный каркас, но тонкая цветная полоса сверху и кольцо у аватара. Компромисс: спокойно, но роль читается мгновенно.</span></div>
+      <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px">
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="height:4px; background:#3b5bdb"></div>
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px">TutorFlow</span><div style="margin-left:auto; display:flex; align-items:center; gap:8px"><div style="width:28px; height:28px; border-radius:8px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #3b5bdb"></div><span style="font-weight:600; font-size:12px; color:#5a6472">Преподаватель</span></div></div>
+          <div style="padding:16px 18px; font-weight:500; font-size:13px; color:#8b94a3">Полоса и кольцо аватара — синие</div>
+        </div>
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:14px; overflow:hidden; box-shadow:0 1px 2px rgba(20,24,33,.05)">
+          <div style="height:4px; background:#0f8a8a"></div>
+          <div style="padding:14px 18px; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:10px"><div style="width:26px; height:26px; border-radius:7px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:14px">T</div><span style="font-weight:800; font-size:15px">TutorFlow</span><div style="margin-left:auto; display:flex; align-items:center; gap:8px"><div style="width:28px; height:28px; border-radius:8px; background:#e0f0f0; color:#0c6e6e; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #0f8a8a"></div><span style="font-weight:600; font-size:12px; color:#5a6472">Ученик</span></div></div>
+          <div style="padding:16px 18px; font-weight:500; font-size:13px; color:#8b94a3">Полоса и кольцо аватара — бирюзовые</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+</x-dc>
+</body>
+</html>

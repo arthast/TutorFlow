@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <a href="TutorFlow — Прототип.dc.html" title="К обзору прототипа" style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; text-decoration:none; cursor:pointer">T</a>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Финансы</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">Сводка по всем ученикам</div></div>
+      <button style="background:#fff; color:#14181f; border:1px solid #e6eaf0; padding:9px 14px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-left:auto; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:18px">download</span>Выгрузить отчёт</button>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:24px 26px 60px">
+      <div style="max-width:1080px; margin:0 auto">
+
+        <!-- KPI -->
+        <div style="display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:16px; margin-bottom:18px">
+          <div style="background:#1c2440; border-radius:16px; padding:20px 22px; color:#fff; position:relative; overflow:hidden">
+            <div style="position:absolute; right:-30px; top:-30px; width:130px; height:130px; border-radius:50%; background:rgba(59,91,219,.4)"></div>
+            <div style="display:flex; align-items:center; gap:8px; color:#aeb6d4; position:relative"><span class="ms" style="font-size:19px">account_balance_wallet</span><span style="font-weight:600; font-size:12.5px">Общий долг учеников</span></div>
+            <div style="font-weight:800; font-size:32px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; position:relative">{{ totalDebtFmt }} ₽</div>
+            <div style="font-weight:500; font-size:12.5px; color:#9aa3c4; margin-top:2px; position:relative">{{ debtorsCount }} учеников с долгом · переплат {{ creditsFmt }} ₽</div>
+          </div>
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">trending_up</span><span style="font-weight:600; font-size:12.5px">Начислено в сентябре</span></div>
+            <div style="font-weight:800; font-size:28px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em">{{ accruedFmt }} ₽</div>
+            <div style="font-weight:500; font-size:12px; color:#8b94a3; margin-top:2px">38 проведённых занятий</div>
+          </div>
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">check_circle</span><span style="font-weight:600; font-size:12.5px">Оплачено в сентябре</span></div>
+            <div style="font-weight:800; font-size:28px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; color:#0f7a4f">{{ paidFmt }} ₽</div>
+            <div style="font-weight:500; font-size:12px; color:#8b94a3; margin-top:2px">9 подтверждённых чеков</div>
+          </div>
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">hourglass_top</span><span style="font-weight:600; font-size:12.5px">Чеки на проверке</span></div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:12px"><div style="font-weight:800; font-size:28px; font-variant-numeric:tabular-nums; color:#8a5a00; letter-spacing:-0.01em">{{ pendingSumFmt }} ₽</div></div>
+            <div style="font-weight:500; font-size:12px; color:#8a5a00; margin-top:2px">{{ pendingCount }} чека ждут · не влияют на долг</div>
+          </div>
+        </div>
+
+        <!-- two col -->
+        <div style="display:grid; grid-template-columns:1.55fr 1fr; gap:18px; align-items:start">
+
+          <!-- LEFT: per-student debts -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden; min-width:0">
+            <div style="display:flex; align-items:center; gap:10px; padding:16px 22px; border-bottom:1px solid #eef2f7">
+              <span class="ms" style="font-size:20px; color:#3b5bdb">groups</span>
+              <div style="font-weight:700; font-size:16px">Долги по ученикам</div>
+              <div style="margin-left:auto; display:flex; gap:5px">
+                <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+                  <div onClick="{{ f.select }}" style="font-weight:600; font-size:12px; padding:5px 11px; border-radius:8px; cursor:pointer; background:{{ f.bg }}; color:{{ f.color }}; border:1px solid {{ f.border }}; white-space:nowrap">{{ f.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1.7fr 1fr 1.2fr; gap:14px; padding:11px 22px; background:#fafbfd; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3"><div>Ученик</div><div style="text-align:right">Долг</div><div style="text-align:right">Статус оплат</div></div>
+            <sc-for list="{{ students }}" as="s" hint-placeholder-count="6">
+              <div style="display:grid; grid-template-columns:1.7fr 1fr 1.2fr; gap:14px; padding:13px 22px; border-bottom:1px solid #f3f5f8; align-items:center; cursor:pointer; transition:background .15s" style-hover="background:#f8fafc">
+                <div style="display:flex; align-items:center; gap:11px; min-width:0"><div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12.5px; background:{{ s.bg }}; color:{{ s.color }}">{{ s.initials }}</div><div style="min-width:0"><div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ s.name }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3">{{ s.subject }}</div></div></div>
+                <div style="text-align:right; font-weight:700; font-size:14.5px; font-variant-numeric:tabular-nums; color:{{ s.debtColor }}">{{ s.debtFmt }} ₽</div>
+                <div style="text-align:right"><span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px 4px 8px; border-radius:999px; font-weight:600; font-size:11.5px; background:{{ s.tagBg }}; color:{{ s.tagColor }}"><span style="width:5px; height:5px; border-radius:50%; background:{{ s.tagDot }}"></span>{{ s.tag }}</span></div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- RIGHT -->
+          <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+            <!-- recent operations -->
+            <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden">
+              <div style="display:flex; align-items:center; gap:10px; padding:15px 20px; border-bottom:1px solid #eef2f7"><span class="ms" style="font-size:19px; color:#3b5bdb">history</span><div style="font-weight:700; font-size:15px">Последние операции</div></div>
+              <sc-for list="{{ ops }}" as="o" hint-placeholder-count="5">
+                <div style="display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid #f3f5f8">
+                  <div style="width:32px; height:32px; flex-shrink:0; border-radius:9px; display:flex; align-items:center; justify-content:center; background:{{ o.iconBg }}"><span class="ms" style="font-size:18px; color:{{ o.iconColor }}">{{ o.icon }}</span></div>
+                  <div style="flex:1; min-width:0"><div style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ o.title }}</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">{{ o.meta }}</div></div>
+                  <div style="font-weight:700; font-size:13.5px; font-variant-numeric:tabular-nums; color:{{ o.amountColor }}; flex-shrink:0">{{ o.amountFmt }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <!-- pending receipts shortcut -->
+            <div style="background:#fffaf0; border:1px solid #f5e2c8; border-radius:16px; padding:18px 20px">
+              <div style="display:flex; align-items:center; gap:10px"><span class="ms" style="font-size:20px; color:#d99413">hourglass_top</span><div style="font-weight:700; font-size:15px; color:#7a5a1e">{{ pendingCount }} чека на проверке</div></div>
+              <p style="font-weight:500; font-size:12.5px; line-height:1.5; color:#7a5a1e; margin:8px 0 14px">На сумму {{ pendingSumFmt }} ₽. Подтвердите оплату, чтобы уменьшить долг учеников.</p>
+              <button style="width:100%; box-sizing:border-box; background:#3b5bdb; color:#fff; border:none; padding:10px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px"><span class="ms" style="font-size:18px">receipt_long</span>Перейти к чекам</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      filter: 'all',
+      nextId: 1,
+      toasts: [],
+      students: [
+        { id: 's3', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', subject: 'Математика · 8 класс', debt: 14000, pending: false },
+        { id: 's1', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', subject: 'Математика · 9 класс', debt: 8000, pending: true },
+        { id: 's4', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', subject: 'Геометрия · 10 класс', debt: 6000, pending: true },
+        { id: 's6', initials: 'ДК', bg: '#e0f0f0', color: '#0c6e6e', name: 'Дима Котов', subject: 'Информатика · 9 класс', debt: 3000, pending: false },
+        { id: 's5', initials: 'ТО', bg: '#f3eafe', color: '#7c3aed', name: 'Тимур Орлов', subject: 'Математика · 11 класс', debt: 0, pending: false },
+        { id: 's2', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', subject: 'Физика · 11 класс', debt: -1500, pending: true },
+      ],
+      ops: [
+        { id: 'o1', type: 'payment', title: 'Платёж подтверждён · Игорь Петров', meta: 'сегодня в 09:40', amount: -4000 },
+        { id: 'o2', type: 'charge', title: 'Занятие · Аня Климова', meta: 'вчера · Механика', amount: 1500 },
+        { id: 'o3', type: 'charge', title: 'Занятие · Марк Лебедев', meta: 'вчера · Алгебра', amount: 1000 },
+        { id: 'o4', type: 'adjust', title: 'Корректировка · Соня Васильева', meta: '7 сентября · скидка', amount: -500 },
+        { id: 'o5', type: 'payment', title: 'Платёж подтверждён · Дима Котов', meta: '6 сентября', amount: -3000 },
+      ],
+    };
+    this._timers = [];
+  }
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+
+  fmt(n) { return Math.abs(n).toLocaleString('ru-RU'); }
+  fmtDebt(n) { return (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU'); }
+  fmtSigned(n) { return (n < 0 ? '−' : '+') + Math.abs(n).toLocaleString('ru-RU'); }
+
+  OPTYPE = {
+    charge:  { icon: 'school', iconBg: '#e9edfd', iconColor: '#3b5bdb' },
+    payment: { icon: 'check_circle', iconBg: '#e3f4ec', iconColor: '#0f7a4f' },
+    adjust:  { icon: 'tune', iconBg: '#f3eafe', iconColor: '#7c3aed' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const filter = this.state.filter;
+    const all = this.state.students;
+
+    const totalDebt = all.reduce((a, s) => a + Math.max(0, s.debt), 0);
+    const credits = Math.abs(all.reduce((a, s) => a + Math.min(0, s.debt), 0));
+    const debtors = all.filter(s => s.debt > 0).length;
+
+    const filterDefs = [
+      { key: 'all', label: 'Все' },
+      { key: 'debt', label: 'С долгом' },
+      { key: 'pending', label: 'Ждут чек' },
+    ];
+    const filters = filterDefs.map(f => {
+      const active = filter === f.key;
+      return { label: f.label, bg: active ? '#e9edfd' : '#fff', color: active ? '#2f49b8' : '#5a6472', border: active ? '#c7d2f7' : '#e6eaf0', select: () => this.setState({ filter: f.key }) };
+    });
+
+    let list = all.filter(s => {
+      if (filter === 'debt' && s.debt <= 0) return false;
+      if (filter === 'pending' && !s.pending) return false;
+      return true;
+    });
+    const students = list.map(s => {
+      const credit = s.debt < 0, zero = s.debt === 0;
+      return {
+        ...s,
+        debtFmt: this.fmtDebt(s.debt),
+        debtColor: credit ? '#0f7a4f' : (zero ? '#8b94a3' : '#14181f'),
+        tag: s.pending ? 'чек на проверке' : (credit ? 'переплата' : (zero ? 'оплачено' : 'есть долг')),
+        tagDot: s.pending ? '#d99413' : (credit ? '#18a866' : (zero ? '#9aa3b2' : '#d99413')),
+        tagBg: s.pending ? '#fbeecd' : (credit ? '#e3f4ec' : (zero ? '#eef2f7' : '#fbeecd')),
+        tagColor: s.pending ? '#8a5a00' : (credit ? '#0f7a4f' : (zero ? '#5a6472' : '#8a5a00')),
+      };
+    });
+
+    const pendingCount = all.filter(s => s.pending).length;
+    const pendingSum = 14500;
+
+    const ops = this.state.ops.map(o => {
+      const t = this.OPTYPE[o.type];
+      return { ...o, icon: t.icon, iconBg: t.iconBg, iconColor: t.iconColor, amountFmt: this.fmtSigned(o.amount) + ' ₽', amountColor: o.amount < 0 ? '#0f7a4f' : '#14181f' };
+    });
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      totalDebtFmt: this.fmt(totalDebt),
+      creditsFmt: this.fmt(credits),
+      debtorsCount: debtors,
+      accruedFmt: this.fmt(42500),
+      paidFmt: this.fmt(31000),
+      pendingSumFmt: this.fmt(pendingSum),
+      pendingCount,
+      filters,
+      students,
+      ops,
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

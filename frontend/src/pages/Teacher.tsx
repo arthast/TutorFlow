@@ -1,33 +1,56 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   api,
   openFile,
   reports,
   type Assignment,
-  type AssignmentDetail,
-  type Balance,
   type CompleteLessonResponse,
-  type FileMeta,
   type Lesson,
   type Receipt,
   type StudentLink,
-  type StudentSummary,
   type TeacherDashboard,
-  type Transaction,
 } from "../api";
-import { Card, ErrorMsg, FileChips, ListState, Notice, NotificationsCard, StatusPill, TopBar, fmtDate, useAsync } from "../ui";
-import { ChatCard } from "../chat";
+import {
+  AppShell,
+  Avatar,
+  Button,
+  Card,
+  Counter,
+  EmptyState,
+  Field,
+  Icon,
+  Input,
+  ListRow,
+  MessagesCard,
+  Metric,
+  Modal,
+  NotificationsPanel,
+  SkeletonRows,
+  StatusPill,
+  fmtDate,
+  useAsync,
+  useToast,
+} from "../ui";
+import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { teacherNav, money, timeOnly } from "./teacherNav";
 
-async function uploadAll(files: File[], purpose: string): Promise<string[]> {
-  const ids: string[] = [];
-  for (const f of files) {
-    const form = new FormData();
-    form.append("file", f);
-    form.append("purpose", purpose);
-    const meta = await api.upload<FileMeta>("/files", form);
-    ids.push(meta.id);
-  }
-  return ids;
+type Async<T> = ReturnType<typeof useAsync<T>>;
+
+const TONES = ["teacher", "student", "amber", "muted"] as const;
+type Tone = (typeof TONES)[number];
+function toneFor(index: number): Tone {
+  return TONES[index % TONES.length];
+}
+
+function studentName(students: StudentLink[], studentId: string): string {
+  return students.find((s) => s.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+}
+
+function isToday(iso?: string): boolean {
+  if (!iso) return false;
+  const d = new Date(iso);
+  return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
 }
 
 export default function Teacher() {
@@ -35,477 +58,261 @@ export default function Teacher() {
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
   const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
-  const receipts = useAsync<Receipt[]>(
-    () => api.get("/payments/receipts?status=pending_review"),
-    [],
-  );
-  const [chargeRefresh, setChargeRefresh] = useState<{ studentId: string; seq: number } | null>(null);
+  const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts?status=pending_review"), []);
 
-  const studentList = students.data ?? [];
-  const scheduled = (lessons.data ?? []).filter((l) => l.status === "scheduled").length;
   const report = dashboard.data;
+  const studentList = students.data ?? [];
+
+  function reloadAll() {
+    dashboard.reload();
+    lessons.reload();
+    receipts.reload();
+    assignments.reload();
+  }
+
+  // Realtime: обновляем сводку, когда прилетают доменные события.
+  useRealtimeEvent((event) => {
+    if (["lesson", "receipt", "assignment", "submission", "notification"].some((t) => event.type.startsWith(t))) {
+      reloadAll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const todayLessons = useMemo(
+    () =>
+      (lessons.data ?? [])
+        .filter((l) => l.status === "scheduled" && isToday(l.starts_at))
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [lessons.data],
+  );
+  const scheduledCount = (lessons.data ?? []).filter((l) => l.status === "scheduled").length;
+  const submittedAssignments = (assignments.data ?? []).filter((a) => a.status === "submitted");
+  const pendingReceipts = receipts.data ?? [];
+  const activeCount = studentList.filter((s) => s.status === "active").length;
+
+  const receiptCount = report?.pending_receipts_count ?? pendingReceipts.length;
+  const receiptSum = report?.pending_receipts_amount ?? pendingReceipts.reduce((a, r) => a + r.amount, 0);
+  const overpaid = report?.total_overpaid_amount ?? 0;
 
   return (
-    <>
-      <TopBar />
+    <AppShell
+      title="Сводка"
+      subtitle={new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+      navSection="Работа"
+      navItems={teacherNav("summary", {
+        students: report?.students_count ?? studentList.length,
+        lessons: report?.upcoming_lessons_count ?? scheduledCount,
+        assignments: report?.pending_submissions_count ?? submittedAssignments.length,
+        receipts: receiptCount,
+      })}
+      actions={
+        <Link className="primary-action" to="/teacher/lessons">
+          <Icon name="add" />
+          <span>Новое занятие</span>
+        </Link>
+      }
+    >
       <div className="container">
+        {/* KPI */}
         <div className="metrics">
-          <Metric label="Ученики" value={report?.students_count ?? studentList.length} />
-          <Metric label="Ближайшие занятия" value={report?.upcoming_lessons_count ?? scheduled} />
-          <Metric label="ДЗ на проверке" value={report?.pending_submissions_count ?? "—"} />
-          <Metric label="Чеки на проверку" value={report?.pending_receipts_count ?? (receipts.data ?? []).length} />
-          <Metric label="Общий долг" value={money(report?.total_debt_amount, "RUB")} />
-          <Metric label="Переплаты" value={money(report?.total_overpaid_amount, "RUB")} />
-          <Metric label="Должников" value={report?.students_with_debt_count ?? "—"} />
+          <Metric
+            icon="group"
+            label="Ученики"
+            value={report?.students_count ?? studentList.length}
+            sub={`активных: ${activeCount}`}
+          />
+          <Metric
+            icon="calendar_month"
+            label="Ближайшие занятия"
+            value={report?.upcoming_lessons_count ?? scheduledCount}
+            sub={`сегодня: ${todayLessons.length} впереди`}
+          />
+          <Metric
+            icon="receipt_long"
+            label="Чеки на проверку"
+            value={receiptCount}
+            tone="warn"
+            pill={{ label: "ждут", tone: "warning" }}
+            sub={`на сумму ${money(receiptSum)}`}
+          />
+          <Metric
+            icon="account_balance_wallet"
+            label="Долг учеников"
+            value={money(report?.total_debt_amount)}
+            sub={`переплат: ${money(overpaid)} · должников: ${report?.students_with_debt_count ?? 0}`}
+            subTone={overpaid > 0 ? "pos" : undefined}
+          />
         </div>
 
         <div className="grid">
-          <TeacherDashboardCard dashboard={dashboard} />
-          <NotificationsCard />
-          <StudentsCard students={students} onChanged={dashboard.reload} />
-          <LessonsCard
-            lessons={lessons}
-            students={studentList}
-            onChargePending={(studentId) => setChargeRefresh({ studentId, seq: Date.now() })}
-            onChanged={dashboard.reload}
-          />
-          <AssignmentsCard assignments={assignments} students={studentList} onChanged={dashboard.reload} />
-          <FinanceCard
-            receipts={receipts}
-            students={studentList}
-            chargeRefresh={chargeRefresh}
-            onChanged={dashboard.reload}
-          />
-          <ChatCard
-            contacts={studentList.map((s) => ({ id: s.student_id, name: s.display_name }))}
-          />
+          {/* LEFT */}
+          <div className="dashboard-column">
+            <TodayCard
+              lessons={lessons}
+              todayLessons={todayLessons}
+              students={studentList}
+              onChanged={reloadAll}
+            />
+            <AttentionCard
+              receipts={receipts}
+              submitted={submittedAssignments}
+              students={studentList}
+              loading={receipts.loading || assignments.loading}
+              onChanged={reloadAll}
+            />
+          </div>
+
+          {/* RIGHT */}
+          <div className="dashboard-column">
+            <NotificationsPanel />
+            <MessagesCard
+              contacts={studentList.map((s) => ({ id: s.student_id, name: s.display_name }))}
+              chatHref="/teacher/chat"
+            />
+          </div>
         </div>
       </div>
-    </>
+    </AppShell>
   );
 }
 
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="metric">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-    </div>
-  );
-}
+/* ============ Сегодня ============ */
 
-type Async<T> = ReturnType<typeof useAsync<T>>;
-
-function money(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "—";
-  return `${Math.round(value)} ${currency}`;
-}
-
-function TeacherDashboardCard({ dashboard }: { dashboard: Async<TeacherDashboard> }) {
-  const data = dashboard.data;
-  return (
-    <Card title="Сводка по ученикам">
-      <div className="card-tools">
-        <button className="small" onClick={dashboard.reload} disabled={dashboard.loading}>
-          {dashboard.loading ? "Обновление…" : "Обновить"}
-        </button>
-        <span className="hint">Обновлено: {fmtDate(data?.updated_at) || "—"}</span>
-      </div>
-      {dashboard.error && <ErrorMsg error={dashboard.error} />}
-      {dashboard.loading && !data && <p className="hint">Загрузка…</p>}
-      {(data?.students ?? []).map((summary) => (
-        <StudentSummaryRow key={summary.student_id} summary={summary} />
-      ))}
-      {data && data.students.length === 0 && <p className="hint">Пока нет данных по ученикам.</p>}
-    </Card>
-  );
-}
-
-function StudentSummaryRow({ summary }: { summary: StudentSummary }) {
-  const finance = summary.finance;
-  const activity = summary.activity;
-  return (
-    <div className="summary-row">
-      <div>
-        <div className="summary-title">{summary.student_name || summary.student_id.slice(0, 8)}</div>
-        <div className="summary-grid">
-          <span>Долг: <strong>{money(finance.debt_amount, finance.currency)}</strong></span>
-          <span>Переплата: <strong>{money(finance.overpaid_amount, finance.currency)}</strong></span>
-          <span>Чеки: {finance.pending_receipts_count} / {money(finance.pending_receipts_amount, finance.currency)}</span>
-          <span>Занятия: {activity.upcoming_lessons_count} ближайш. / {activity.completed_lessons_count} провед.</span>
-          <span>ДЗ: {activity.active_assignments_count} активн. / {activity.submitted_assignments_count} сдано / {activity.reviewed_assignments_count} провер.</span>
-        </div>
-      </div>
-      <div className="hint">обн. {fmtDate(summary.updated_at) || "—"}</div>
-    </div>
-  );
-}
-
-function StudentsCard({ students, onChanged }: { students: Async<StudentLink[]>; onChanged: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
-  const [rate, setRate] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      await api.post("/students", {
-        email,
-        password,
-        display_name: name,
-        subject: subject || undefined,
-        hourly_rate: rate ? Number(rate) : undefined,
-      });
-      setNotice(`Ученик «${name}» создан. Передайте ему email и временный пароль.`);
-      setEmail(""); setPassword(""); setName(""); setSubject(""); setRate("");
-      students.reload();
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card title="Ученики">
-      {(students.data ?? []).map((s) => (
-        <div className="row" key={s.id}>
-          <span>{s.display_name}{s.subject ? ` · ${s.subject}` : ""}</span>
-          <StatusPill status={s.status} />
-        </div>
-      ))}
-      <ListState query={students} empty="Пока нет учеников." />
-
-      <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
-        <p className="section-title">Создать ученика (логин + временный пароль)</p>
-        <ErrorMsg error={error} />
-        <Notice text={notice} />
-        <div className="field"><label>Email ученика<input placeholder="student@example.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label></div>
-        <div className="field"><label>Временный пароль (мин. 8)<input placeholder="временный пароль" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></label></div>
-        <div className="field"><label>Имя<input placeholder="имя ученика" value={name} onChange={(e) => setName(e.target.value)} required /></label></div>
-        <div className="field field-row">
-          <label style={{ flex: 1 }}>Предмет<input placeholder="предмет" value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
-          <label style={{ width: 120 }}>Ставка ₽<input placeholder="ставка" type="number" min="0" value={rate} onChange={(e) => setRate(e.target.value)} /></label>
-        </div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать ученика"}</button>
-      </form>
-    </Card>
-  );
-}
-
-function toIso(local: string): string {
-  return new Date(local).toISOString();
-}
-
-function LessonsCard({
+function TodayCard({
   lessons,
+  todayLessons,
   students,
-  onChargePending,
   onChanged,
 }: {
   lessons: Async<Lesson[]>;
+  todayLessons: Lesson[];
   students: StudentLink[];
-  onChargePending: (studentId: string) => void;
   onChanged: () => void;
 }) {
-  const [studentId, setStudentId] = useState("");
-  const [starts, setStarts] = useState("");
-  const [ends, setEnds] = useState("");
-  const [topic, setTopic] = useState("");
-  const [price, setPrice] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [actingId, setActingId] = useState<string | null>(null);
-  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
-  const [rStarts, setRStarts] = useState("");
-  const [rEnds, setREnds] = useState("");
-
-  function nameOf(id: string) {
-    return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
-  }
-
-  async function reactivate(id: string) {
-    setError(null);
-    setNotice(null);
-    setActingId(id);
-    try {
-      await api.post(`/lessons/${id}/reactivate`);
-      setNotice("Занятие восстановлено.");
-      lessons.reload();
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  async function reschedule(id: string, e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setActingId(id);
-    try {
-      await api.post(`/lessons/${id}/reschedule`, {
-        new_starts_at: toIso(rStarts),
-        new_ends_at: toIso(rEnds),
-      });
-      setNotice("Занятие перенесено.");
-      setRescheduleId(null); setRStarts(""); setREnds("");
-      lessons.reload();
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  async function complete(id: string) {
-    setError(null);
-    setNotice(null);
-    setActingId(id);
-    try {
-      const result = await api.post<CompleteLessonResponse>(`/lessons/${id}/complete`);
-      lessons.reload();
-      onChanged();
-      if (result.charge_status === "pending") {
-        setNotice("Занятие завершено. Начисление создаётся — баланс ученика обновится через пару секунд.");
-        onChargePending(result.lesson.student_id);
-      } else {
-        setNotice("Занятие завершено.");
-      }
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  async function cancel(id: string) {
-    if (!window.confirm("Отменить это занятие? Действие необратимо.")) return;
-    setError(null);
-    setNotice(null);
-    setActingId(id);
-    try {
-      await api.post(`/lessons/${id}/cancel`);
-      lessons.reload();
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setBusy(true);
-    try {
-      const fileIds = await uploadAll(files, "lesson_material");
-      await api.post("/lessons", {
-        student_id: studentId,
-        starts_at: toIso(starts),
-        ends_at: toIso(ends),
-        topic: topic || undefined,
-        price: price ? Number(price) : undefined,
-        file_ids: fileIds.length ? fileIds : undefined,
-      });
-      setNotice("Занятие создано.");
-      setStarts(""); setEnds(""); setTopic(""); setPrice(""); setFiles([]);
-      lessons.reload();
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <Card title="Занятия">
-      {(lessons.data ?? []).map((l) => (
-        <div key={l.id}>
-          <div className="row">
-            <span>
-              {nameOf(l.student_id)} · {fmtDate(l.starts_at)}{l.topic ? ` · ${l.topic}` : ""}
-              {" "}<StatusPill status={l.status} />
-            </span>
-            <span className="btn-group">
-              {l.status === "scheduled" && (
-                <>
-                  <button className="small" disabled={actingId === l.id} onClick={() => complete(l.id)}>
-                    {actingId === l.id ? "…" : "Завершить"}
-                  </button>
-                  <button className="small" disabled={actingId === l.id}
-                          onClick={() => { setRescheduleId(rescheduleId === l.id ? null : l.id); setRStarts(""); setREnds(""); }}>
-                    Перенести
-                  </button>
-                  <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отмена</button>
-                </>
-              )}
-              {l.status === "completed" && (
-                <button className="small" disabled={actingId === l.id} onClick={() => cancel(l.id)}>Отменить</button>
-              )}
-              {l.status === "cancelled" && (
-                <button className="small" disabled={actingId === l.id} onClick={() => reactivate(l.id)}>Восстановить</button>
-              )}
-            </span>
-          </div>
-          {rescheduleId === l.id && (
-            <form onSubmit={(e) => reschedule(l.id, e)} style={{ padding: "6px 0 10px" }}>
-              <div className="field field-row">
-                <label style={{ flex: 1 }}>Новое начало<input type="datetime-local" value={rStarts} onChange={(e) => setRStarts(e.target.value)} required /></label>
-                <label style={{ flex: 1 }}>Новый конец<input type="datetime-local" value={rEnds} onChange={(e) => setREnds(e.target.value)} required /></label>
-              </div>
-              <button className="primary small" type="submit" disabled={actingId === l.id}>Перенести занятие</button>
-            </form>
-          )}
-          <FileChips fileIds={l.file_ids} label="Материалы урока" />
-        </div>
-      ))}
-      <ListState query={lessons} empty="Занятий пока нет." />
-      <Notice text={notice} />
-
-      <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
-        <p className="section-title">Создать занятие</p>
-        <ErrorMsg error={error} />
-        <div className="field">
-          <label>Ученик
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
-              <option value="">— ученик —</option>
-              {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-            </select>
-          </label>
-        </div>
-        <div className="field"><label>Начало<input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} required /></label></div>
-        <div className="field"><label>Конец<input type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} required /></label></div>
-        <div className="field field-row">
-          <label style={{ flex: 1 }}>Тема<input placeholder="тема" value={topic} onChange={(e) => setTopic(e.target.value)} /></label>
-          <label style={{ width: 130 }}>Цена ₽ (опц.)<input placeholder="из ставки" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} /></label>
-        </div>
-        <div className="field">
-          <label>Материалы урока (можно несколько)
-            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
-          </label>
-        </div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать занятие"}</button>
-      </form>
+    <Card
+      title="Сегодня"
+      icon="today"
+      actions={
+        <>
+          <span className="card-head-chip">{todayLessons.length} занятия</span>
+          <Link className="card-head-link" to="/teacher/lessons">Всё расписание</Link>
+        </>
+      }
+    >
+      {lessons.loading && !lessons.data ? (
+        <SkeletonRows count={3} />
+      ) : todayLessons.length === 0 ? (
+        <EmptyState icon="event_available" title="На сегодня занятий нет" hint="Запланируйте занятие на странице «Занятия»." />
+      ) : (
+        todayLessons.map((lesson, i) => (
+          <TodayLessonRow
+            key={lesson.id}
+            lesson={lesson}
+            tone={toneFor(i)}
+            name={studentName(students, lesson.student_id)}
+            onChanged={onChanged}
+          />
+        ))
+      )}
     </Card>
   );
 }
 
-function AssignmentsCard({
-  assignments,
-  students,
+function isoToLocalInput(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "";
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function TodayLessonRow({
+  lesson,
+  tone,
+  name,
   onChanged,
 }: {
-  assignments: Async<Assignment[]>;
-  students: StudentLink[];
+  lesson: Lesson;
+  tone: Tone;
+  name: string;
   onChanged: () => void;
 }) {
-  const [studentId, setStudentId] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const toast = useToast();
+  const online = useOnlineStatus(lesson.student_id);
   const [busy, setBusy] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
 
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setNotice(null);
+  async function complete() {
     setBusy(true);
     try {
-      const fileIds = await uploadAll(files, "assignment_attachment");
-      await api.post("/assignments", {
-        student_id: studentId,
-        title,
-        description: description || undefined,
-        file_ids: fileIds.length ? fileIds : undefined,
+      const result = await api.post<CompleteLessonResponse>(`/lessons/${lesson.id}/complete`);
+      toast({
+        tone: "success",
+        title: "Занятие завершено",
+        body: result.charge_status === "pending" ? `${name} · начисление создаётся` : name,
       });
-      setNotice("ДЗ создано.");
-      setTitle(""); setDescription(""); setFiles([]);
-      assignments.reload();
       onChanged();
     } catch (err) {
-      setError((err as Error).message);
+      toast({ tone: "danger", title: "Не удалось завершить", body: (err as Error).message });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Card title="Домашние задания">
-      {(assignments.data ?? []).map((a) => (
-        <div key={a.id}>
-          <div className="row">
-            <button className="small" onClick={() => setOpenId(openId === a.id ? null : a.id)} style={{ flex: 1, textAlign: "left" }}>
-              {a.title}
-            </button>
-            <StatusPill status={a.status} />
-          </div>
-          {openId === a.id && <AssignmentDetailView id={a.id} onChange={() => { assignments.reload(); onChanged(); }} />}
-        </div>
-      ))}
-      <ListState query={assignments} empty="Заданий пока нет." />
-
-      <form onSubmit={create} style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
-        <p className="section-title">Создать ДЗ</p>
-        <ErrorMsg error={error} />
-        <Notice text={notice} />
-        <div className="field">
-          <label>Ученик
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required>
-              <option value="">— ученик —</option>
-              {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-            </select>
-          </label>
-        </div>
-        <div className="field"><label>Название<input placeholder="название" value={title} onChange={(e) => setTitle(e.target.value)} required /></label></div>
-        <div className="field"><label>Описание<textarea placeholder="описание" value={description} onChange={(e) => setDescription(e.target.value)} /></label></div>
-        <div className="field">
-          <label>Файлы к ДЗ (можно несколько)
-            <input type="file" multiple onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
-          </label>
-        </div>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Создание…" : "Создать ДЗ"}</button>
-      </form>
-    </Card>
+    <ListRow
+      time={timeOnly(lesson.starts_at)}
+      leading={<Avatar name={name} tone={tone} presence={online ? "online" : undefined} />}
+      title={name}
+      subtitle={lesson.topic || "Занятие"}
+    >
+      <StatusPill status={lesson.status} />
+      <Button variant="primary" size="sm" loading={busy} onClick={complete}>Завершить</Button>
+      <button className="icon-button small" type="button" title="Перенести" onClick={() => setRescheduleOpen(true)}>
+        <Icon name="schedule" />
+      </button>
+      {rescheduleOpen && (
+        <RescheduleModal
+          lesson={lesson}
+          name={name}
+          onClose={() => setRescheduleOpen(false)}
+          onDone={() => {
+            setRescheduleOpen(false);
+            onChanged();
+          }}
+        />
+      )}
+    </ListRow>
   );
 }
 
-function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => void }) {
-  const detail = useAsync<AssignmentDetail>(() => api.get(`/assignments/${id}`), [id]);
-  const [status, setStatus] = useState("reviewed");
-  const [comment, setComment] = useState("");
-  const [error, setError] = useState<string | null>(null);
+function RescheduleModal({
+  lesson,
+  name,
+  onClose,
+  onDone,
+}: {
+  lesson: Lesson;
+  name: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const toast = useToast();
+  const [starts, setStarts] = useState(isoToLocalInput(lesson.starts_at));
+  const [ends, setEnds] = useState(isoToLocalInput(lesson.ends_at));
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function review(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
+  async function submit() {
     setBusy(true);
+    setError(null);
     try {
-      await api.post(`/assignments/${id}/review`, { status, comment: comment || undefined });
-      setComment("");
-      detail.reload();
-      onChange();
+      await api.post(`/lessons/${lesson.id}/reschedule`, {
+        new_starts_at: new Date(starts).toISOString(),
+        new_ends_at: new Date(ends).toISOString(),
+      });
+      toast({ tone: "info", title: "Занятие перенесено", body: name });
+      onDone();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -513,250 +320,159 @@ function AssignmentDetailView({ id, onChange }: { id: string; onChange: () => vo
     }
   }
 
-  async function addComment() {
-    if (!comment.trim()) return;
-    setError(null);
-    setBusy(true);
-    try {
-      await api.post(`/assignments/${id}/comments`, { text: comment });
-      setComment("");
-      detail.reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const d = detail.data;
   return (
-    <div style={{ padding: "8px 0 12px", borderTop: "0.5px solid var(--border)" }}>
-      <ErrorMsg error={error} />
-      {detail.loading && !d && <p className="hint">Загрузка…</p>}
-      {d?.description && <p className="muted">{d.description}</p>}
-      <FileChips fileIds={d?.file_ids} label="Материалы ДЗ" />
-      <p className="section-title">Решения</p>
-      {(d?.submissions ?? []).map((s) => (
-        <div key={s.id} style={{ padding: "6px 0", borderTop: "0.5px solid var(--border)" }}>
-          <div className="row" style={{ border: "none", padding: 0 }}>
-            <span className="muted">{s.text_answer || "(без текста)"}</span>
-            <StatusPill status={s.status} />
-          </div>
-          <FileChips fileIds={s.file_ids} />
-        </div>
-      ))}
-      {d && (d.submissions ?? []).length === 0 && <p className="hint">Решений ещё нет.</p>}
-
-      <p className="section-title">Проверка</p>
-      <form onSubmit={review}>
-        <div className="field field-row">
-          <label style={{ flex: 1 }}>Статус
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="reviewed">reviewed</option>
-              <option value="needs_fix">needs_fix</option>
-              <option value="accepted">accepted</option>
-            </select>
-          </label>
-          <button className="primary" type="submit" disabled={busy} style={{ alignSelf: "flex-end" }}>Проверить</button>
-        </div>
-        <div className="field"><label>Комментарий<input placeholder="комментарий" value={comment} onChange={(e) => setComment(e.target.value)} /></label></div>
-      </form>
-      <button className="small" onClick={addComment} disabled={busy || !comment.trim()}>Добавить комментарий</button>
-
-      {(d?.comments ?? []).length > 0 && <p className="section-title">Комментарии</p>}
-      {(d?.comments ?? []).map((c) => (
-        <div className="row" key={c.id}><span className="muted">{c.text}</span></div>
-      ))}
-    </div>
+    <Modal
+      title="Перенести занятие"
+      subtitle={`${name} · ${lesson.topic || "Занятие"}`}
+      onClose={onClose}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button type="button" onClick={onClose}>Отмена</Button>
+          <Button variant="primary" type="submit" icon="schedule" loading={busy}>Перенести</Button>
+        </>
+      }
+    >
+      <div className="modal-fields">
+        <Field label="Новое начало" error={error}>
+          <Input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} required />
+        </Field>
+        <Field label="Новый конец">
+          <Input type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} required />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 
-function FinanceCard({
+/* ============ Требует внимания ============ */
+
+function AttentionCard({
   receipts,
+  submitted,
   students,
-  chargeRefresh,
+  loading,
   onChanged,
 }: {
   receipts: Async<Receipt[]>;
+  submitted: Assignment[];
   students: StudentLink[];
-  chargeRefresh: { studentId: string; seq: number } | null;
+  loading: boolean;
   onChanged: () => void;
 }) {
-  const [error, setError] = useState<string | null>(null);
-  const [balStudent, setBalStudent] = useState("");
-  const [balance, setBalance] = useState<Balance | null>(null);
-  const [txns, setTxns] = useState<Transaction[]>([]);
-  const [balanceNotice, setBalanceNotice] = useState<string | null>(null);
-  const [actingId, setActingId] = useState<string | null>(null);
-  const [corrAmount, setCorrAmount] = useState("");
-  const [corrComment, setCorrComment] = useState("");
-  const [corrBusy, setCorrBusy] = useState(false);
-  const [corrNotice, setCorrNotice] = useState<string | null>(null);
-
-  function nameOf(id: string) {
-    return students.find((s) => s.student_id === id)?.display_name ?? id.slice(0, 8);
-  }
-
-  async function loadJournal(id: string) {
-    if (!id) { setTxns([]); return; }
-    try {
-      setTxns(await api.get<Transaction[]>(`/students/${id}/transactions`));
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }
-
-  async function submitCorrection(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setCorrNotice(null);
-    if (!balStudent) { setError("Выберите ученика"); return; }
-    setCorrBusy(true);
-    try {
-      await api.post(`/students/${balStudent}/corrections`, {
-        amount: Number(corrAmount),
-        comment: corrComment,
-      });
-      setCorrNotice("Коррекция применена.");
-      setCorrAmount(""); setCorrComment("");
-      setBalance(await api.get<Balance>(`/students/${balStudent}/balance`));
-      loadJournal(balStudent);
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setCorrBusy(false);
-    }
-  }
-
-  async function act(id: string, path: string, body?: unknown) {
-    setError(null);
-    setActingId(id);
-    try {
-      await api.post(path, body);
-      receipts.reload();
-      if (balStudent) loadBalance(balStudent);
-      onChanged();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  function reject(r: Receipt) {
-    if (!window.confirm(`Отклонить чек ученика ${nameOf(r.student_id)} на ${Math.round(r.amount)} ₽?`)) return;
-    const reason = window.prompt("Причина отклонения (необязательно):", "") ?? "";
-    act(r.id, `/payments/receipts/${r.id}/reject`, { comment: reason });
-  }
-
-  async function loadBalance(id: string) {
-    setBalStudent(id);
-    setBalanceNotice(null);
-    setCorrNotice(null);
-    setBalance(null);
-    setTxns([]);
-    if (!id) return;
-    try {
-      setBalance(await api.get<Balance>(`/students/${id}/balance`));
-      loadJournal(id);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }
-
-  useEffect(() => {
-    if (!chargeRefresh) return;
-
-    const refresh = chargeRefresh;
-    let cancelled = false;
-    const initialBalance =
-      balStudent === refresh.studentId ? balance?.balance : undefined;
-
-    async function pollBalance() {
-      setBalStudent(refresh.studentId);
-      setBalanceNotice("Ждём начисление по завершённому занятию…");
-      const deadline = Date.now() + 10000;
-      while (!cancelled) {
-        try {
-          const next = await api.get<Balance>(`/students/${refresh.studentId}/balance`);
-          if (cancelled) return;
-          setBalance(next);
-          if (initialBalance === undefined || next.balance !== initialBalance || Date.now() >= deadline) {
-            setBalanceNotice(null);
-            return;
-          }
-        } catch (err) {
-          if (!cancelled) {
-            setError((err as Error).message);
-            setBalanceNotice(null);
-          }
-          return;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
-
-    pollBalance();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chargeRefresh?.seq]);
-
+  const list = receipts.data ?? [];
   return (
-    <Card title="Чеки на проверку">
-      <ErrorMsg error={error} />
-      {(receipts.data ?? []).map((r) => (
-        <div className="row" key={r.id}>
-          <span>{nameOf(r.student_id)} · {Math.round(r.amount)} ₽</span>
-          <span className="btn-group">
-            <button className="small" onClick={() => openFile(r.file_id).catch((e) => setError((e as Error).message))}>Чек</button>
-            <button className="small" disabled={actingId === r.id} onClick={() => act(r.id, `/payments/receipts/${r.id}/confirm`)}>Подтвердить</button>
-            <button className="small" disabled={actingId === r.id} onClick={() => reject(r)}>Отклонить</button>
-          </span>
-        </div>
-      ))}
-      <ListState query={receipts} empty="Чеков на проверку нет." />
-
-      <div style={{ marginTop: 12, borderTop: "0.5px solid var(--border)", paddingTop: 12 }}>
-        <p className="section-title">Долг ученика</p>
-        <label>Ученик
-          <select value={balStudent} onChange={(e) => loadBalance(e.target.value)}>
-            <option value="">— ученик —</option>
-            {students.map((s) => <option key={s.id} value={s.student_id}>{s.display_name}</option>)}
-          </select>
-        </label>
-        {balance && (
-          <p style={{ marginTop: 8 }}>
-            Долг: <strong>{Math.round(balance.balance)} {balance.currency}</strong>
-          </p>
-        )}
-        {balanceNotice && <p className="hint">{balanceNotice}</p>}
-
-        {balStudent && (
-          <>
-            <p className="section-title" style={{ marginTop: 10 }}>Журнал операций</p>
-            {txns.map((t) => (
-              <div className="row" key={t.id}>
-                <span className="muted">{t.type}{t.comment ? ` · ${t.comment}` : ""}</span>
-                <span>{t.amount > 0 ? "+" : ""}{Math.round(t.amount)} {t.currency}</span>
-              </div>
-            ))}
-            {txns.length === 0 && <p className="hint">Операций пока нет.</p>}
-
-            <form onSubmit={submitCorrection} style={{ marginTop: 10 }}>
-              <p className="section-title">Скорректировать баланс</p>
-              <Notice text={corrNotice} />
-              <div className="field field-row">
-                <label style={{ width: 130 }}>Сумма ± ₽<input type="number" placeholder="напр. -500" value={corrAmount} onChange={(e) => setCorrAmount(e.target.value)} required /></label>
-                <label style={{ flex: 1 }}>Комментарий<input placeholder="причина" value={corrComment} onChange={(e) => setCorrComment(e.target.value)} required /></label>
-              </div>
-              <button className="primary small" type="submit" disabled={corrBusy}>{corrBusy ? "Применение…" : "Применить коррекцию"}</button>
-            </form>
-          </>
-        )}
+    <Card title="Требует внимания" icon="pending_actions">
+      <div className="dash-head">
+        <span className="lbl">Чеки на проверку</span>
+        <Counter value={list.length} tone="warning" />
       </div>
+      {loading && !receipts.data ? (
+        <SkeletonRows count={2} />
+      ) : list.length === 0 ? (
+        <EmptyState tone="success" icon="task_alt" title="Все чеки обработаны" />
+      ) : (
+        list.map((receipt, i) => (
+          <ReceiptRow
+            key={receipt.id}
+            receipt={receipt}
+            tone={toneFor(i)}
+            name={studentName(students, receipt.student_id)}
+            onChanged={onChanged}
+          />
+        ))
+      )}
+
+      <div className="dash-head">
+        <span className="lbl">Домашние работы на проверку</span>
+        <Counter value={submitted.length} tone="muted" />
+      </div>
+      {submitted.length === 0 ? (
+        <EmptyState icon="assignment_turned_in" title="Нет работ на проверку" />
+      ) : (
+        submitted.map((assignment, i) => (
+          <ListRow
+            key={assignment.id}
+            leading={<Avatar name={studentName(students, assignment.student_id)} tone={toneFor(i)} />}
+            title={studentName(students, assignment.student_id)}
+            subtitle={assignment.title}
+          >
+            <StatusPill status={assignment.status} />
+            <Link className="button-like secondary small" to={`/teacher/assignments/${assignment.id}/review`}>
+              Проверить
+            </Link>
+          </ListRow>
+        ))
+      )}
     </Card>
   );
 }
+
+function ReceiptRow({
+  receipt,
+  tone,
+  name,
+  onChanged,
+}: {
+  receipt: Receipt;
+  tone: Tone;
+  name: string;
+  onChanged: () => void;
+}) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  async function act(path: string, body: unknown, ok: { tone: "success" | "warning"; title: string; body: string }) {
+    setBusy(true);
+    try {
+      await api.post(path, body);
+      toast({ tone: ok.tone, title: ok.title, body: ok.body });
+      onChanged();
+    } catch (err) {
+      toast({ tone: "danger", title: "Ошибка", body: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirm() {
+    act(`/payments/receipts/${receipt.id}/confirm`, undefined, {
+      tone: "success",
+      title: "Чек подтверждён",
+      body: `${name} · долг обновлён`,
+    });
+  }
+
+  function reject() {
+    if (!window.confirm(`Отклонить чек ученика ${name} на ${Math.round(receipt.amount)} ₽?`)) return;
+    const reason = window.prompt("Причина отклонения (необязательно):", "") ?? "";
+    act(`/payments/receipts/${receipt.id}/reject`, { comment: reason }, {
+      tone: "warning",
+      title: "Чек отклонён",
+      body: `${name} получит уведомление`,
+    });
+  }
+
+  return (
+    <ListRow
+      leading={<Avatar name={name} tone={tone} size="sm" />}
+      title={name}
+      subtitle={fmtDate(receipt.submitted_at) || "чек на оплату"}
+    >
+      <span className="dash-amount">{Math.round(receipt.amount)} ₽</span>
+      <button
+        className="icon-button small"
+        type="button"
+        title="Открыть чек"
+        onClick={() => openFile(receipt.file_id).catch((e) => toast({ tone: "danger", title: "Ошибка", body: (e as Error).message }))}
+      >
+        <Icon name="visibility" />
+      </button>
+      <Button variant="primary" size="sm" loading={busy} onClick={confirm}>
+        Подтвердить
+      </Button>
+      <Button variant="danger" size="sm" disabled={busy} onClick={reject}>Отклонить</Button>
+    </ListRow>
+  );
+}
+

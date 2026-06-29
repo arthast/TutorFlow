@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes menuIn { from{opacity:0; transform:translateY(-6px) scale(.97)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <a href="TutorFlow — Прототип.dc.html" title="К обзору прототипа" style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; text-decoration:none; cursor:pointer">T</a>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#e0584f; color:#fff; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">2</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:16px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="min-width:0"><div style="font-weight:700; font-size:18px; letter-spacing:-0.01em; line-height:1.1">Занятия</div><div style="font-weight:500; font-size:12.5px; color:#8b94a3">Расписание и история</div></div>
+      <button onClick="{{ openCreate }}" style="background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; margin-left:auto; transition:background .15s" style-hover="background:#2f49b8"><span class="ms" style="font-size:18px">add</span>Новое занятие</button>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <!-- Toolbar -->
+    <div style="flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; padding:12px 26px; display:flex; align-items:center; gap:18px">
+      <div style="display:flex; gap:22px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <div onClick="{{ t.select }}" style="font-weight:600; font-size:13.5px; color:{{ t.color }}; padding:4px 2px; border-bottom:2px solid {{ t.border }}; cursor:pointer; display:flex; align-items:center; gap:7px; white-space:nowrap">{{ t.label }}<span style="font-weight:700; font-size:11px; color:{{ t.countColor }}; background:{{ t.countBg }}; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">{{ t.count }}</span></div>
+        </sc-for>
+      </div>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+        <div style="position:relative; width:200px"><span class="ms" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:18px; color:#8b94a3">search</span><input placeholder="Поиск по ученику…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:13px; padding:8px 10px 8px 34px; border:1px solid #d4dae3; border-radius:9px; background:#f8fafc"></div>
+        <button style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:20px">tune</span></button>
+      </div>
+    </div>
+
+    <!-- Scroll content -->
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:24px 26px 60px" onClick="{{ closeMenu }}">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+        <div style="margin-bottom:26px">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px">
+            <div style="font-weight:700; font-size:14px; color:#14181f">{{ g.title }}</div>
+            <div style="font-weight:500; font-size:12.5px; color:#8b94a3">{{ g.sub }}</div>
+            <div style="flex:1; height:1px; background:#e6eaf0"></div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <sc-for list="{{ g.items }}" as="l" hint-placeholder-count="3">
+              <div style="background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ l.accent }}; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:16px; opacity:{{ l.opacity }}">
+                <!-- time block -->
+                <div style="width:62px; flex-shrink:0; text-align:center; border-right:1px solid #eef2f7; padding-right:14px">
+                  <div style="font-weight:800; font-size:17px; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; color:{{ l.timeColor }}">{{ l.time }}</div>
+                  <div style="font-weight:600; font-size:11px; color:#8b94a3; margin-top:1px">{{ l.dur }}</div>
+                </div>
+                <!-- avatar -->
+                <div style="position:relative; flex-shrink:0">
+                  <div style="width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:{{ l.bg }}; color:{{ l.color }}">{{ l.initials }}</div>
+                  <sc-if value="{{ l.online }}"><span style="position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%; background:#18a866; border:2px solid #fff"></span></sc-if>
+                </div>
+                <!-- info -->
+                <div style="flex:1; min-width:0">
+                  <div style="font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ l.name }}</div>
+                  <div style="font-weight:500; font-size:12.5px; color:#8b94a3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ l.topic }}</div>
+                </div>
+                <!-- status -->
+                <span style="display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:999px; font-weight:600; font-size:12.5px; background:{{ l.stBg }}; color:{{ l.stColor }}; flex-shrink:0"><span style="width:6px; height:6px; border-radius:50%; background:{{ l.stDot }}"></span>{{ l.stLabel }}</span>
+                <!-- primary action -->
+                <sc-if value="{{ l.showComplete }}"><button onClick="{{ l.complete }}" style="background:#3b5bdb; color:#fff; border:none; padding:8px 14px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; transition:background .15s" style-hover="background:#2f49b8">Завершить</button></sc-if>
+                <sc-if value="{{ l.showReactivate }}"><button onClick="{{ l.reactivate }}" style="background:#fff; color:#2f49b8; border:1px solid #c7d2f7; padding:8px 14px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; transition:background .15s" style-hover="background:#f3f5fe">Восстановить</button></sc-if>
+                <!-- kebab -->
+                <div style="position:relative; flex-shrink:0">
+                  <button onClick="{{ l.menu }}" style="width:34px; height:34px; border:1px solid #e6eaf0; background:#fff; border-radius:9px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:20px">more_horiz</span></button>
+                  <sc-if value="{{ l.menuOpen }}">
+                    <div onClick="{{ stop }}" style="position:absolute; right:0; top:40px; z-index:30; width:208px; background:#fff; border:1px solid #e6eaf0; border-radius:12px; box-shadow:0 14px 40px rgba(20,24,33,.18); padding:6px; animation:menuIn .16s ease">
+                      <sc-for list="{{ l.actions }}" as="a" hint-placeholder-count="3">
+                        <div onClick="{{ a.run }}" style="display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px; color:{{ a.color }}; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:19px">{{ a.icon }}</span>{{ a.label }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+
+      <sc-if value="{{ empty }}">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; color:#8b94a3">
+          <div style="width:60px; height:60px; border-radius:16px; background:#eef2f7; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:30px; color:#aab2bf">event_busy</span></div>
+          <div style="font-weight:700; font-size:15px; color:#5a6472">Здесь пусто</div>
+          <div style="font-weight:500; font-size:13px; margin-top:3px">В этом разделе пока нет занятий</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- ============ CREATE / RESCHEDULE MODAL ============ -->
+  <sc-if value="{{ modalOpen }}">
+    <div onClick="{{ closeModal }}" style="position:fixed; inset:0; background:rgba(20,24,33,.34); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:460px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); padding:26px; animation:modalIn .26s cubic-bezier(.4,0,.2,1)">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between"><div><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">{{ modalTitle }}</div><div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">{{ modalSub }}</div></div><span onClick="{{ closeModal }}" class="ms" style="font-size:24px; color:#8b94a3; cursor:pointer">close</span></div>
+
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:16px">
+          <sc-if value="{{ isCreate }}">
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Ученик</label>
+              <div style="position:relative"><select style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; appearance:none"><option>Марк Лебедев</option><option>Аня Климова</option><option>Игорь Петров</option><option>Соня Васильева</option></select><span class="ms" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; pointer-events:none">expand_more</span></div>
+            </div>
+            <div>
+              <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Тема занятия</label>
+              <input placeholder="Например: Алгебра · производные" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff" />
+            </div>
+          </sc-if>
+          <div style="display:flex; gap:12px">
+            <div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Дата</label><input type="date" value="2026-09-10" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff" /></div>
+            <div style="width:130px"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Время</label><input type="time" value="17:00" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff" /></div>
+          </div>
+          <div style="display:flex; gap:12px">
+            <div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Длительность</label><div style="position:relative"><select style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; appearance:none"><option>60 минут</option><option>90 минут</option><option>45 минут</option></select><span class="ms" style="position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:20px; color:#8b94a3; pointer-events:none">expand_more</span></div></div>
+            <sc-if value="{{ isCreate }}"><div style="flex:1"><label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Стоимость</label><div style="position:relative"><input value="1 000" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 30px 11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; font-variant-numeric:tabular-nums" /><span style="position:absolute; right:13px; top:50%; transform:translateY(-50%); font-weight:600; color:#8b94a3">₽</span></div></div></sc-if>
+          </div>
+        </div>
+
+        <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end">
+          <button onClick="{{ closeModal }}" style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отмена</button>
+          <button onClick="{{ submitModal }}" style="background:#3b5bdb; color:#fff; border:none; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px"><span class="ms" style="font-size:18px">{{ modalBtnIcon }}</span>{{ modalBtn }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+    this.state = {
+      collapsed,
+      tab: 'upcoming',
+      openMenuId: null,
+      nextId: 1,
+      toasts: [],
+      modalOpen: false,
+      modalMode: 'create',
+      lessons: [
+        { id: 'a', group: 'today', date: 'Сегодня · 8 сентября', time: '17:00', dur: '60 мин', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', topic: 'Алгебра · квадратные уравнения', online: true, status: 'planned' },
+        { id: 'b', group: 'today', date: 'Сегодня · 8 сентября', time: '18:30', dur: '90 мин', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', topic: 'Механика · законы Ньютона', online: true, status: 'planned' },
+        { id: 'c', group: 'today', date: 'Сегодня · 8 сентября', time: '20:00', dur: '60 мин', initials: 'ТО', bg: '#eef2f7', color: '#5a6472', name: 'Тимур Орлов', topic: 'Подготовка к ЕГЭ · разбор варианта', online: false, status: 'planned' },
+        { id: 'd', group: 'tomorrow', date: 'Завтра · 9 сентября', time: '16:00', dur: '60 мин', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', topic: 'Геометрия · подобие треугольников', online: false, status: 'planned' },
+        { id: 'e', group: 'tomorrow', date: 'Завтра · 9 сентября', time: '19:00', dur: '90 мин', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', topic: 'Алгебра · контрольная работа', online: true, status: 'planned' },
+        { id: 'f', group: 'past', date: 'Вчера · 7 сентября', time: '17:00', dur: '60 мин', initials: 'АК', bg: '#e3f4ec', color: '#0f7a4f', name: 'Аня Климова', topic: 'Физика · кинематика', online: false, status: 'done' },
+        { id: 'g', group: 'past', date: 'Вчера · 7 сентября', time: '15:30', dur: '60 мин', initials: 'ИП', bg: '#eef2f7', color: '#5a6472', name: 'Игорь Петров', topic: 'Математика · дроби', online: false, status: 'done' },
+        { id: 'h', group: 'past', date: '6 сентября', time: '18:00', dur: '60 мин', initials: 'ТО', bg: '#eef2f7', color: '#5a6472', name: 'Тимур Орлов', topic: 'Тригонометрия · основные формулы', online: false, status: 'canceled', cancelNote: 'отменено учеником' },
+        { id: 'i', group: 'past', date: '5 сентября', time: '17:00', dur: '90 мин', initials: 'МЛ', bg: '#e9edfd', color: '#3b5bdb', name: 'Марк Лебедев', topic: 'Алгебра · квадратные уравнения', online: false, status: 'done' },
+        { id: 'j', group: 'past', date: '4 сентября', time: '16:00', dur: '60 мин', initials: 'СВ', bg: '#fbeecd', color: '#8a5a00', name: 'Соня Васильева', topic: 'Геометрия · площади фигур', online: false, status: 'canceled', cancelNote: 'отменено преподавателем' },
+      ],
+    };
+    this._timers = [];
+  }
+
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 5000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  _setStatus(id, status, toast) {
+    this.setState(s => ({ openMenuId: null, lessons: s.lessons.map(l => l.id === id ? { ...l, status } : l) }));
+    if (toast) this._toast(toast);
+  }
+
+  STATUS = {
+    planned:  { label: 'запланировано', dot: '#3b5bdb', bg: '#e9edfd', color: '#2f49b8', accent: '#3b5bdb', timeColor: '#14181f', opacity: '1' },
+    done:     { label: 'завершено',     dot: '#18a866', bg: '#e3f4ec', color: '#0f7a4f', accent: '#18a866', timeColor: '#14181f', opacity: '1' },
+    canceled: { label: 'отменено',      dot: '#9aa3b2', bg: '#eef2f7', color: '#5a6472', accent: '#c4ccd6', timeColor: '#9aa3b2', opacity: '.72' },
+  };
+
+  _actionsFor(l) {
+    const acts = [];
+    if (l.status === 'planned') {
+      acts.push({ icon: 'schedule', label: 'Перенести время', color: '#14181f', run: () => this._openReschedule(l) });
+      acts.push({ icon: 'cancel', label: 'Отменить занятие', color: '#c0362f', run: () => this._setStatus(l.id, 'canceled', { icon: 'cancel', color: '#e0584f', title: 'Занятие отменено', body: l.name + ' · ' + l.time }) });
+    } else if (l.status === 'done') {
+      acts.push({ icon: 'undo', label: 'Вернуть в запланированные', color: '#14181f', run: () => this._setStatus(l.id, 'planned', { icon: 'undo', color: '#3b5bdb', title: 'Возвращено в расписание', body: l.name }) });
+      acts.push({ icon: 'cancel', label: 'Отменить занятие', color: '#c0362f', run: () => this._setStatus(l.id, 'canceled', { icon: 'cancel', color: '#e0584f', title: 'Занятие отменено', body: l.name + ' · начисление откатится' }) });
+    } else if (l.status === 'canceled') {
+      acts.push({ icon: 'restart_alt', label: 'Восстановить', color: '#2f49b8', run: () => this._setStatus(l.id, 'planned', { icon: 'restart_alt', color: '#3b5bdb', title: 'Занятие восстановлено', body: l.name + ' · снова запланировано' }) });
+    }
+    acts.push({ icon: 'chat_bubble', label: 'Написать ученику', color: '#14181f', run: () => { this.setState({ openMenuId: null }); this._toast({ icon: 'chat_bubble', color: '#3b5bdb', title: 'Чат', body: l.name }); } });
+    return acts;
+  }
+
+  _openCreate() { this.setState({ modalOpen: true, modalMode: 'create', openMenuId: null }); }
+  _openReschedule(l) { this.setState({ modalOpen: true, modalMode: 'reschedule', openMenuId: null, _rl: l }); }
+  _closeModal() { this.setState({ modalOpen: false }); }
+  _submitModal() {
+    const create = this.state.modalMode === 'create';
+    this.setState({ modalOpen: false });
+    if (create) this._toast({ icon: 'event_available', color: '#18a866', title: 'Занятие создано', body: 'Добавлено в расписание' });
+    else this._toast({ icon: 'schedule', color: '#3b5bdb', title: 'Время перенесено', body: (this.state._rl ? this.state._rl.name : '') + ' · ученик уведомлён' });
+  }
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const tab = this.state.tab;
+    const counts = { upcoming: 0, past: 0 };
+    this.state.lessons.forEach(l => { if (l.status === 'planned') counts.upcoming++; else counts.past++; });
+
+    const tabDefs = [
+      { key: 'upcoming', label: 'Предстоящие' },
+      { key: 'past', label: 'Завершённые' },
+    ];
+    const tabs = tabDefs.map(t => {
+      const active = tab === t.key;
+      return {
+        label: t.label,
+        count: counts[t.key],
+        color: active ? '#2f49b8' : '#5a6472',
+        border: active ? '#3b5bdb' : 'transparent',
+        countBg: active ? '#e9edfd' : '#eef2f7',
+        countColor: active ? '#2f49b8' : '#8b94a3',
+        select: () => this.setState({ tab: t.key, openMenuId: null }),
+      };
+    });
+
+    const visible = this.state.lessons.filter(l => tab === 'upcoming' ? l.status === 'planned' : l.status !== 'planned');
+
+    const mapLesson = (l) => {
+      const st = this.STATUS[l.status];
+      return {
+        ...l,
+        accent: st.accent, opacity: st.opacity, timeColor: st.timeColor,
+        stLabel: st.label, stDot: st.dot, stBg: st.bg, stColor: st.color,
+        topic: (l.status === 'canceled' && l.cancelNote) ? (l.topic + ' · ' + l.cancelNote) : l.topic,
+        showComplete: l.status === 'planned',
+        showReactivate: l.status === 'canceled',
+        complete: () => this._setStatus(l.id, 'done', { icon: 'check_circle', color: '#18a866', title: 'Занятие завершено', body: l.name + ' · создаётся начисление' }),
+        reactivate: () => this._setStatus(l.id, 'planned', { icon: 'restart_alt', color: '#3b5bdb', title: 'Занятие восстановлено', body: l.name }),
+        menu: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => ({ openMenuId: s.openMenuId === l.id ? null : l.id })); },
+        menuOpen: this.state.openMenuId === l.id,
+        actions: this._actionsFor(l),
+      };
+    };
+
+    let groups;
+    if (tab === 'upcoming') {
+      const groupDefs = [
+        { key: 'today', title: 'Сегодня', sub: '8 сентября' },
+        { key: 'tomorrow', title: 'Завтра', sub: '9 сентября' },
+      ];
+      groups = groupDefs.map(gd => {
+        const items = visible.filter(l => l.group === gd.key).map(mapLesson);
+        return { title: gd.title, sub: gd.sub, items, _n: items.length };
+      }).filter(g => g._n > 0);
+    } else {
+      const order = [];
+      const byDate = {};
+      visible.forEach(l => { if (!byDate[l.date]) { byDate[l.date] = []; order.push(l.date); } byDate[l.date].push(l); });
+      groups = order.map(d => {
+        const items = byDate[d].map(mapLesson);
+        const doneN = items.filter(x => x.status === 'done').length;
+        const canN = items.filter(x => x.status === 'canceled').length;
+        const parts = [];
+        if (doneN) parts.push(doneN + ' завершено');
+        if (canN) parts.push(canN + ' отменено');
+        return { title: d, sub: parts.join(' · '), items, _n: items.length };
+      });
+    }
+
+    const isCreate = this.state.modalMode === 'create';
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      closeMenu: () => { if (this.state.openMenuId) this.setState({ openMenuId: null }); },
+      tabs,
+      groups,
+      empty: groups.length === 0,
+      openCreate: () => this._openCreate(),
+      modalOpen: this.state.modalOpen,
+      isCreate,
+      modalTitle: isCreate ? 'Новое занятие' : 'Перенести занятие',
+      modalSub: isCreate ? 'Запланируйте занятие с учеником' : (this.state._rl ? this.state._rl.name + ' · ' + this.state._rl.topic : ''),
+      modalBtn: isCreate ? 'Создать занятие' : 'Перенести',
+      modalBtnIcon: isCreate ? 'event_available' : 'schedule',
+      closeModal: () => this._closeModal(),
+      submitModal: () => this._submitModal(),
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

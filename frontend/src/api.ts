@@ -169,6 +169,8 @@ export interface Assignment {
   description?: string;
   status: string;
   created_at?: string;
+  due_at?: string | null;
+  file_ids?: string[];
 }
 export interface Submission {
   id: string;
@@ -200,6 +202,8 @@ export interface Receipt {
   currency?: string;
   status: string;
   submitted_at?: string;
+  reviewed_at?: string | null;
+  comment?: string | null;
 }
 export interface Balance {
   student_id: string;

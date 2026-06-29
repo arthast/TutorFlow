@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
-import { ErrorMsg } from "../ui";
+import { ErrorMsg, Icon } from "../ui";
+import AuthLayout, { AuthLink } from "./AuthLayout";
 
 export default function Register() {
   const { register } = useAuth();
@@ -26,38 +26,37 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-wrap">
-      <div className="card">
-        <h3>Регистрация</h3>
+    <AuthLayout
+      title="Регистрация"
+      subtitle="Создайте рабочий аккаунт"
+      footer={<>Уже есть аккаунт? <AuthLink to="/login">Войти</AuthLink></>}
+    >
         <ErrorMsg error={error} />
-        <form onSubmit={onSubmit}>
+        <form className="auth-form" onSubmit={onSubmit}>
           <div className="field">
-            <label>Я —</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as "teacher" | "student")}>
-              <option value="teacher">Преподаватель</option>
-              <option value="student">Ученик</option>
-            </select>
+            <label htmlFor="register-role">Я —</label>
+            <div className="role-segment">
+              <button className={role === "teacher" ? "active" : ""} type="button" onClick={() => setRole("teacher")}><Icon name="school" />Преподаватель</button>
+              <button className={role === "student" ? "active" : ""} type="button" onClick={() => setRole("student")}><Icon name="person" />Ученик</button>
+            </div>
           </div>
           <div className="field">
-            <label>Имя</label>
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            <label htmlFor="register-name">Имя</label>
+            <div className="input-with-icon"><Icon name="badge" /><input id="register-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required /></div>
           </div>
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label htmlFor="register-email">Email</label>
+            <div className="input-with-icon"><Icon name="mail" /><input id="register-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           </div>
           <div className="field">
-            <label>Пароль (мин. 8 символов)</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+            <label htmlFor="register-password">Пароль (мин. 8 символов)</label>
+            <div className="input-with-icon"><Icon name="lock" /><input id="register-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></div>
           </div>
-          <button className="primary" type="submit" disabled={busy} style={{ width: "100%" }}>
-            {busy ? "Создание…" : "Создать аккаунт"}
+          <button className="primary auth-submit" type="submit" disabled={busy}>
+            <Icon name="person_add" />
+            {busy ? "Создание..." : "Создать аккаунт"}
           </button>
         </form>
-        <div className="center-link">
-          Уже есть аккаунт? <Link to="/login">Войти</Link>
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

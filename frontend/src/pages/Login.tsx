@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
-import { ErrorMsg } from "../ui";
+import { ErrorMsg, Icon } from "../ui";
+import AuthLayout, { AuthLink } from "./AuthLayout";
 
 export default function Login() {
   const { login } = useAuth();
@@ -24,27 +24,26 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-wrap">
-      <div className="card">
-        <h3>Вход в TutorFlow</h3>
+    <AuthLayout
+      title="Вход"
+      subtitle="Введите email и пароль"
+      footer={<>Нет аккаунта? <AuthLink to="/register">Зарегистрироваться</AuthLink></>}
+    >
         <ErrorMsg error={error} />
-        <form onSubmit={onSubmit}>
+        <form className="auth-form" onSubmit={onSubmit}>
           <div className="field">
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label htmlFor="login-email">Email</label>
+            <div className="input-with-icon"><Icon name="mail" /><input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
           </div>
           <div className="field">
-            <label>Пароль</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <label htmlFor="login-password">Пароль</label>
+            <div className="input-with-icon"><Icon name="lock" /><input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
           </div>
-          <button className="primary" type="submit" disabled={busy} style={{ width: "100%" }}>
-            {busy ? "Вход…" : "Войти"}
+          <button className="primary auth-submit" type="submit" disabled={busy}>
+            <Icon name="login" />
+            {busy ? "Вход..." : "Войти"}
           </button>
         </form>
-        <div className="center-link">
-          Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
-        </div>
-      </div>
-    </div>
+    </AuthLayout>
   );
 }

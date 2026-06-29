@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300,0,0&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Manrope',system-ui,sans-serif; color:#14181f; -webkit-font-smoothing:antialiased; background:#f6f8fb; }
+  .ms { font-family:'Material Symbols Rounded'; font-weight:300; line-height:1; display:inline-flex; vertical-align:middle; }
+  ::selection { background:#d6defb; }
+  .tf-scroll::-webkit-scrollbar { width:10px; height:10px; }
+  .tf-scroll::-webkit-scrollbar-thumb { background:#dce2ea; border-radius:8px; border:3px solid #f6f8fb; }
+  @keyframes toastIn { from{opacity:0; transform:translateY(10px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  @keyframes modalIn { from{opacity:0; transform:translateY(14px) scale(.98)} to{opacity:1; transform:none} }
+  @keyframes rowIn { from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
+</style>
+</helmet>
+
+<div style="display:flex; height:100vh; overflow:hidden; background:#f6f8fb">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside style="width:{{ sbWidth }}; min-width:0; flex-shrink:0; background:#fff; border-right:1px solid #e6eaf0; display:flex; flex-direction:column; transition:width .22s cubic-bezier(.4,0,.2,1); overflow:hidden">
+    <div style="height:62px; flex-shrink:0; display:flex; align-items:center; gap:11px; padding:0 18px; background:#f3f5fe; border-bottom:1px solid #e6eaf0">
+      <a href="TutorFlow — Прототип.dc.html" title="К обзору прототипа" style="width:30px; height:30px; flex-shrink:0; border-radius:8px; background:#3b5bdb; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; text-decoration:none; cursor:pointer">T</a>
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="font-weight:800; font-size:16px; letter-spacing:-0.01em; color:#2f49b8; white-space:nowrap">TutorFlow</span></sc-if>
+    </div>
+    <nav style="flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto" class="tf-scroll">
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#aab2bf; padding:8px 11px 4px">Работа</div></sc-if>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">dashboard</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Сводка</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; background:#e9edfd; color:#2f49b8; font-weight:700; font-size:13.5px; cursor:pointer; white-space:nowrap"><span class="ms" style="font-size:21px; flex-shrink:0">group</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Ученики</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">calendar_month</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Занятия</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">assignment</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Домашние задания</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">account_balance_wallet</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Финансы</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; position:relative; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">receipt_long</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чеки</span></sc-if><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="background:#fbeecd; color:#8a5a00; font-weight:700; font-size:11px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center">3</span></sc-if></div>
+      <div style="display:flex; align-items:center; gap:12px; padding:10px 11px; border-radius:10px; color:#5a6472; font-weight:600; font-size:13.5px; cursor:pointer; white-space:nowrap; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:21px; flex-shrink:0">chat_bubble</span><sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span style="flex:1">Чаты</span></sc-if></div>
+    </nav>
+    <div style="flex-shrink:0; border-top:1px solid #eef2f7; padding:10px 12px">
+      <div style="display:flex; align-items:center; gap:11px; padding:8px 9px; border-radius:10px; white-space:nowrap">
+        <div style="width:34px; height:34px; flex-shrink:0; border-radius:9px; background:#3b5bdb; color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff, 0 0 0 4px #c7d2f7">ЕС</div>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">Елена Соколова</div><div style="font-weight:600; font-size:11.5px; color:#2f49b8">Преподаватель</div></div></sc-if>
+        <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}"><span class="ms" style="font-size:20px; color:#8b94a3; cursor:pointer">settings</span></sc-if>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0; overflow:hidden">
+    <header style="height:62px; flex-shrink:0; background:#fff; border-bottom:1px solid #e6eaf0; display:flex; align-items:center; gap:14px; padding:0 26px">
+      <button onClick="{{ toggle }}" title="Свернуть меню" style="width:38px; height:38px; flex-shrink:0; border:1px solid #e6eaf0; background:#fff; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#5a6472; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:22px">menu</span></button>
+      <div style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; color:#8b94a3"><span style="cursor:pointer; transition:color .15s" style-hover="color:#3b5bdb">Ученики</span><span class="ms" style="font-size:18px">chevron_right</span><span style="color:#14181f; font-weight:700">Марк Лебедев</span></div>
+      <div style="position:relative; width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#5a6472; cursor:pointer; margin-left:auto; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:23px">notifications</span><span style="position:absolute; top:4px; right:4px; background:#e0584f; color:#fff; font-weight:700; font-size:10px; min-width:16px; height:16px; padding:0 4px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; border:1.5px solid #fff">2</span></div>
+    </header>
+
+    <div class="tf-scroll" style="flex:1; overflow-y:auto; padding:24px 26px 60px">
+      <div style="max-width:1080px; margin:0 auto">
+
+        <!-- Profile header -->
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:22px 24px; display:flex; align-items:center; gap:18px; margin-bottom:18px">
+          <div style="position:relative; flex-shrink:0"><div style="width:60px; height:60px; border-radius:16px; background:#e9edfd; color:#3b5bdb; font-weight:700; font-size:22px; display:flex; align-items:center; justify-content:center">МЛ</div><span style="position:absolute; right:-3px; bottom:-3px; width:15px; height:15px; border-radius:50%; background:#18a866; border:3px solid #fff"></span></div>
+          <div style="flex:1; min-width:0">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap"><div style="font-weight:800; font-size:22px; letter-spacing:-0.01em">Марк Лебедев</div><span style="display:inline-flex; align-items:center; gap:6px; font-weight:600; font-size:12px; color:#0f7a4f; background:#e3f4ec; padding:4px 10px; border-radius:999px"><span style="width:6px; height:6px; border-radius:50%; background:#18a866"></span>онлайн</span></div>
+            <div style="display:flex; align-items:center; gap:16px; margin-top:7px; font-weight:500; font-size:13px; color:#5a6472; flex-wrap:wrap">
+              <span style="display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px; color:#8b94a3">menu_book</span>Математика · 9 класс</span>
+              <span style="display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px; color:#8b94a3">mail</span>mark.lebedev@mail.ru</span>
+              <span style="display:inline-flex; align-items:center; gap:6px"><span class="ms" style="font-size:17px; color:#8b94a3">event</span>с марта 2025</span>
+            </div>
+          </div>
+          <button style="background:#fff; color:#14181f; border:1px solid #e6eaf0; padding:9px 15px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; flex-shrink:0; transition:background .15s" style-hover="background:#f6f8fb"><span class="ms" style="font-size:18px">chat_bubble</span>Написать</button>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex; gap:24px; border-bottom:1px solid #e6eaf0; margin-bottom:20px">
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="5">
+            <div onClick="{{ tb.select }}" style="font-weight:{{ tb.weight }}; font-size:14px; color:{{ tb.color }}; padding:0 2px 12px; border-bottom:2px solid {{ tb.border }}; margin-bottom:-1px; cursor:pointer; white-space:nowrap">{{ tb.label }}</div>
+          </sc-for>
+        </div>
+
+        <!-- ===== OVERVIEW TAB ===== -->
+        <sc-if value="{{ isOverview }}">
+          <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:18px; align-items:start">
+            <!-- LEFT -->
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+              <!-- info -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden">
+                <div style="display:flex; align-items:center; gap:10px; padding:16px 22px; border-bottom:1px solid #eef2f7"><span class="ms" style="font-size:20px; color:#3b5bdb">badge</span><div style="font-weight:700; font-size:16px">Информация об ученике</div><span onClick="{{ editInfo }}" style="margin-left:auto; font-weight:600; font-size:13px; color:#3b5bdb; cursor:pointer; display:inline-flex; align-items:center; gap:5px"><span class="ms" style="font-size:16px">edit</span>Редактировать</span></div>
+                <div style="padding:4px 22px 8px; display:grid; grid-template-columns:1fr 1fr; gap:0 28px">
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">mail</span><div style="min-width:0"><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Email</div><div style="font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">mark.lebedev@mail.ru</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">call</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Телефон</div><div style="font-weight:600; font-size:13.5px">+7 916 240-18-05</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">menu_book</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Предмет и класс</div><div style="font-weight:600; font-size:13.5px">Математика · 9 класс</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">payments</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Стоимость занятия</div><div style="font-weight:600; font-size:13.5px">1 000 ₽ / 60 мин</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">videocam</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Формат</div><div style="font-weight:600; font-size:13.5px">Онлайн · Zoom</div></div></div>
+                  <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid #f3f5f8"><span class="ms" style="font-size:19px; color:#8b94a3">event</span><div><div style="font-weight:500; font-size:11.5px; color:#8b94a3">Занимается с</div><div style="font-weight:600; font-size:13.5px">марта 2025</div></div></div>
+                </div>
+              </div>
+
+              <!-- notes + extra info -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px"><span class="ms" style="font-size:20px; color:#7c3aed">sticky_note_2</span><div style="font-weight:700; font-size:16px">Заметки и доп. информация</div></div>
+                <textarea value="{{ notesText }}" onInput="{{ setNotes }}" placeholder="Личные заметки: цели, сильные и слабые темы, договорённости…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:12px 14px; border:1px solid #d4dae3; border-radius:11px; background:#fbfcfe; min-height:74px; resize:vertical; line-height:1.55"></textarea>
+
+                <!-- extra fields -->
+                <sc-if value="{{ hasFields }}">
+                  <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px">
+                    <sc-for list="{{ extraFields }}" as="f" hint-placeholder-count="2">
+                      <div style="display:flex; align-items:center; gap:12px; background:#f6f8fb; border:1px solid #eef2f7; border-radius:10px; padding:9px 13px">
+                        <span class="ms" style="font-size:17px; color:#7c3aed; flex-shrink:0">label</span>
+                        <div style="font-weight:600; font-size:12.5px; color:#5a6472; flex-shrink:0; min-width:120px">{{ f.label }}</div>
+                        <div style="font-weight:500; font-size:13.5px; flex:1; min-width:0">{{ f.value }}</div>
+                        <span onClick="{{ f.remove }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <!-- add field -->
+                <div style="display:flex; gap:8px; margin-top:14px; align-items:stretch">
+                  <input value="{{ newLabel }}" onInput="{{ setNewLabel }}" placeholder="Поле (напр. Родитель)" style="width:170px; box-sizing:border-box; font-family:inherit; font-size:13.5px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff">
+                  <input value="{{ newValue }}" onInput="{{ setNewValue }}" onKeyDown="{{ onFieldKey }}" placeholder="Значение" style="flex:1; min-width:0; box-sizing:border-box; font-family:inherit; font-size:13.5px; padding:10px 12px; border:1px solid #d4dae3; border-radius:10px; background:#fff">
+                  <button onClick="{{ addField }}" style="background:{{ addBg }}; color:#fff; border:none; padding:0 16px; border-radius:10px; font-weight:600; font-size:13.5px; font-family:inherit; cursor:{{ addCursor }}; opacity:{{ addOpacity }}; display:inline-flex; align-items:center; gap:6px; white-space:nowrap"><span class="ms" style="font-size:18px">add</span>Добавить</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT -->
+            <div style="display:flex; flex-direction:column; gap:18px; min-width:0">
+              <!-- quick stats -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="font-weight:700; font-size:15px; margin-bottom:14px">Активность</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">16</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">занятий проведено</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums; color:#0f7a4f">12</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">ДЗ выполнено</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">94%</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">посещаемость</div></div>
+                  <div style="background:#f8fafc; border:1px solid #eef2f7; border-radius:11px; padding:12px 14px"><div style="font-weight:800; font-size:22px; font-variant-numeric:tabular-nums">2</div><div style="font-weight:500; font-size:11.5px; color:#8b94a3; margin-top:1px">активных ДЗ</div></div>
+                </div>
+              </div>
+              <!-- tags -->
+              <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:18px 22px">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:13px"><div style="font-weight:700; font-size:15px">Метки</div><span onClick="{{ addTag }}" class="ms" style="margin-left:auto; font-size:20px; color:#3b5bdb; cursor:pointer">add_circle</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                  <span style="font-weight:600; font-size:12.5px; color:#2f49b8; background:#e9edfd; border-radius:999px; padding:5px 12px">подготовка к ОГЭ</span>
+                  <span style="font-weight:600; font-size:12.5px; color:#0f7a4f; background:#e3f4ec; border-radius:999px; padding:5px 12px">сильный ученик</span>
+                  <span style="font-weight:600; font-size:12.5px; color:#8a5a00; background:#fbeecd; border-radius:999px; padding:5px 12px">геометрия — слабее</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== OTHER TABS placeholder ===== -->
+        <sc-if value="{{ isOther }}">
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:64px 20px; color:#8b94a3; background:#fff; border:1px solid #e6eaf0; border-radius:16px">
+            <div style="width:56px; height:56px; border-radius:15px; background:#eef2f7; display:flex; align-items:center; justify-content:center; margin-bottom:14px"><span class="ms" style="font-size:28px; color:#aab2bf">{{ otherIcon }}</span></div>
+            <div style="font-weight:700; font-size:15px; color:#5a6472">{{ otherTitle }}</div>
+            <div style="font-weight:500; font-size:13px; margin-top:3px; text-align:center; max-width:340px">{{ otherSub }}</div>
+            <button style="margin-top:16px; background:#3b5bdb; color:#fff; border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer">{{ otherCta }}</button>
+          </div>
+        </sc-if>
+
+        <!-- ===== FINANCE TAB ===== -->
+        <sc-if value="{{ isFinance }}">
+        <!-- Finance row -->
+        <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:16px; margin-bottom:18px">
+          <!-- Balance -->
+          <div style="background:{{ balanceCardBg }}; border:1px solid {{ balanceCardBorder }}; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:{{ balanceLabelColor }}"><span class="ms" style="font-size:19px">account_balance_wallet</span><span style="font-weight:600; font-size:12.5px">{{ balanceLabel }}</span></div>
+            <div style="font-weight:800; font-size:32px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; color:{{ balanceValueColor }}">{{ balanceFmt }} ₽</div>
+            <div style="font-weight:500; font-size:12.5px; color:{{ balanceSubColor }}; margin-top:2px">{{ balanceSub }}</div>
+            <button onClick="{{ openAdjust }}" style="margin-top:16px; width:100%; box-sizing:border-box; background:#fff; color:#2f49b8; border:1px solid #c7d2f7; padding:9px; border-radius:10px; font-weight:600; font-size:13px; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px; transition:background .15s" style-hover="background:#f3f5fe"><span class="ms" style="font-size:18px">tune</span>Скорректировать баланс</button>
+          </div>
+          <!-- Accrued -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">trending_up</span><span style="font-weight:600; font-size:12.5px">Начислено за занятия</span></div>
+            <div style="font-weight:800; font-size:32px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.02em">{{ accruedFmt }} ₽</div>
+            <div style="font-weight:500; font-size:12.5px; color:#8b94a3; margin-top:2px">16 занятий с марта</div>
+          </div>
+          <!-- Paid -->
+          <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; padding:20px 22px">
+            <div style="display:flex; align-items:center; gap:8px; color:#8b94a3"><span class="ms" style="font-size:19px">check_circle</span><span style="font-weight:600; font-size:12.5px">Оплачено (подтверждено)</span></div>
+            <div style="font-weight:800; font-size:32px; margin-top:12px; font-variant-numeric:tabular-nums; letter-spacing:-0.02em; color:#0f7a4f">{{ paidFmt }} ₽</div>
+            <div style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:12.5px; color:#8a5a00; margin-top:4px"><span class="ms" style="font-size:15px; color:#d99413">hourglass_top</span>ещё 8 000 ₽ на проверке</div>
+          </div>
+        </div>
+
+        <!-- Pending note -->
+        <div style="display:flex; align-items:center; gap:11px; background:#fffaf0; border:1px solid #f5e2c8; border-radius:12px; padding:12px 16px; margin-bottom:18px">
+          <span class="ms" style="font-size:20px; color:#d99413; flex-shrink:0">hourglass_top</span>
+          <div style="flex:1; font-weight:500; font-size:13px; color:#7a5a1e">Чек на <b>8 000 ₽</b> ожидает подтверждения. Долг не уменьшится, пока вы не подтвердите оплату.</div>
+          <button style="background:#fff; color:#8a5a00; border:1px solid #ecd9b0; padding:7px 13px; border-radius:9px; font-weight:600; font-size:12.5px; font-family:inherit; cursor:pointer; flex-shrink:0; white-space:nowrap">Открыть чек</button>
+        </div>
+
+        <!-- Journal -->
+        <div style="background:#fff; border:1px solid #e6eaf0; border-radius:16px; overflow:hidden">
+          <div style="display:flex; align-items:center; gap:10px; padding:16px 22px; border-bottom:1px solid #eef2f7">
+            <span class="ms" style="font-size:20px; color:#3b5bdb">receipt_long</span>
+            <div style="font-weight:700; font-size:16px">Журнал операций</div>
+            <span style="margin-left:auto; font-weight:600; font-size:13px; color:#3b5bdb; cursor:pointer; display:inline-flex; align-items:center; gap:5px"><span class="ms" style="font-size:17px">download</span>Выгрузить</span>
+          </div>
+          <!-- col header -->
+          <div style="display:grid; grid-template-columns:40px 1fr 130px 130px; gap:14px; padding:11px 22px; background:#fafbfd; border-bottom:1px solid #e6eaf0; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:#8b94a3">
+            <div></div><div>Операция</div><div style="text-align:right">Сумма</div><div style="text-align:right">Баланс</div>
+          </div>
+          <sc-for list="{{ entries }}" as="e" hint-placeholder-count="6">
+            <div style="display:grid; grid-template-columns:40px 1fr 130px 130px; gap:14px; padding:13px 22px; border-bottom:1px solid #f3f5f8; align-items:center; animation:{{ e.anim }}">
+              <div style="width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; background:{{ e.iconBg }}"><span class="ms" style="font-size:19px; color:{{ e.iconColor }}">{{ e.icon }}</span></div>
+              <div style="min-width:0"><div style="font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ e.title }}</div><div style="font-weight:500; font-size:12px; color:#8b94a3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ e.meta }}</div></div>
+              <div style="text-align:right; font-weight:700; font-size:14px; font-variant-numeric:tabular-nums; color:{{ e.amountColor }}">{{ e.amountFmt }}</div>
+              <div style="text-align:right; font-weight:600; font-size:13.5px; font-variant-numeric:tabular-nums; color:#5a6472">{{ e.runningFmt }} ₽</div>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ADJUST MODAL ============ -->
+  <sc-if value="{{ adjustOpen }}">
+    <div onClick="{{ closeAdjust }}" style="position:fixed; inset:0; background:rgba(20,24,33,.34); z-index:60; display:flex; align-items:center; justify-content:center; padding:20px; animation:overlayIn .2s ease">
+      <div onClick="{{ stop }}" style="width:440px; max-width:100%; background:#fff; border-radius:18px; box-shadow:0 28px 70px rgba(20,24,33,.32); padding:26px; animation:modalIn .26s cubic-bezier(.4,0,.2,1)">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between"><div><div style="font-weight:800; font-size:20px; letter-spacing:-0.01em">Ручная корректировка</div><div style="font-weight:500; font-size:13px; color:#8b94a3; margin-top:3px">Марк Лебедев · текущий долг {{ balanceFmt }} ₽</div></div><span onClick="{{ closeAdjust }}" class="ms" style="font-size:24px; color:#8b94a3; cursor:pointer">close</span></div>
+
+        <!-- direction -->
+        <div style="margin-top:20px; display:flex; gap:8px; background:#eef2f7; border-radius:11px; padding:4px">
+          <div onClick="{{ setCharge }}" style="flex:1; text-align:center; padding:9px; border-radius:8px; font-weight:600; font-size:13.5px; cursor:pointer; background:{{ chargeBg }}; color:{{ chargeColor }}; box-shadow:{{ chargeShadow }}; display:flex; align-items:center; justify-content:center; gap:6px"><span class="ms" style="font-size:18px">add</span>Начислить долг</div>
+          <div onClick="{{ setCredit }}" style="flex:1; text-align:center; padding:9px; border-radius:8px; font-weight:600; font-size:13.5px; cursor:pointer; background:{{ creditBg }}; color:{{ creditColor }}; box-shadow:{{ creditShadow }}; display:flex; align-items:center; justify-content:center; gap:6px"><span class="ms" style="font-size:18px">remove</span>Списать / зачесть</div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Сумма</label>
+          <div style="position:relative">
+            <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-weight:800; font-size:18px; color:{{ signColor }}">{{ sign }}</span>
+            <input value="{{ amountStr }}" onInput="{{ setAmount }}" inputmode="numeric" placeholder="0" style="width:100%; box-sizing:border-box; font-family:inherit; font-weight:700; font-size:18px; padding:12px 38px 12px 32px; border:1px solid #d4dae3; border-radius:11px; background:#fff; font-variant-numeric:tabular-nums" />
+            <span style="position:absolute; right:14px; top:50%; transform:translateY(-50%); font-weight:700; font-size:16px; color:#8b94a3">₽</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px">
+          <label style="display:block; font-weight:600; font-size:13px; color:#5a6472; margin-bottom:7px">Комментарий <span style="color:#aab2bf; font-weight:500">(обязательно)</span></label>
+          <textarea onInput="{{ setComment }}" placeholder="Например: зачёт за вводное занятие, скидка, бонус…" style="width:100%; box-sizing:border-box; font-family:inherit; font-size:14px; padding:11px 13px; border:1px solid #d4dae3; border-radius:11px; background:#fff; min-height:62px; resize:vertical">{{ comment }}</textarea>
+        </div>
+
+        <!-- preview -->
+        <div style="margin-top:16px; display:flex; align-items:center; gap:12px; background:#f6f8fb; border:1px solid #e6eaf0; border-radius:11px; padding:12px 14px">
+          <div style="flex:1"><div style="font-weight:500; font-size:12px; color:#8b94a3">Текущий долг</div><div style="font-weight:700; font-size:16px; font-variant-numeric:tabular-nums">{{ balanceFmt }} ₽</div></div>
+          <span class="ms" style="font-size:22px; color:#8b94a3">arrow_forward</span>
+          <div style="flex:1; text-align:right"><div style="font-weight:500; font-size:12px; color:#8b94a3">Станет</div><div style="font-weight:700; font-size:16px; font-variant-numeric:tabular-nums; color:{{ previewColor }}">{{ previewFmt }} ₽</div></div>
+        </div>
+
+        <div style="margin-top:22px; display:flex; gap:10px; justify-content:flex-end">
+          <button onClick="{{ closeAdjust }}" style="background:#eef2f7; color:#14181f; border:1px solid #e6eaf0; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:pointer">Отмена</button>
+          <button onClick="{{ applyAdjust }}" style="background:{{ applyBg }}; color:#fff; border:none; padding:10px 18px; border-radius:11px; font-weight:600; font-size:14px; font-family:inherit; cursor:{{ applyCursor }}; opacity:{{ applyOpacity }}; display:inline-flex; align-items:center; gap:7px"><span class="ms" style="font-size:18px">check</span>Применить</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOASTS ============ -->
+  <div style="position:fixed; right:22px; bottom:22px; display:flex; flex-direction:column; gap:10px; z-index:80; width:330px; max-width:calc(100vw - 44px)">
+    <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+      <div style="display:flex; align-items:flex-start; gap:11px; background:#fff; border:1px solid #e6eaf0; border-left:3px solid {{ t.color }}; border-radius:12px; padding:13px 15px; box-shadow:0 12px 32px rgba(20,24,33,.16); animation:toastIn .28s cubic-bezier(.4,0,.2,1)">
+        <span class="ms" style="font-size:20px; color:{{ t.color }}; margin-top:1px; flex-shrink:0">{{ t.icon }}</span>
+        <div style="flex:1; min-width:0"><div style="font-weight:700; font-size:13.5px">{{ t.title }}</div><div style="font-weight:500; font-size:12.5px; color:#5a6472">{{ t.body }}</div></div>
+        <span onClick="{{ t.dismiss }}" class="ms" style="font-size:18px; color:#b8c0cc; cursor:pointer; flex-shrink:0">close</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;collapsed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Макет&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    let collapsed = false;
+    try {
+      const saved = localStorage.getItem('tf_sb_collapsed');
+      if (saved !== null) collapsed = saved === '1';
+      else if (typeof window !== 'undefined' && window.innerWidth < 1080) collapsed = true;
+    } catch (e) {}
+    if (props.collapsed === true) collapsed = true;
+
+    // base journal (oldest -> newest); running balance computed in render
+    this.baseEntries = [
+      { id: 'e0', type: 'charge', title: 'Занятия (март – август) · 12 занятий', meta: 'перенос накопленного', amount: 10000 },
+      { id: 'e3', type: 'payment', title: 'Платёж подтверждён', meta: '3 сентября · чек_авг.pdf', amount: -5000 },
+      { id: 'e4', type: 'charge', title: 'Занятие · Квадратные уравнения', meta: '5 сентября · 90 мин', amount: 1500 },
+      { id: 'e5', type: 'adjust', title: 'Корректировка · зачёт вводного', meta: '5 сентября · Елена Соколова', amount: -500 },
+      { id: 'e6', type: 'charge', title: 'Занятие · Контрольная работа', meta: '7 сентября · 60 мин', amount: 1000 },
+      { id: 'e7', type: 'charge', title: 'Занятие · Производные функций', meta: '8 сентября · 60 мин', amount: 1000 },
+    ];
+
+    this.state = {
+      collapsed,
+      tab: 'overview',
+      nextId: 1,
+      toasts: [],
+      extraEntries: [],
+      adjustOpen: false,
+      dir: 'charge',     // 'charge' (+debt) | 'credit' (-debt)
+      amountStr: '',
+      comment: '',
+      notes: 'Хорошо идёт алгебра, любит разбирать сложные задачи. По геометрии — нужна дополнительная практика на доказательства.',
+      extraFields: [
+        { id: 'f1', label: 'Родитель', value: 'Ольга Лебедева, +7 916 240-18-05' },
+        { id: 'f2', label: 'Цель', value: 'Сдать ОГЭ на 5' },
+      ],
+      newLabel: '',
+      newValue: '',
+    };
+    this._timers = [];
+  }
+
+  componentDidMount() {
+    this._onResize = () => { if (window.innerWidth < 880 && !this.state.collapsed) this.setState({ collapsed: true }); };
+    window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._onResize); this._timers.forEach(clearTimeout); }
+  componentDidUpdate(prev) {
+    if (prev.collapsed !== this.props.collapsed && typeof this.props.collapsed === 'boolean' && this.props.collapsed !== this.state.collapsed) this.setState({ collapsed: this.props.collapsed });
+  }
+
+  _toggle() { this.setState(s => { const c = !s.collapsed; try { localStorage.setItem('tf_sb_collapsed', c ? '1' : '0'); } catch (e) {} return { collapsed: c }; }); }
+  _toast(t) { const id = this.state.nextId; this.setState(s => ({ nextId: s.nextId + 1, toasts: [{ id, ...t }, ...s.toasts].slice(0, 3) })); this._timers.push(setTimeout(() => this._dismiss(id), 5000)); }
+  _dismiss(id) { this.setState(s => ({ toasts: s.toasts.filter(t => t.id !== id) })); }
+
+  fmt(n) { return Math.abs(n).toLocaleString('ru-RU'); }
+  fmtSigned(n) { return (n < 0 ? '−' : (n > 0 ? '+' : '')) + Math.abs(n).toLocaleString('ru-RU'); }
+  // debt formatting: positive = owes; negative = overpaid (credit)
+  fmtDebt(n) { return (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('ru-RU'); }
+
+  _openAdjust() { this.setState({ adjustOpen: true, dir: 'charge', amountStr: '', comment: '' }); }
+  _closeAdjust() { this.setState({ adjustOpen: false }); }
+  _setAmount(e) { this.setState({ amountStr: (e && e.target ? e.target.value : '').replace(/[^0-9]/g, '') }); }
+  _setComment(e) { this.setState({ comment: e && e.target ? e.target.value : '' }); }
+
+  _addField() {
+    const label = this.state.newLabel.trim();
+    const value = this.state.newValue.trim();
+    if (!label || !value) { this._toast({ icon: 'error', color: '#e0584f', title: 'Заполните поле', body: 'Нужны название и значение' }); return; }
+    this.setState(s => ({
+      nextId: s.nextId + 1,
+      extraFields: s.extraFields.concat([{ id: 'f' + s.nextId, label, value }]),
+      newLabel: '', newValue: '',
+    }));
+    this._toast({ icon: 'check_circle', color: '#18a866', title: 'Добавлено', body: label });
+  }
+  _removeField(id) { this.setState(s => ({ extraFields: s.extraFields.filter(f => f.id !== id) })); }
+
+  _allEntries() { return this.baseEntries.concat(this.state.extraEntries); }
+  _currentDebt() { return this._allEntries().reduce((a, e) => a + e.amount, 0); }
+
+  _applyAdjust() {
+    const amt = parseInt(this.state.amountStr || '0', 10);
+    if (!amt || !this.state.comment.trim()) {
+      this._toast({ icon: 'error', color: '#e0584f', title: 'Заполните поля', body: 'Нужна сумма и комментарий' });
+      return;
+    }
+    const signed = this.state.dir === 'charge' ? amt : -amt;
+    const entry = {
+      id: 'adj' + this.state.nextId, type: 'adjust', _new: true,
+      title: 'Корректировка · ' + this.state.comment.trim(),
+      meta: 'только что · Елена Соколова',
+      amount: signed,
+    };
+    this.setState(s => ({ adjustOpen: false, nextId: s.nextId + 1, extraEntries: s.extraEntries.concat([entry]) }));
+    this._toast({ icon: 'tune', color: '#3b5bdb', title: 'Баланс скорректирован', body: this.fmtSigned(signed) + ' ₽ · ' + this.state.comment.trim() });
+  }
+
+  TYPE = {
+    charge:  { icon: 'school', iconBg: '#e9edfd', iconColor: '#3b5bdb' },
+    payment: { icon: 'check_circle', iconBg: '#e3f4ec', iconColor: '#0f7a4f' },
+    adjust:  { icon: 'tune', iconBg: '#f3eafe', iconColor: '#7c3aed' },
+  };
+
+  renderVals() {
+    const collapsed = this.state.collapsed;
+    const all = this._allEntries();
+    // running balance
+    let run = 0;
+    const withRun = all.map(e => { run += e.amount; return { e, run }; });
+    const debt = run; // final
+    // newest first for display
+    const entries = withRun.slice().reverse().map(({ e, run }) => {
+      const t = this.TYPE[e.type] || this.TYPE.adjust;
+      return {
+        icon: t.icon, iconBg: t.iconBg, iconColor: t.iconColor,
+        title: e.title, meta: e.meta,
+        amountFmt: this.fmtSigned(e.amount) + ' ₽',
+        amountColor: e.amount < 0 ? '#0f7a4f' : '#14181f',
+        runningFmt: this.fmtDebt(run),
+        anim: e._new ? 'rowIn .35s ease' : 'none',
+      };
+    });
+
+    const accrued = all.filter(e => e.type === 'charge').reduce((a, e) => a + e.amount, 0);
+    const paid = Math.abs(all.filter(e => e.type === 'payment').reduce((a, e) => a + e.amount, 0));
+
+    // balance card styling: debt (red-ish neutral) vs credit (green)
+    const isCredit = debt < 0;
+    const isZero = debt === 0;
+
+    // adjust modal preview
+    const amt = parseInt(this.state.amountStr || '0', 10);
+    const signed = this.state.dir === 'charge' ? amt : -amt;
+    const preview = debt + signed;
+    const ready = amt > 0 && this.state.comment.trim().length > 0;
+    const charge = this.state.dir === 'charge';
+
+    // tabs
+    const tab = this.state.tab;
+    const tabDefs = [
+      { key: 'overview', label: 'Обзор' },
+      { key: 'finance', label: 'Финансы' },
+      { key: 'lessons', label: 'Занятия' },
+      { key: 'homework', label: 'Домашние задания' },
+      { key: 'receipts', label: 'Чеки' },
+    ];
+    const tabs = tabDefs.map(t => {
+      const active = tab === t.key;
+      return {
+        label: t.label,
+        select: () => this.setState({ tab: t.key }),
+        color: active ? '#3b5bdb' : '#8b94a3',
+        weight: active ? '700' : '600',
+        border: active ? '#3b5bdb' : 'transparent',
+      };
+    });
+    const otherMap = {
+      lessons: { icon: 'calendar_month', title: 'Занятия ученика', sub: 'История и расписание занятий Марка открываются в разделе «Занятия».', cta: 'Открыть занятия' },
+      homework: { icon: 'assignment', title: 'Домашние задания', sub: 'Все выданные и проверенные работы Марка — в разделе «Домашние задания».', cta: 'Открыть ДЗ' },
+      receipts: { icon: 'receipt_long', title: 'Чеки ученика', sub: 'История оплат и чеков на подтверждение — в разделе «Чеки».', cta: 'Открыть чеки' },
+    };
+    const other = otherMap[tab] || otherMap.lessons;
+
+    return {
+      collapsed, expanded: !collapsed, sbWidth: collapsed ? '76px' : '240px',
+      toggle: () => this._toggle(),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+
+      tabs,
+      isOverview: tab === 'overview',
+      isFinance: tab === 'finance',
+      isOther: tab === 'lessons' || tab === 'homework' || tab === 'receipts',
+      otherIcon: other.icon, otherTitle: other.title, otherSub: other.sub, otherCta: other.cta,
+
+      // overview
+      notesText: typeof this.state.notes === 'string' ? this.state.notes : '',
+      setNotes: (e) => this.setState({ notes: e && e.target ? e.target.value : '' }),
+      hasFields: this.state.extraFields.length > 0,
+      extraFields: this.state.extraFields.map(f => ({ ...f, remove: () => this._removeField(f.id) })),
+      newLabel: this.state.newLabel, setNewLabel: (e) => this.setState({ newLabel: e && e.target ? e.target.value : '' }),
+      newValue: this.state.newValue, setNewValue: (e) => this.setState({ newValue: e && e.target ? e.target.value : '' }),
+      onFieldKey: (e) => { if (e && e.key === 'Enter') { e.preventDefault(); this._addField(); } },
+      addField: () => this._addField(),
+      addBg: (this.state.newLabel.trim() && this.state.newValue.trim()) ? '#3b5bdb' : '#aeb9e8',
+      addCursor: (this.state.newLabel.trim() && this.state.newValue.trim()) ? 'pointer' : 'not-allowed',
+      addOpacity: (this.state.newLabel.trim() && this.state.newValue.trim()) ? '1' : '.75',
+      editInfo: () => this._toast({ icon: 'edit', color: '#3b5bdb', title: 'Редактирование', body: 'Карточка ученика' }),
+      addTag: () => this._toast({ icon: 'add', color: '#3b5bdb', title: 'Новая метка', body: 'Добавьте метку ученику' }),
+
+      // balance card
+      balanceFmt: this.fmtDebt(debt),
+      balanceLabel: isCredit ? 'Переплата (в пользу ученика)' : 'Текущий долг',
+      balanceSub: isCredit ? 'можно зачесть в счёт занятий' : (isZero ? 'оплачено полностью' : 'к оплате преподавателю'),
+      balanceCardBg: isCredit ? '#f0faf4' : '#fff',
+      balanceCardBorder: isCredit ? '#cdeede' : '#e6eaf0',
+      balanceValueColor: isCredit ? '#0f7a4f' : '#14181f',
+      balanceLabelColor: isCredit ? '#0f7a4f' : '#8b94a3',
+      balanceSubColor: isCredit ? '#3f9b6e' : '#8b94a3',
+
+      accruedFmt: this.fmt(accrued),
+      paidFmt: this.fmt(paid),
+
+      entries,
+
+      // adjust modal
+      adjustOpen: this.state.adjustOpen,
+      openAdjust: () => this._openAdjust(),
+      closeAdjust: () => this._closeAdjust(),
+      setCharge: () => this.setState({ dir: 'charge' }),
+      setCredit: () => this.setState({ dir: 'credit' }),
+      chargeBg: charge ? '#fff' : 'transparent',
+      chargeColor: charge ? '#14181f' : '#8b94a3',
+      chargeShadow: charge ? '0 1px 2px rgba(20,24,33,.1)' : 'none',
+      creditBg: !charge ? '#fff' : 'transparent',
+      creditColor: !charge ? '#14181f' : '#8b94a3',
+      creditShadow: !charge ? '0 1px 2px rgba(20,24,33,.1)' : 'none',
+      sign: charge ? '+' : '−',
+      signColor: charge ? '#c0362f' : '#0f7a4f',
+      amountStr: this.state.amountStr ? this.fmt(amt) : '',
+      setAmount: (e) => this._setAmount(e),
+      comment: this.state.comment,
+      setComment: (e) => this._setComment(e),
+      previewFmt: this.fmtDebt(preview),
+      previewColor: preview < 0 ? '#0f7a4f' : (preview === 0 ? '#5a6472' : '#14181f'),
+      applyAdjust: () => this._applyAdjust(),
+      applyBg: ready ? '#3b5bdb' : '#aeb9e8',
+      applyCursor: ready ? 'pointer' : 'not-allowed',
+      applyOpacity: ready ? '1' : '.7',
+
+      toasts: this.state.toasts.map(t => ({ ...t, dismiss: () => this._dismiss(t.id) })),
+    };
+  }
+}
+</script>
+</body>
+</html>
