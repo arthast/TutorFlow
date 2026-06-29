@@ -128,8 +128,14 @@ jobs:
           printf '%s' "$GHCR_PASSWORD" | ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd /opt/tutorflow && test -f .env && IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --env-file .env -f docker-compose.prod.yml pull"
+            "cd /opt/tutorflow && test -f .env && \
+             for attempt in 1 2 3; do \
+               COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --env-file .env -f docker-compose.prod.yml pull && exit 0; \
+               echo \"compose pull failed, retry \$attempt/3\"; \
+               sleep 20; \
+             done; \
+             exit 1"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd /opt/tutorflow && IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans"
+            "cd /opt/tutorflow && COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd /opt/tutorflow && docker compose --env-file .env -f docker-compose.prod.yml ps && docker image prune -f"
