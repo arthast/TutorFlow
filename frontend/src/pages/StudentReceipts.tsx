@@ -1,24 +1,38 @@
 import { useMemo, useState } from "react";
-import { api, openFile, reports, type Receipt, type StudentDashboard } from "../api";
-import { AppShell, Card, ErrorMsg, Icon, ListState, StatusPill, useAsync } from "../ui";
-import { money, studentNav } from "./studentNav";
-
-function teacherName(dashboard: StudentDashboard | null, teacherId: string): string {
-  return dashboard?.summaries.find((summary) => summary.teacher_id === teacherId)?.teacher_name ?? teacherId.slice(0, 8);
-}
+import { api, reports, type Receipt, type StudentDashboard } from "../api";
+import { AppShell, Card, ErrorMsg, SkeletonRows, Tabs, useAsync, type TabItem } from "../ui";
+import { studentNav } from "./studentNav";
+import { StudentReceiptHistory, type StudentReceiptFilter } from "./StudentReceiptHistory";
 
 export default function StudentReceipts() {
   const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
   const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<StudentReceiptFilter>("all");
   const [error, setError] = useState<string | null>(null);
 
   const activeAssignments = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.active_assignments_count, 0) ?? 0;
   const upcomingLessons = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.upcoming_lessons_count, 0) ?? 0;
-  const filtered = useMemo(
-    () => (receipts.data ?? []).filter((receipt) => status === "all" || receipt.status === status),
-    [receipts.data, status],
+  const sortedReceipts = useMemo(
+    () => [...(receipts.data ?? [])].sort((a, b) => new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime()),
+    [receipts.data],
   );
+  const counts = useMemo(() => ({
+    all: sortedReceipts.length,
+    pending_review: sortedReceipts.filter((receipt) => receipt.status === "pending_review").length,
+    confirmed: sortedReceipts.filter((receipt) => receipt.status === "confirmed").length,
+    rejected: sortedReceipts.filter((receipt) => receipt.status === "rejected").length,
+  }), [sortedReceipts]);
+  const filtered = useMemo(
+    () => sortedReceipts.filter((receipt) => status === "all" || receipt.status === status),
+    [sortedReceipts, status],
+  );
+
+  const tabs: TabItem[] = [
+    { key: "all", label: "Все", count: counts.all },
+    { key: "pending_review", label: "На проверке", count: counts.pending_review },
+    { key: "confirmed", label: "Подтверждены", count: counts.confirmed },
+    { key: "rejected", label: "Отклонены", count: counts.rejected },
+  ];
 
   return (
     <AppShell
@@ -32,42 +46,20 @@ export default function StudentReceipts() {
         receipts: dashboard.data?.pending_receipts_count,
       })}
     >
-      <div className="container">
-        <div className="teacher-toolbar">
-          <div className="segmented">
-            {[
-              ["all", "Все"],
-              ["pending_review", "На проверке"],
-              ["confirmed", "Подтверждены"],
-              ["rejected", "Отклонены"],
-            ].map(([value, label]) => (
-              <button className={status === value ? "active" : ""} key={value} onClick={() => setStatus(value)}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <div className="container receipts-container">
+        <Tabs items={tabs} active={status} onChange={(key) => setStatus(key as StudentReceiptFilter)} />
         <Card title="Чеки" icon="receipt_long">
-          <ErrorMsg error={error || receipts.error} />
-          {filtered.map((receipt) => (
-            <div className="resource-row" key={receipt.id}>
-              <div className="resource-icon"><Icon name="receipt_long" /></div>
-              <div className="resource-main">
-                <div className="summary-title">{money(receipt.amount, receipt.currency)}</div>
-                <div className="summary-grid">
-                  <span>{teacherName(dashboard.data, receipt.teacher_id)}</span>
-                  <span>{receipt.submitted_at ? new Date(receipt.submitted_at).toLocaleString("ru-RU") : "-"}</span>
-                  <span>file: {receipt.file_id.slice(0, 8)}</span>
-                </div>
-              </div>
-              <div className="btn-group">
-                <button className="small" onClick={() => openFile(receipt.file_id).catch((err) => setError((err as Error).message))}>Файл</button>
-                <StatusPill status={receipt.status} />
-              </div>
-            </div>
-          ))}
-          <ListState query={{ ...receipts, data: filtered }} empty="Чеки не найдены." />
+          <ErrorMsg error={error || receipts.error || dashboard.error} />
+          {receipts.loading && !receipts.data ? (
+            <SkeletonRows count={5} />
+          ) : (
+            <StudentReceiptHistory
+              receipts={filtered}
+              dashboard={dashboard.data}
+              emptyHint="В этой категории пока нет чеков."
+              onError={setError}
+            />
+          )}
         </Card>
       </div>
     </AppShell>

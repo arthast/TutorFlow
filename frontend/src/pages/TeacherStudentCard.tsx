@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
   api,
@@ -11,19 +11,49 @@ import {
   type TeacherDashboard,
   type Transaction,
 } from "../api";
-import { AppShell, Card, ErrorMsg, Icon, ListState, StatusPill, fmtDate, useAsync } from "../ui";
-import { initials, money, teacherNav } from "./teacherNav";
+import {
+  AppShell,
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  ErrorMsg,
+  Field,
+  Icon,
+  Modal,
+  SkeletonRows,
+  StatusPill,
+  Textarea,
+  fmtDate,
+  useAsync,
+  useToast,
+} from "../ui";
+import { useRealtimeEvent } from "../realtime";
+import { money, teacherNav } from "./teacherNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
 type StudentTab = "overview" | "lessons" | "assignments" | "finance" | "receipts";
 
 const TABS: Array<[StudentTab, string]> = [
-  ["overview", "Профиль"],
+  ["overview", "Обзор"],
+  ["finance", "Финансы"],
   ["lessons", "Занятия"],
   ["assignments", "Домашние задания"],
-  ["finance", "Финансы"],
   ["receipts", "Чеки"],
 ];
+
+function signedMoney(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number") return "—";
+  if (value === 0) return `0 ${currency}`;
+  return `${value < 0 ? "−" : ""}${Math.abs(Math.round(value)).toLocaleString("ru-RU")} ${currency}`;
+}
+
+// Влияние операции на долг: charge +, payment −, correction по знаку, refund +.
+function txEffect(t: Transaction): number {
+  if (t.type === "payment") return -Math.abs(t.amount);
+  if (t.type === "correction") return t.amount;
+  return Math.abs(t.amount);
+}
 
 export default function TeacherStudentCard() {
   const { studentId } = useParams();
@@ -36,17 +66,31 @@ export default function TeacherStudentCard() {
   const transactions = useAsync<Transaction[]>(() => api.get(`/students/${studentId}/transactions`), [studentId]);
   const lessons = useAsync<Lesson[]>(() => api.get("/lessons"), []);
   const assignments = useAsync<Assignment[]>(() => api.get("/assignments"), []);
-  const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts?status=pending_review"), []);
+  const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
+
+  useRealtimeEvent((event) => {
+    if (["lesson", "assignment", "submission", "receipt", "balance"].some((t) => event.type.startsWith(t))) {
+      balance.reload();
+      transactions.reload();
+      summary.reload();
+    }
+  }, [balance.reload, transactions.reload, summary.reload]);
 
   if (!studentId) return <Navigate to="/teacher/students" replace />;
 
   const displayName = student.data?.display_name ?? summary.data?.student_name ?? "Ученик";
-  const studentLessons = (lessons.data ?? []).filter((lesson) => lesson.student_id === studentId);
-  const studentAssignments = (assignments.data ?? []).filter((assignment) => assignment.student_id === studentId);
-  const studentReceipts = (receipts.data ?? []).filter((receipt) => receipt.student_id === studentId);
-  const debt = summary.data?.finance.debt_amount ?? Math.max(0, balance.data?.balance ?? 0);
-  const overpaid = summary.data?.finance.overpaid_amount ?? Math.max(0, -(balance.data?.balance ?? 0));
+  const studentLessons = (lessons.data ?? []).filter((l) => l.student_id === studentId);
+  const studentAssignments = (assignments.data ?? []).filter((a) => a.student_id === studentId);
+  const studentReceipts = (receipts.data ?? []).filter((r) => r.student_id === studentId);
+  const currentBalance = balance.data?.balance ?? summary.data?.finance.balance_amount ?? 0;
   const currency = summary.data?.finance.currency ?? balance.data?.currency ?? "RUB";
+
+  function reloadFinance() {
+    balance.reload();
+    transactions.reload();
+    summary.reload();
+    dashboard.reload();
+  }
 
   return (
     <AppShell
@@ -59,10 +103,10 @@ export default function TeacherStudentCard() {
         assignments: dashboard.data?.pending_submissions_count,
         receipts: dashboard.data?.pending_receipts_count,
       })}
-      actions={<Link className="button-link" to="/teacher/students"><Icon name="arrow_back" />Ученики</Link>}
+      actions={<Link className="button-like" to="/teacher/students"><Icon name="arrow_back" />Ученики</Link>}
     >
       <div className="container">
-        <StudentHeader student={student} summary={summary} />
+        <StudentHeader student={student} summary={summary} balance={currentBalance} currency={currency} />
 
         <div className="profile-tabs">
           {TABS.map(([value, label]) => (
@@ -73,34 +117,30 @@ export default function TeacherStudentCard() {
         </div>
 
         {tab === "overview" && (
-          <OverviewTab
-            student={student}
-            summary={summary}
-            lessonsCount={studentLessons.length}
-            assignments={studentAssignments}
-          />
+          <OverviewTab student={student} summary={summary} lessonsCount={studentLessons.length} assignments={studentAssignments} />
         )}
 
         {tab === "finance" && (
           <FinanceTab
-            debt={debt}
-            overpaid={overpaid}
+            balance={currentBalance}
             currency={currency}
             transactions={transactions}
             summary={summary}
-            receipts={studentReceipts}
             onAdjust={() => setAdjustOpen(true)}
           />
         )}
 
-        {tab !== "overview" && tab !== "finance" && (
-          <PlaceholderTab
-            tab={tab}
-            lessons={studentLessons}
-            assignments={studentAssignments}
-            receipts={studentReceipts}
-            loading={lessons.loading || assignments.loading || receipts.loading}
-          />
+        {tab === "lessons" && (
+          <SectionTab title="Занятия ученика" icon="calendar_month" href="/teacher/lessons" loading={lessons.loading && !lessons.data}
+            rows={studentLessons.map((l) => ({ id: l.id, title: l.topic || "Занятие", meta: `${fmtDate(l.starts_at)}`, status: l.status }))} />
+        )}
+        {tab === "assignments" && (
+          <SectionTab title="Домашние задания ученика" icon="assignment" href="/teacher/assignments" loading={assignments.loading && !assignments.data}
+            rows={studentAssignments.map((a) => ({ id: a.id, title: a.title, meta: a.due_at ? `дедлайн ${fmtDate(a.due_at)}` : "без срока", status: a.status, href: `/teacher/assignments/${a.id}/review` }))} />
+        )}
+        {tab === "receipts" && (
+          <SectionTab title="Чеки ученика" icon="receipt_long" href="/teacher/receipts" loading={receipts.loading && !receipts.data}
+            rows={studentReceipts.map((r) => ({ id: r.id, title: money(r.amount, r.currency), meta: fmtDate(r.submitted_at) || "—", status: r.status }))} />
         )}
       </div>
 
@@ -108,22 +148,31 @@ export default function TeacherStudentCard() {
         <AdjustModal
           studentId={studentId}
           studentName={displayName}
-          balance={balance}
-          transactions={transactions}
-          dashboard={dashboard}
-          summary={summary}
+          currentBalance={currentBalance}
+          currency={currency}
           onClose={() => setAdjustOpen(false)}
+          onDone={reloadFinance}
         />
       )}
     </AppShell>
   );
 }
 
-function StudentHeader({ student, summary }: { student: Async<StudentLink>; summary: Async<StudentSummary> }) {
+function StudentHeader({
+  student,
+  summary,
+  balance,
+  currency,
+}: {
+  student: Async<StudentLink>;
+  summary: Async<StudentSummary>;
+  balance: number;
+  currency: string;
+}) {
   const name = student.data?.display_name ?? summary.data?.student_name ?? "Ученик";
   return (
     <div className="profile-header student-profile-header">
-      <div className="avatar profile-avatar">{initials(name)}</div>
+      <Avatar name={name} tone="teacher" size="lg" />
       <div className="profile-header-main">
         <div className="profile-title">
           <h2>{name}</h2>
@@ -132,10 +181,11 @@ function StudentHeader({ student, summary }: { student: Async<StudentLink>; summ
         <div className="profile-meta">
           {student.data?.subject && <span><Icon name="menu_book" />{student.data.subject}</span>}
           {student.data?.goal && <span><Icon name="flag" />{student.data.goal}</span>}
-          {typeof student.data?.hourly_rate === "number" && <span><Icon name="payments" />{Math.round(student.data.hourly_rate)} ₽ / час</span>}
+          {typeof student.data?.hourly_rate === "number" && <span><Icon name="payments" />{Math.round(student.data.hourly_rate)} ₽ / занятие</span>}
+          <span><Icon name="account_balance_wallet" />{balance < 0 ? "переплата" : "долг"} {signedMoney(balance, currency)}</span>
         </div>
       </div>
-      <Link className="button-link" to="/teacher/chat"><Icon name="chat_bubble" />Написать</Link>
+      <Link className="button-like" to="/teacher/chat"><Icon name="chat_bubble" />Написать</Link>
       <ErrorMsg error={student.error || summary.error} />
     </div>
   );
@@ -152,43 +202,40 @@ function OverviewTab({
   lessonsCount: number;
   assignments: Assignment[];
 }) {
+  if (student.loading && !student.data) {
+    return <Card title="Информация об ученике" icon="badge"><SkeletonRows count={3} /></Card>;
+  }
+  const activity = summary.data?.activity;
   return (
     <div className="student-overview-grid">
       <div className="dashboard-column">
         <Card title="Информация об ученике" icon="badge">
           <div className="student-info-grid">
-            <InfoItem icon="mail" label="Email" value="Недоступно в текущем API" />
             <InfoItem icon="menu_book" label="Предмет" value={student.data?.subject || "Не указан"} />
             <InfoItem icon="flag" label="Цель" value={student.data?.goal || "Не указана"} />
-            <InfoItem icon="payments" label="Стоимость занятия" value={typeof student.data?.hourly_rate === "number" ? `${Math.round(student.data.hourly_rate)} ₽ / час` : "Не указана"} />
-            <InfoItem icon="event" label="Занимается" value={summary.data?.updated_at ? `обновлено ${fmtDate(summary.data.updated_at)}` : "Дата не указана"} />
+            <InfoItem icon="payments" label="Стоимость занятия" value={typeof student.data?.hourly_rate === "number" ? `${Math.round(student.data.hourly_rate)} ₽` : "Не указана"} />
             <InfoItem icon="check_circle" label="Статус" value={student.data?.status || "—"} />
+            <InfoItem icon="mail" label="Email" value="нет в текущем API" />
+            <InfoItem icon="event" label="Обновлено" value={summary.data?.updated_at ? fmtDate(summary.data.updated_at) : "—"} />
           </div>
         </Card>
 
         <Card title="Заметки и доп. информация" icon="sticky_note_2">
-          <textarea className="notes-textarea" placeholder="Личные заметки: цели, сильные и слабые темы, договоренности..." />
-          <div className="extra-fields-placeholder">
-            <span><Icon name="label" />Родитель</span>
-            <strong>Добавьте контакт после появления поля в контракте</strong>
-          </div>
+          <EmptyState
+            icon="lock"
+            title="Редактирование пока недоступно"
+            hint="Заметки, метки и доп. поля профиля появятся после backend-эндпоинта обновления ученика (PATCH /students/{id})."
+          />
         </Card>
       </div>
 
       <div className="dashboard-column">
         <Card title="Активность" icon="monitoring">
           <div className="activity-grid">
-            <StatBox value={summary.data?.activity.completed_lessons_count ?? lessonsCount} label="занятий проведено" />
-            <StatBox value={summary.data?.activity.reviewed_assignments_count ?? 0} label="ДЗ выполнено" success />
-            <StatBox value={summary.data?.activity.upcoming_lessons_count ?? 0} label="ближайшие" />
-            <StatBox value={assignments.filter((item) => item.status !== "reviewed" && item.status !== "accepted").length} label="активных ДЗ" />
-          </div>
-        </Card>
-        <Card title="Метки" icon="sell">
-          <div className="tag-list">
-            <span>активный ученик</span>
-            {student.data?.subject && <span>{student.data.subject}</span>}
-            {student.data?.goal && <span>{student.data.goal}</span>}
+            <StatBox value={activity?.completed_lessons_count ?? lessonsCount} label="занятий проведено" />
+            <StatBox value={activity?.reviewed_assignments_count ?? 0} label="ДЗ выполнено" success />
+            <StatBox value={activity?.upcoming_lessons_count ?? 0} label="ближайшие занятия" />
+            <StatBox value={assignments.filter((a) => a.status !== "reviewed" && a.status !== "accepted" && a.status !== "done").length} label="активных ДЗ" />
           </div>
         </Card>
       </div>
@@ -197,98 +244,113 @@ function OverviewTab({
 }
 
 function FinanceTab({
-  debt,
-  overpaid,
+  balance,
   currency,
   transactions,
   summary,
-  receipts,
   onAdjust,
 }: {
-  debt: number;
-  overpaid: number;
+  balance: number;
   currency: string;
   transactions: Async<Transaction[]>;
   summary: Async<StudentSummary>;
-  receipts: Receipt[];
   onAdjust: () => void;
 }) {
-  const accrued = (transactions.data ?? []).filter((transaction) => transaction.type === "charge").reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-  const paid = (transactions.data ?? []).filter((transaction) => transaction.type === "payment").reduce((sum, transaction) => sum + Math.abs(transaction.amount), 0);
-  const pendingAmount = summary.data?.finance.pending_receipts_amount ?? receipts.reduce((sum, receipt) => sum + receipt.amount, 0);
+  const list = transactions.data ?? [];
+  const accrued = list.filter((t) => t.type === "charge").reduce((s, t) => s + Math.abs(t.amount), 0);
+  const paid = list.filter((t) => t.type === "payment").reduce((s, t) => s + Math.abs(t.amount), 0);
+  const pendingAmount = summary.data?.finance.pending_receipts_amount ?? 0;
+  const pendingCount = summary.data?.finance.pending_receipts_count ?? 0;
+  const isCredit = balance < 0;
+  const isZero = balance === 0;
+
+  // Журнал с бегущим балансом: считаем по возрастанию даты, показываем сверху новые.
+  const withRunning = useMemo(() => {
+    const sorted = [...list].sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+    let run = 0;
+    const mapped = sorted.map((t) => {
+      run += txEffect(t);
+      return { tx: t, running: run };
+    });
+    return mapped.reverse();
+  }, [list]);
 
   return (
     <>
       <div className="student-finance-row">
-        <div className="student-balance-card">
-          <div className="label"><Icon name="account_balance_wallet" />{debt > 0 ? "Текущий долг" : overpaid > 0 ? "Переплата" : "Баланс закрыт"}</div>
-          <div className="value">{money(debt > 0 ? debt : overpaid, currency)}</div>
-          <div className="hint">{debt > 0 ? "ожидает оплаты" : overpaid > 0 ? "учтено авансом" : "долга нет"}</div>
-          <button type="button" onClick={onAdjust}><Icon name="tune" />Скорректировать баланс</button>
+        <div className={"student-balance-card" + (isCredit ? " is-credit" : "")}>
+          <div className="label"><Icon name="account_balance_wallet" />{isCredit ? "Переплата (в пользу ученика)" : isZero ? "Баланс закрыт" : "Текущий долг"}</div>
+          <div className="value">{signedMoney(balance, currency)}</div>
+          <div className="hint">{isCredit ? "можно зачесть в счёт занятий" : isZero ? "оплачено полностью" : "к оплате преподавателю"}</div>
+          <Button variant="secondary" icon="tune" onClick={onAdjust}>Скорректировать баланс</Button>
         </div>
         <MetricCard icon="trending_up" label="Начислено за занятия" value={money(accrued, currency)} hint="по журналу операций" />
-        <MetricCard icon="check_circle" label="Оплачено подтверждено" value={money(paid, currency)} hint="только подтвержденные чеки" success />
+        <MetricCard icon="check_circle" label="Оплачено (подтверждено)" value={money(paid, currency)} hint="только подтверждённые чеки" success />
       </div>
 
       {pendingAmount > 0 && (
         <div className="rule-banner student-pending-note">
           <Icon name="hourglass_top" />
-          <span>Чеки на {money(pendingAmount, currency)} ожидают подтверждения. Долг не уменьшится, пока вы не подтвердите оплату.</span>
-          <Link className="button-link small-link" to="/teacher/receipts">Открыть чеки</Link>
+          <span>{pendingCount} чек(ов) на {money(pendingAmount, currency)} ожидают подтверждения. Долг не уменьшится, пока вы не подтвердите оплату.</span>
+          <Link className="button-like secondary small" to="/teacher/receipts">Открыть чеки</Link>
         </div>
       )}
 
       <Card title="Журнал операций" icon="receipt_long">
-        <div className="journal-head">
-          <span></span><span>Операция</span><span>Сумма</span><span>Дата</span>
-        </div>
-        {(transactions.data ?? []).map((transaction) => (
-          <div className="journal-row" key={transaction.id}>
-            <div className="transaction-icon"><Icon name={iconForTransaction(transaction.type)} /></div>
-            <div>
-              <strong>{labelForTransaction(transaction.type)}</strong>
-              <span>{transaction.comment || transaction.lesson_id || transaction.receipt_id || "—"}</span>
+        {transactions.loading && !transactions.data ? (
+          <SkeletonRows count={4} />
+        ) : transactions.error ? (
+          <ErrorMsg error={transactions.error} />
+        ) : list.length === 0 ? (
+          <EmptyState icon="receipt_long" title="Операций пока нет" hint="Здесь появятся начисления, оплаты и корректировки." />
+        ) : (
+          <>
+            <div className="journal-head">
+              <span></span><span>Операция</span><span>Сумма</span><span>Баланс</span>
             </div>
-            <strong className={transaction.type === "payment" || transaction.amount < 0 ? "amount-negative" : ""}>
-              {transaction.amount > 0 ? "+" : "−"}{money(Math.abs(transaction.amount), transaction.currency)}
-            </strong>
-            <span className="muted">{fmtDate(transaction.created_at) || "—"}</span>
-          </div>
-        ))}
-        <ListState query={transactions} empty="Операций пока нет." />
+            {withRunning.map(({ tx, running }) => {
+              const effect = txEffect(tx);
+              return (
+                <div className="journal-row" key={tx.id}>
+                  <div className="transaction-icon"><Icon name={iconForTransaction(tx.type)} /></div>
+                  <div>
+                    <strong>{labelForTransaction(tx.type)}</strong>
+                    <span>{tx.comment || fmtDate(tx.created_at) || "—"}</span>
+                  </div>
+                  <strong className={effect < 0 ? "amount-negative" : "amount-positive"}>
+                    {effect < 0 ? "−" : "+"}{money(Math.abs(effect), tx.currency)}
+                  </strong>
+                  <span className={running < 0 ? "finance-credit" : ""}>{signedMoney(running, tx.currency)}</span>
+                </div>
+              );
+            })}
+          </>
+        )}
       </Card>
     </>
   );
 }
 
-function PlaceholderTab({
-  tab,
-  lessons,
-  assignments,
-  receipts,
-  loading,
-}: {
-  tab: Exclude<StudentTab, "overview" | "finance">;
-  lessons: Lesson[];
-  assignments: Assignment[];
-  receipts: Receipt[];
-  loading: boolean;
-}) {
-  if (tab === "lessons") {
-    return <LinkedList title="Занятия ученика" icon="calendar_month" href="/teacher/lessons" rows={lessons.map((lesson) => `${lesson.topic || "Занятие"} · ${fmtDate(lesson.starts_at)} · ${lesson.status}`)} loading={loading} />;
-  }
-  if (tab === "assignments") {
-    return <LinkedList title="Домашние задания ученика" icon="assignment" href="/teacher/assignments" rows={assignments.map((assignment) => `${assignment.title} · ${assignment.status}`)} loading={loading} />;
-  }
-  return <LinkedList title="Чеки ученика" icon="receipt_long" href="/teacher/receipts" rows={receipts.map((receipt) => `${money(receipt.amount, receipt.currency)} · ${fmtDate(receipt.submitted_at)} · ${receipt.status}`)} loading={loading} />;
-}
+interface SectionRow { id: string; title: string; meta: string; status: string; href?: string }
 
-function LinkedList({ title, icon, href, rows, loading }: { title: string; icon: string; href: string; rows: string[]; loading: boolean }) {
+function SectionTab({ title, icon, href, rows, loading }: { title: string; icon: string; href: string; rows: SectionRow[]; loading: boolean }) {
   return (
-    <Card title={title} icon={icon} actions={<Link className="button-link small-link" to={href}>Открыть раздел</Link>}>
-      {loading && rows.length === 0 && <p className="hint">Загрузка...</p>}
-      {rows.map((row) => <div className="row" key={row}><span>{row}</span></div>)}
-      {!loading && rows.length === 0 && <p className="hint">В этом разделе пока пусто.</p>}
+    <Card title={title} icon={icon} actions={<Link className="card-head-link" to={href}>Открыть раздел</Link>}>
+      {loading ? (
+        <SkeletonRows count={3} />
+      ) : rows.length === 0 ? (
+        <EmptyState icon={icon} title="Пока пусто" hint="Здесь появятся записи этого ученика." />
+      ) : (
+        rows.map((row) => (
+          <div className="dash-row" key={row.id}>
+            <div className="dash-main">
+              <div className="t">{row.href ? <Link to={row.href}>{row.title}</Link> : row.title}</div>
+              <div className="s">{row.meta}</div>
+            </div>
+            <StatusPill status={row.status} />
+          </div>
+        ))
+      )}
     </Card>
   );
 }
@@ -296,89 +358,94 @@ function LinkedList({ title, icon, href, rows, loading }: { title: string; icon:
 function AdjustModal({
   studentId,
   studentName,
-  balance,
-  transactions,
-  dashboard,
-  summary,
+  currentBalance,
+  currency,
   onClose,
+  onDone,
 }: {
   studentId: string;
   studentName: string;
-  balance: Async<Balance>;
-  transactions: Async<Transaction[]>;
-  dashboard: Async<TeacherDashboard>;
-  summary: Async<StudentSummary>;
+  currentBalance: number;
+  currency: string;
   onClose: () => void;
+  onDone: () => void;
 }) {
+  const toast = useToast();
   const [mode, setMode] = useState<"charge" | "credit">("charge");
   const [amount, setAmount] = useState("");
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const current = balance.data?.balance ?? 0;
-  const signedAmount = (mode === "charge" ? 1 : -1) * Number(amount || 0);
-  const preview = current + signedAmount;
-  const ready = Number(amount) > 0 && comment.trim().length > 0;
+  const numeric = Number(amount || 0);
+  const signed = (mode === "charge" ? 1 : -1) * numeric;
+  const preview = currentBalance + signed;
+  const ready = numeric > 0 && comment.trim().length > 0;
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!ready) return;
+  async function submit() {
+    if (numeric === 0) {
+      toast({ tone: "warning", title: "Нулевая корректировка не отправлена", body: "Укажите сумму больше нуля." });
+      return;
+    }
+    if (!comment.trim()) {
+      setError("Добавьте комментарий к корректировке.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
-      await api.post(`/students/${studentId}/corrections`, {
-        amount: signedAmount,
-        comment,
-      });
-      balance.reload();
-      transactions.reload();
-      dashboard.reload();
-      summary.reload();
+      await api.post(`/students/${studentId}/corrections`, { amount: signed, currency, comment: comment.trim() });
+      toast({ tone: "success", title: "Баланс скорректирован", body: `${signed < 0 ? "−" : "+"}${Math.abs(signed)} ${currency} · ${comment.trim()}` });
+      onDone();
       onClose();
     } catch (err) {
       setError((err as Error).message);
+      toast({ tone: "danger", title: "Не удалось сохранить", body: (err as Error).message });
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <form className="modal-panel" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
-        <div className="modal-heading">
-          <div>
-            <h2>Ручная корректировка</h2>
-            <p>{studentName} · текущий баланс {money(current, balance.data?.currency)}</p>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Закрыть"><Icon name="close" /></button>
+    <Modal
+      title="Ручная корректировка"
+      subtitle={`${studentName} · текущий ${currentBalance < 0 ? "переплата" : "долг"} ${signedMoney(currentBalance, currency)}`}
+      onClose={onClose}
+      onSubmit={submit}
+      footer={
+        <>
+          <Button type="button" onClick={onClose}>Отмена</Button>
+          <Button variant="primary" type="submit" icon="check" loading={busy} disabled={!ready}>Применить</Button>
+        </>
+      }
+    >
+      <ErrorMsg error={error} />
+      <div className="direction-toggle">
+        <button type="button" className={mode === "charge" ? "active" : ""} onClick={() => setMode("charge")}><Icon name="add" />Начислить долг</button>
+        <button type="button" className={mode === "credit" ? "active" : ""} onClick={() => setMode("credit")}><Icon name="remove" />Списать / зачесть</button>
+      </div>
+      <div className="modal-fields">
+        <Field label="Сумма">
+          <span className="amount-input">
+            <input type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" autoFocus />
+            <span>₽</span>
+          </span>
+        </Field>
+        <Field label="Комментарий (обязательно)">
+          <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Например: зачёт за вводное занятие, скидка, бонус…" />
+        </Field>
+      </div>
+      <div className="balance-preview">
+        <div>
+          <span className="hint">Сейчас</span>
+          <strong>{signedMoney(currentBalance, currency)}</strong>
         </div>
-        <ErrorMsg error={error} />
-        <div className="direction-toggle">
-          <button type="button" className={mode === "charge" ? "active" : ""} onClick={() => setMode("charge")}><Icon name="add" />Начислить долг</button>
-          <button type="button" className={mode === "credit" ? "active" : ""} onClick={() => setMode("credit")}><Icon name="remove" />Списать / зачесть</button>
+        <Icon name="arrow_forward" />
+        <div>
+          <span className="hint">Станет</span>
+          <strong className={preview < 0 ? "amount-negative" : preview > 0 ? "amount-positive" : ""}>{signedMoney(preview, currency)}</strong>
         </div>
-        <div className="modal-fields">
-          <div className="field">
-            <label>Сумма
-              <span className="amount-input">
-                <input type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required />
-                <span>₽</span>
-              </span>
-            </label>
-          </div>
-          <div className="field"><label>Комментарий <textarea value={comment} onChange={(event) => setComment(event.target.value)} required placeholder="Например: скидка, бонус, корректировка..." /></label></div>
-        </div>
-        <div className="balance-preview">
-          <div><span className="hint">Сейчас</span><strong>{money(current, balance.data?.currency)}</strong></div>
-          <Icon name="arrow_forward" />
-          <div><span className="hint">Станет</span><strong>{money(preview, balance.data?.currency)}</strong></div>
-        </div>
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Отмена</button>
-          <button className="primary" type="submit" disabled={busy || !ready}><Icon name="check" />{busy ? "Применение..." : "Применить"}</button>
-        </div>
-      </form>
-    </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -408,8 +475,8 @@ function iconForTransaction(type: string): string {
 }
 
 function labelForTransaction(type: string): string {
-  if (type === "payment") return "Платёж";
-  if (type === "correction") return "Коррекция";
+  if (type === "payment") return "Платёж подтверждён";
+  if (type === "correction") return "Корректировка";
   if (type === "refund") return "Возврат";
-  return "Начисление";
+  return "Начисление за занятие";
 }

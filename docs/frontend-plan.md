@@ -20,8 +20,8 @@
 | 1 — Дашборд ученика | `Student.tsx` (+ общие `NotificationsPanel`/`MessagesCard`) | ✅ |
 | 2 — Занятия | `TeacherLessons` (жизненный цикл), `StudentLessons` | ✅ |
 | 3 — Домашние задания | `TeacherAssignments`, `TeacherAssignmentReview`, `StudentAssignments` | ✅ |
-| 4 — Финансы и чеки | `TeacherFinance`, `TeacherReceipts`, `StudentPayments`, `StudentReceipts` | ⬜ |
-| 5 — Ученики | `TeacherStudents`, `TeacherStudentCard` | ⬜ |
+| 4 — Финансы и чеки | `TeacherFinance`, `TeacherReceipts`, `StudentPayments`, `StudentReceipts` | ✅ |
+| 5 — Ученики | `TeacherStudents`, `TeacherStudentCard` | ✅ |
 | 6 — Чат и уведомления | `ChatPage`/`chat.tsx`, `NotificationsPanel` + тосты | ⬜ |
 | 7 — Вход | `Login`, `Register`, `AuthLayout`, смена временного пароля | ⬜ |
 | 8 — Сквозное | адаптив, скелетоны, пустые состояния, тосты, a11y, финальный QA | ⬜ |
@@ -45,6 +45,14 @@ receipt, finance), `Badge`, `Counter`, `Avatar` (+presence), `Metric`, `ListRow`
 - **Разбивка баланса (начислено/оплачено)** — в `FinanceSummary`/`StudentDashboard` нет
   `total_charged`/`total_paid`. Это v2 (report-service `GetStudentSummary` FinanceSummary
   отложен в roadmap). Пока показываем доступное (чеки на проверке + сумма). Приоритет: v2.
+- **Помесячные агрегаты финансов + выгрузка отчёта** (из макета «Финансы преподавателя») —
+  эндпоинтов нет; KPI собраны из доступных полей, кнопка экспорта не добавлена. Приоритет: v2.
+- **Причина отклонения чека** — фронт читает `receipt.comment` с fallback; подтвердить в
+  finance-контракте, что `comment` заполняется при reject (если нет — backend-доработка).
+- **Редактирование профиля ученика (КАНДИДАТ В BACKEND после фронта)** — `GET /students/{id}`
+  есть, `PATCH/PUT` нет; `StudentLink` без email/телефона/формата/заметок/даты начала. Карточка
+  показывает доступное read-only. Полноценное редактирование = новый эндпоинт + поля в identity,
+  отдельным согласованным решением. Выгрузка журнала/презенс ученика в списке — тоже нет.
 - **KPI «учеников онлайн»** — агрегата presence нет (онлайн только пер-юзер по WS).
   Прокси «активных: N» по `status==active`. Полноценный online-count — вне MVP.
 - **(НЕ backend) имя файла чека** — в `Receipt` только `file_id`; имя резолвится через

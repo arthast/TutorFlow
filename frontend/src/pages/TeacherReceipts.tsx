@@ -1,39 +1,121 @@
 import { useMemo, useState } from "react";
-import { api, openFile, reports, type Receipt, type StudentLink, type TeacherDashboard } from "../api";
-import { AppShell, Card, ErrorMsg, Icon, ListState, Notice, StatusPill, useAsync } from "../ui";
-import { money, teacherNav } from "./teacherNav";
+import { ApiError, api, openFile, reports, type FileMeta, type Receipt, type StudentLink, type StudentSummary, type TeacherDashboard } from "../api";
+import {
+  AppShell,
+  Avatar,
+  Button,
+  EmptyState,
+  ErrorMsg,
+  Icon,
+  Modal,
+  SkeletonRows,
+  StatusPill,
+  Tabs,
+  Textarea,
+  useAsync,
+  useToast,
+  type TabItem,
+} from "../ui";
+import { teacherNav } from "./teacherNav";
 
-function studentName(students: StudentLink[], studentId: string): string {
-  return students.find((student) => student.student_id === studentId)?.display_name ?? studentId.slice(0, 8);
+type ReceiptFilter = "pending_review" | "confirmed" | "rejected" | "all";
+type ReceiptAction = "confirm" | "reject";
+
+function formatMoney(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number") return "-";
+  return `${Math.round(value).toLocaleString("ru-RU")} ${currency}`;
+}
+
+function formatSignedBalance(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number") return "-";
+  if (value === 0) return `0 ${currency}`;
+  return `${value < 0 ? "-" : ""}${formatMoney(Math.abs(value), currency)}`;
+}
+
+function dateLabel(iso?: string): string {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function studentName(students: StudentLink[], summaries: StudentSummary[], studentId: string): string {
+  return summaries.find((summary) => summary.student_id === studentId)?.student_name
+    || students.find((student) => student.student_id === studentId)?.display_name
+    || studentId.slice(0, 8);
+}
+
+function studentBalance(summaries: StudentSummary[], studentId: string): number {
+  return summaries.find((summary) => summary.student_id === studentId)?.finance.balance_amount ?? 0;
+}
+
+function statusAccent(status: string): string {
+  if (status === "confirmed") return "success";
+  if (status === "rejected") return "danger";
+  return "warning";
 }
 
 export default function TeacherReceipts() {
   const dashboard = useAsync<TeacherDashboard>(() => reports.teacherDashboard(), []);
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const receipts = useAsync<Receipt[]>(() => api.get("/payments/receipts"), []);
-  const [status, setStatus] = useState("pending_review");
+  const toast = useToast();
+  const [status, setStatus] = useState<ReceiptFilter>("pending_review");
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [modal, setModal] = useState<{ receipt: Receipt; action: "confirm" | "reject" } | null>(null);
+  const [modal, setModal] = useState<{ receipt: Receipt; action: ReceiptAction } | null>(null);
+
+  const items = receipts.data ?? [];
+  const summaries = dashboard.data?.students ?? [];
+  const counts = useMemo(() => ({
+    all: items.length,
+    pending_review: items.filter((receipt) => receipt.status === "pending_review").length,
+    confirmed: items.filter((receipt) => receipt.status === "confirmed").length,
+    rejected: items.filter((receipt) => receipt.status === "rejected").length,
+  }), [items]);
 
   const filtered = useMemo(
-    () => (receipts.data ?? []).filter((receipt) => status === "all" || receipt.status === status),
-    [receipts.data, status],
+    () => items.filter((receipt) => status === "all" || receipt.status === status),
+    [items, status],
   );
 
-  async function act(receipt: Receipt, action: "confirm" | "reject") {
+  const tabs: TabItem[] = [
+    { key: "pending_review", label: "На проверке", count: counts.pending_review },
+    { key: "confirmed", label: "Подтверждены", count: counts.confirmed },
+    { key: "rejected", label: "Отклонены", count: counts.rejected },
+    { key: "all", label: "Все", count: counts.all },
+  ];
+
+  function reloadAll() {
+    receipts.reload();
+    dashboard.reload();
+  }
+
+  async function act(receipt: Receipt, action: ReceiptAction, comment?: string) {
     setError(null);
-    setNotice(null);
     setActingId(receipt.id);
     try {
-      await api.post(`/payments/receipts/${receipt.id}/${action}`);
-      setNotice(action === "confirm" ? "Чек подтверждён." : "Чек отклонён.");
+      if (action === "reject") {
+        await api.post(`/payments/receipts/${receipt.id}/reject`, { comment });
+      } else {
+        await api.post(`/payments/receipts/${receipt.id}/confirm`);
+      }
+      toast({
+        tone: action === "confirm" ? "success" : "warning",
+        title: action === "confirm" ? "Чек подтверждён" : "Чек отклонён",
+        body: action === "confirm" ? "Долг уменьшится после обновления финансовой сводки." : "Баланс ученика не изменился.",
+      });
       setModal(null);
-      receipts.reload();
-      dashboard.reload();
+      reloadAll();
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiError && err.status === 409) {
+        toast({ tone: "warning", title: "Чек уже обработан", body: err.message });
+        setModal(null);
+        reloadAll();
+      } else {
+        setError((err as Error).message);
+        toast({ tone: "danger", title: "Не удалось обработать чек", body: (err as Error).message });
+      }
     } finally {
       setActingId(null);
     }
@@ -42,7 +124,7 @@ export default function TeacherReceipts() {
   return (
     <AppShell
       title="Чеки"
-      subtitle="Проверка оплат учеников"
+      subtitle="Подтверждение оплат"
       navSection="Работа"
       navItems={teacherNav("receipts", {
         students: dashboard.data?.students_count,
@@ -51,70 +133,94 @@ export default function TeacherReceipts() {
         receipts: dashboard.data?.pending_receipts_count,
       })}
     >
-      <div className="container">
-        <div className="teacher-toolbar">
-          <div className="segmented">
-            {[
-              ["pending_review", "На проверке"],
-              ["confirmed", "Подтверждены"],
-              ["rejected", "Отклонены"],
-              ["all", "Все"],
-            ].map(([value, label]) => (
-              <button className={status === value ? "active" : ""} key={value} onClick={() => setStatus(value)}>
-                {label}
-              </button>
-            ))}
+      <div className="container receipts-container">
+        <Tabs items={tabs} active={status} onChange={(key) => setStatus(key as ReceiptFilter)} />
+
+        {status === "pending_review" && filtered.length > 0 && (
+          <div className="rule-banner">
+            <Icon name="info" />
+            <span>Чеки на проверке не уменьшают долг. Баланс меняется только после подтверждения преподавателем.</span>
           </div>
+        )}
+
+        <div className="receipt-list-head">
+          <span>Ученик и файл</span>
+          <span>Сумма</span>
+          <span>Статус</span>
+          <span></span>
         </div>
 
-        <Card title="Чеки учеников" icon="receipt_long">
-          <ErrorMsg error={error || receipts.error} />
-          <Notice text={notice} />
-          {status === "pending_review" && filtered.length > 0 && (
-            <div className="rule-banner">
-              <Icon name="info" />
-              <span>Баланс ученика меняется только после подтверждения чека преподавателем.</span>
-            </div>
-          )}
-          {filtered.map((receipt) => (
-            <div className="resource-row" key={receipt.id}>
-              <div className="resource-icon"><Icon name="receipt_long" /></div>
-              <div className="resource-main">
-                <div className="summary-title">{studentName(students.data ?? [], receipt.student_id)}</div>
-                <div className="summary-grid">
-                  <span>{money(receipt.amount, receipt.currency)}</span>
-                  <span>{receipt.submitted_at ? new Date(receipt.submitted_at).toLocaleString("ru-RU") : "-"}</span>
-                  <span>file: {receipt.file_id.slice(0, 8)}</span>
+        <ErrorMsg error={error || receipts.error || dashboard.error || students.error} />
+        {receipts.loading && !receipts.data ? (
+          <div className="card"><SkeletonRows count={4} /></div>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="task_alt" title={status === "pending_review" ? "Чеков на проверке нет" : "Чеки не найдены"} hint="Все оплаты в этой категории уже обработаны." tone={status === "pending_review" ? "success" : undefined} />
+        ) : (
+          <div className="receipt-list">
+            {filtered.map((receipt) => {
+              const name = studentName(students.data ?? [], summaries, receipt.student_id);
+              return (
+                <div className={"receipt-row receipt-row-" + statusAccent(receipt.status)} key={receipt.id}>
+                  <div className="receipt-person">
+                    <Avatar name={name} tone="teacher" />
+                    <div>
+                      <strong>{name}</strong>
+                      <ReceiptFileLine receipt={receipt} onError={setError} />
+                    </div>
+                  </div>
+                  <strong className="receipt-amount">{formatMoney(receipt.amount, receipt.currency)}</strong>
+                  <StatusPill status={receipt.status} />
+                  <div className="btn-group receipt-actions">
+                    {receipt.status === "pending_review" ? (
+                      <>
+                        <Button size="sm" variant="primary" loading={actingId === receipt.id} onClick={() => setModal({ receipt, action: "confirm" })}>Подтвердить</Button>
+                        <Button size="sm" variant="danger" disabled={actingId === receipt.id} onClick={() => setModal({ receipt, action: "reject" })}>Отклонить</Button>
+                      </>
+                    ) : (
+                      <span className="receipt-resolved">
+                        <Icon name={receipt.status === "confirmed" ? "check_circle" : "cancel"} />
+                        {receipt.reviewed_at ? dateLabel(receipt.reviewed_at) : "обработан"}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="btn-group">
-                <button className="small" onClick={() => openFile(receipt.file_id).catch((err) => setError((err as Error).message))}>Файл</button>
-                {receipt.status === "pending_review" && (
-                  <>
-                    <button className="small primary" disabled={actingId === receipt.id} onClick={() => setModal({ receipt, action: "confirm" })}>Подтвердить</button>
-                    <button className="small danger-button" disabled={actingId === receipt.id} onClick={() => setModal({ receipt, action: "reject" })}>Отклонить</button>
-                  </>
-                )}
-                <StatusPill status={receipt.status} />
-              </div>
-            </div>
-          ))}
-          <ListState query={{ ...receipts, data: filtered }} empty="Чеки не найдены." />
-        </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {modal && (
         <ReceiptDecisionModal
           receipt={modal.receipt}
           action={modal.action}
-          studentName={studentName(students.data ?? [], modal.receipt.student_id)}
+          studentName={studentName(students.data ?? [], summaries, modal.receipt.student_id)}
+          currentBalance={studentBalance(summaries, modal.receipt.student_id)}
           busy={actingId === modal.receipt.id}
           onClose={() => setModal(null)}
-          onOpenFile={() => openFile(modal.receipt.file_id).catch((err) => setError((err as Error).message))}
-          onSubmit={() => act(modal.receipt, modal.action)}
+          onSubmit={(comment) => act(modal.receipt, modal.action, comment)}
         />
       )}
     </AppShell>
+  );
+}
+
+function ReceiptFileLine({ receipt, onError }: { receipt: Receipt; onError: (error: string | null) => void }) {
+  const meta = useAsync<FileMeta>(() => api.get(`/files/${receipt.file_id}`), [receipt.file_id]);
+  const name = meta.data?.original_name || receipt.file_id.slice(0, 8);
+
+  return (
+    <button
+      className="receipt-file-link"
+      type="button"
+      title={meta.error ?? "Открыть файл"}
+      onClick={() => openFile(receipt.file_id).catch((err) => onError((err as Error).message))}
+    >
+      <Icon name="description" />
+      <span>{name}</span>
+      <em>{dateLabel(receipt.submitted_at)}</em>
+      <Icon name="open_in_new" />
+    </button>
   );
 }
 
@@ -122,55 +228,88 @@ function ReceiptDecisionModal({
   receipt,
   action,
   studentName,
+  currentBalance,
   busy,
   onClose,
-  onOpenFile,
   onSubmit,
 }: {
   receipt: Receipt;
-  action: "confirm" | "reject";
+  action: ReceiptAction;
   studentName: string;
+  currentBalance: number;
   busy: boolean;
   onClose: () => void;
-  onOpenFile: () => void;
-  onSubmit: () => void;
+  onSubmit: (comment?: string) => void;
 }) {
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const confirming = action === "confirm";
+  const nextBalance = currentBalance - receipt.amount;
+
+  function submit() {
+    if (!confirming && !comment.trim()) {
+      setError("Укажите причину отклонения.");
+      return;
+    }
+    onSubmit(confirming ? undefined : comment.trim());
+  }
+
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
-      <div className="modal-panel receipt-modal" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-heading">
-          <div>
-            <h2>{confirming ? "Подтвердить чек" : "Отклонить чек"}</h2>
-            <p>{studentName} · {money(receipt.amount, receipt.currency)}</p>
-          </div>
-          <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
-            <Icon name="close" />
-          </button>
+    <Modal
+      title={confirming ? "Подтвердить оплату" : "Отклонить чек"}
+      subtitle={`${studentName} · ${formatMoney(receipt.amount, receipt.currency)}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Отмена</Button>
+          <Button variant={confirming ? "primary" : "danger"} icon={confirming ? "check_circle" : "cancel"} loading={busy} onClick={submit}>
+            {confirming ? "Подтвердить" : "Отклонить"}
+          </Button>
+        </>
+      }
+    >
+      <ErrorMsg error={error} />
+      <ReceiptFilePreview fileId={receipt.file_id} />
+      <div className="balance-preview">
+        <div>
+          <span className="hint">Текущий долг</span>
+          <strong>{formatSignedBalance(currentBalance, receipt.currency)}</strong>
         </div>
-
-        <button className="receipt-preview" type="button" onClick={onOpenFile}>
-          <Icon name="description" />
-          <span>Открыть файл чека</span>
-          <strong>{receipt.file_id.slice(0, 8)}</strong>
-        </button>
-
-        <div className={"balance-effect " + (confirming ? "effect-confirm" : "effect-reject")}>
-          <Icon name={confirming ? "check_circle" : "cancel"} />
-          <div>
-            <strong>{confirming ? "Оплата будет учтена" : "Долг не изменится"}</strong>
-            <span>{confirming ? `Баланс ученика уменьшится на ${money(receipt.amount, receipt.currency)}.` : "Ученик увидит статус отклонения и сможет загрузить новый чек."}</span>
-          </div>
-        </div>
-
-        <div className="modal-actions">
-          <button type="button" onClick={onClose}>Отмена</button>
-          <button className={confirming ? "primary" : "danger-button"} type="button" disabled={busy} onClick={onSubmit}>
-            <Icon name={confirming ? "check_circle" : "cancel"} />
-            {busy ? "Сохранение…" : confirming ? "Подтвердить" : "Отклонить"}
-          </button>
+        <Icon name="arrow_forward" />
+        <div>
+          <span className="hint">После подтверждения</span>
+          <strong className={nextBalance < 0 ? "amount-negative" : nextBalance > 0 ? "amount-positive" : ""}>
+            {confirming ? formatSignedBalance(nextBalance, receipt.currency) : formatSignedBalance(currentBalance, receipt.currency)}
+          </strong>
         </div>
       </div>
-    </div>
+      <div className={"balance-effect " + (confirming ? "effect-confirm" : "effect-reject")}>
+        <Icon name={confirming ? "check_circle" : "cancel"} />
+        <div>
+          <strong>{confirming ? "Долг уменьшится только сейчас" : "Долг не изменится"}</strong>
+          <span>{confirming ? `Расчёт на фронте: ${formatSignedBalance(currentBalance, receipt.currency)} - ${formatMoney(receipt.amount, receipt.currency)}.` : "Отклонённый чек не создаёт payment-операцию."}</span>
+        </div>
+      </div>
+      {!confirming && (
+        <Textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Причина отклонения для ученика" autoFocus />
+      )}
+    </Modal>
+  );
+}
+
+function ReceiptFilePreview({ fileId }: { fileId: string }) {
+  const meta = useAsync<FileMeta>(() => api.get(`/files/${fileId}`), [fileId]);
+  const name = meta.data?.original_name || fileId.slice(0, 8);
+  const toast = useToast();
+  return (
+    <button
+      className="receipt-preview"
+      type="button"
+      onClick={() => openFile(fileId).catch((err) => toast({ tone: "danger", title: "Файл не открылся", body: (err as Error).message }))}
+    >
+      <Icon name="description" />
+      <span>{name}</span>
+      <strong>открыть / скачать</strong>
+    </button>
   );
 }

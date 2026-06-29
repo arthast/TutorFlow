@@ -202,6 +202,8 @@ export interface Receipt {
   currency?: string;
   status: string;
   submitted_at?: string;
+  reviewed_at?: string | null;
+  comment?: string | null;
 }
 export interface Balance {
   student_id: string;
