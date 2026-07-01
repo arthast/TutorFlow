@@ -258,7 +258,7 @@ AuthInfo ProxyHandlerBase::Authenticate(const http::HttpRequest& request) const 
 
 std::string ProxyHandlerBase::ProxyToUpstream(
     const http::HttpRequest& request, UpstreamService service,
-    std::string internal_path, std::optional<AuthInfo> auth) const {
+    std::string internal_path, const std::optional<AuthInfo>& auth) const {
   internal_path += QuerySuffix(request);
   const auto url = BuildUrl(settings_, service, std::move(internal_path));
   const auto headers = BuildUpstreamHeaders(request, auth);
