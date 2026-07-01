@@ -40,7 +40,7 @@ class ProxyHandlerBase : public userver::server::handlers::HttpHandlerBase {
   std::string ProxyToUpstream(
       const userver::server::http::HttpRequest& request,
       UpstreamService service, std::string internal_path,
-      std::optional<AuthInfo> auth) const;
+      const std::optional<AuthInfo>& auth) const;
 
   std::string HandleGatewayErrors(
       const userver::server::http::HttpRequest& request,

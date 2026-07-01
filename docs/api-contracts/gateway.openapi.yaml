@@ -460,13 +460,16 @@ components:
         access_token: { type: string }
         token_type: { type: string, example: Bearer }
         expires_in: { type: integer }
+        user_id: { type: string, format: uuid }
+        roles: { type: array, items: { type: string, enum: [teacher, student] } }
     Me:
       type: object
       properties:
-        user_id: { type: string, format: uuid }
+        id: { type: string, format: uuid }
         email: { type: string }
-        roles: { type: array, items: { type: string } }
+        role: { type: string, enum: [teacher, student] }
         display_name: { type: string }
+        created_at: { type: string, format: date-time }
     CreateStudentRequest:
       type: object
       required: [display_name, email, password]
@@ -490,10 +493,11 @@ components:
         teacher_id: { type: string, format: uuid }
         student_id: { type: string, format: uuid }
         display_name: { type: string }
-        subject: { type: string }
-        goal: { type: string }
-        hourly_rate: { type: number }
+        subject: { type: string, nullable: true }
+        goal: { type: string, nullable: true }
+        hourly_rate: { type: number, nullable: true }
         status: { type: string, enum: [invited, active, archived] }
+        created_at: { type: string, format: date-time }
     Balance:
       type: object
       properties:
@@ -504,6 +508,8 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
+        teacher_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid }
         type: { type: string, enum: [charge, payment, correction, refund] }
         amount: { type: number }
         currency: { type: string }
@@ -532,6 +538,7 @@ components:
         starts_at: { type: string, format: date-time }
         ends_at: { type: string, format: date-time }
         status: { type: string, enum: [open, booked] }
+        created_at: { type: string, format: date-time }
     CreateLessonRequest:
       type: object
       required: [student_id, starts_at, ends_at]
@@ -556,13 +563,15 @@ components:
         id: { type: string, format: uuid }
         teacher_id: { type: string, format: uuid }
         student_id: { type: string, format: uuid }
+        slot_id: { type: string, format: uuid, nullable: true }
         starts_at: { type: string, format: date-time }
         ends_at: { type: string, format: date-time }
         status: { type: string, enum: [scheduled, completed, cancelled] }
-        topic: { type: string }
+        topic: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         price: { type: number }
         file_ids: { type: array, items: { type: string, format: uuid } }
+        created_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time, nullable: true }
     CompleteLessonResponse:
       type: object
@@ -594,7 +603,7 @@ components:
         teacher_id: { type: string, format: uuid }
         student_id: { type: string, format: uuid }
         title: { type: string }
-        description: { type: string }
+        description: { type: string, nullable: true }
         due_at: { type: string, format: date-time, nullable: true }
         status: { type: string, enum: [assigned, submitted, reviewed, needs_fix, done, expired] }
         created_at: { type: string, format: date-time }
@@ -617,7 +626,7 @@ components:
         id: { type: string, format: uuid }
         assignment_id: { type: string, format: uuid }
         student_id: { type: string, format: uuid }
-        text_answer: { type: string }
+        text_answer: { type: string, nullable: true }
         status: { type: string, enum: [submitted, reviewed, needs_fix, accepted] }
         submitted_at: { type: string, format: date-time }
         file_ids: { type: array, items: { type: string, format: uuid } }
@@ -662,6 +671,8 @@ components:
         status: { type: string, enum: [pending_review, confirmed, rejected] }
         submitted_at: { type: string, format: date-time }
         reviewed_at: { type: string, format: date-time, nullable: true }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        comment: { type: string, nullable: true }
     RejectRequest:
       type: object
       properties:
@@ -681,6 +692,14 @@ components:
             - payment_confirmed
             - payment_rejected
             - lesson_completed
+            - lesson_scheduled
+            - lesson_rescheduled
+            - lesson_reactivated
+            - lesson_cancelled
+            - lesson_restored
+            - assignment_deadline_expired
+            - balance_corrected
+            - message_sent
         title: { type: string }
         body: { type: string }
         payload: { type: object, additionalProperties: true }
