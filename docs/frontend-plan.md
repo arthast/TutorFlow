@@ -22,12 +22,34 @@
 | 3 — Домашние задания | `TeacherAssignments`, `TeacherAssignmentReview`, `StudentAssignments` | ✅ |
 | 4 — Финансы и чеки | `TeacherFinance`, `TeacherReceipts`, `StudentPayments`, `StudentReceipts` | ✅ |
 | 5 — Ученики | `TeacherStudents`, `TeacherStudentCard` | ✅ |
-| 6 — Чат и уведомления | `ChatPage`/`chat.tsx`, `NotificationsPanel` + тосты | ⬜ |
-| 7 — Вход | `Login`, `Register`, `AuthLayout`, смена временного пароля | ⬜ |
-| 8 — Сквозное | адаптив, скелетоны, пустые состояния, тосты, a11y, финальный QA | ⬜ |
+| 6 — Чат и уведомления | `ChatPage`, `NotificationsPanel` + тосты (`chat.tsx` удалён в Ф8) | ✅ |
+| 7 — Вход | `Login`, `Register`, `AuthLayout`, смена временного пароля | ✅ |
+| 8 — Сквозное | адаптив, скелетоны, пустые состояния, тосты, a11y, финальный QA | ✅ |
 
 DoD фазы: визуал ≈ макет, все действия (поддержанные gateway) подключены,
 есть loading/empty/error, `npm run build` зелёный.
+
+## Фаза 8 — сделано (полировка)
+
+- Чистка: удалены мёртвые `src/chat.tsx` (старый ChatCard), `TopBar`/`Notice`/`ListState`/
+  `NotificationsCard` из `ui.tsx` и ~35 неиспользуемых CSS-классов (таймлайн сдач ДЗ,
+  старый чат-виджет, `.role-segment`, `.topbar` и др.).
+- Live «✓✓ прочитано» в `ChatPage` по realtime `chat.read`: realtime-service доставляет
+  событие peer'у с payload `{dialog_id, reader_id, up_to_message_id}` (поле именно
+  `reader_id`, не `user_id`). Свои сообщения до `up_to_message_id` получают `done_all`.
+  Не переживает reload — персистентная версия в беклоге backend.
+- Деньги: единые `money()`/`signedMoney()` в `ui.tsx` («15 000 ₽», «—» для пустых),
+  реэкспорт из `teacherNav`/`studentNav`; локальные formatMoney/formatSignedBalance удалены.
+- Состояния: общий `ErrorState` (EmptyState + «Повторить») на всех списках/карточках;
+  скелетоны в чате (диалоги и тред), EmptyState для пустого списка диалогов.
+- A11y: фокус-трап + возврат фокуса + `role="dialog"` в `Modal`, aria-label на всех
+  icon-кнопках, `:focus-visible`-стили, клавиатурный `ListRow`, `type="button"` в
+  Tabs/Segmented, `.visually-hidden` для скринридеров.
+- Адаптив: мобильный дровер-сайдбар (≤760px, с бэкдропом; на узких экранах стартует
+  закрытым независимо от localStorage), media-правила для `finance-kpi-grid`,
+  `student-payment-layout`, `student-finance-row`, `student-overview-grid`,
+  `assignment-list-row`, `receipt-row`, `finance-student-row`, `journal-row`,
+  `page-tabs-bar`. Горизонтального скролла нет на 375px на всех экранах обеих ролей.
 
 ## Готовые примитивы (Фаза 0, `src/ui.tsx`)
 
@@ -38,6 +60,9 @@ receipt, finance), `Badge`, `Counter`, `Avatar` (+presence), `Metric`, `ListRow`
 `Card` (title: ReactNode). Общие блоки: `NotificationsPanel`, `MessagesCard`.
 
 ## Backend-беклог (накоплено по ходу; не блокеры)
+
+> Формализовано как задачи в `docs/roadmap.md` → «Этап 6 — доработки backend под
+> фронтенд» (с приоритетами и признаком изменения контракта). Ниже — исходные заметки.
 
 - **Bulk mark-read уведомлений** — нет пакетного эндпоинта; «Прочитать всё» шлёт N
   запросов `POST /notifications/{id}/read`. Возможный `POST /notifications/read-all` —
@@ -53,6 +78,13 @@ receipt, finance), `Badge`, `Counter`, `Avatar` (+presence), `Metric`, `ListRow`
   есть, `PATCH/PUT` нет; `StudentLink` без email/телефона/формата/заметок/даты начала. Карточка
   показывает доступное read-only. Полноценное редактирование = новый эндпоинт + поля в identity,
   отдельным согласованным решением. Выгрузка журнала/презенс ученика в списке — тоже нет.
+- **Персистентные «прочитано» в чате** — `Message` без флага read, GET read-маркера собеседника
+  нет. Live-версия по realtime `chat.read` сделана в Фазе 8 (payload `reader_id`/`up_to_message_id`),
+  но после reload состояние теряется. Полноценно нужен флаг в `Message` или GET маркера. Typing —
+  события в контракте нет.
+- **Признак первого входа (`must_change_password`/`is_temporary`)** — нет в `/me` и ответе логина;
+  форс-экран смены временного пароля не делаем, только мягкая подсказка. Кандидат в backend
+  (поле в identity). Сброс пароля («забыли пароль?») — эндпоинта нет.
 - **KPI «учеников онлайн»** — агрегата presence нет (онлайн только пер-юзер по WS).
   Прокси «активных: N» по `status==active`. Полноценный online-count — вне MVP.
 - **(НЕ backend) имя файла чека** — в `Receipt` только `file_id`; имя резолвится через
