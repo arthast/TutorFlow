@@ -21,17 +21,8 @@ export function initials(name?: string): string {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
 }
 
-export function money(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "—";
-  return `${Math.round(value)} ${currency}`;
-}
-
-export function shortDate(iso?: string): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
+// Единый формат денег живёт в ui.tsx; реэкспорт для страниц преподавателя.
+export { money, signedMoney } from "../ui";
 
 export function timeOnly(iso?: string): string {
   if (!iso) return "—";

@@ -14,6 +14,7 @@ import {
   Button,
   EmptyState,
   ErrorMsg,
+  ErrorState,
   Field,
   FileChips,
   Icon,
@@ -165,14 +166,14 @@ export default function TeacherLessons() {
           <Segmented items={segments} active={segment} onChange={(k) => setSegment(k as Segment)} />
           <div className="search-field">
             <Icon name="search" />
-            <input placeholder="Поиск по ученику или теме…" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input placeholder="Поиск по ученику или теме…" aria-label="Поиск по ученику или теме" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
         </div>
 
         {lessons.loading && !lessons.data ? (
           <div className="card"><SkeletonRows count={4} /></div>
         ) : lessons.error ? (
-          <ErrorMsg error={lessons.error} />
+          <ErrorState error={lessons.error} onRetry={reloadAll} />
         ) : groups.length === 0 ? (
           <EmptyState icon="event_busy" title="Здесь пусто" hint="В этом разделе пока нет занятий." />
         ) : (
@@ -313,7 +314,15 @@ function LessonCard({
         <Button variant="secondary" size="sm" loading={busy} onClick={reactivate}>Восстановить</Button>
       )}
       <div className="action-menu-wrap" ref={menuRef}>
-        <button className="icon-button compact" type="button" title="Действия" onClick={() => setMenuOpen((v) => !v)}>
+        <button
+          className="icon-button compact"
+          type="button"
+          title="Действия"
+          aria-label="Действия с занятием"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
           <Icon name="more_horiz" />
         </button>
         {menuOpen && (

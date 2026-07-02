@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
+import { RealtimeToasts } from "./ui";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Teacher from "./pages/Teacher";
@@ -27,6 +28,8 @@ export default function App() {
   }
 
   return (
+    <>
+    {user && <RealtimeToasts />}
     <Routes>
       <Route
         path="/login"
@@ -114,5 +117,6 @@ export default function App() {
         }
       />
     </Routes>
+    </>
   );
 }

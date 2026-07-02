@@ -29,7 +29,7 @@ import {
   useToast,
 } from "../ui";
 import { useRealtimeEvent } from "../realtime";
-import { money, teacherNav } from "./teacherNav";
+import { money, signedMoney, teacherNav } from "./teacherNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
 type StudentTab = "overview" | "lessons" | "assignments" | "finance" | "receipts";
@@ -41,12 +41,6 @@ const TABS: Array<[StudentTab, string]> = [
   ["assignments", "Домашние задания"],
   ["receipts", "Чеки"],
 ];
-
-function signedMoney(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "—";
-  if (value === 0) return `0 ${currency}`;
-  return `${value < 0 ? "−" : ""}${Math.abs(Math.round(value)).toLocaleString("ru-RU")} ${currency}`;
-}
 
 // Влияние операции на долг: charge +, payment −, correction по знаку, refund +.
 function txEffect(t: Transaction): number {

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
+import { ApiError } from "../api";
 import { useAuth } from "../auth";
-import { ErrorMsg, Icon } from "../ui";
+import { Button, ErrorMsg, Field, Icon, PasswordInput } from "../ui";
 import AuthLayout, { AuthLink } from "./AuthLayout";
 
 export default function Login() {
@@ -15,9 +16,13 @@ export default function Login() {
     setBusy(true);
     setError(null);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiError && (err.status === 400 || err.status === 401)) {
+        setError("Неверный email или пароль.");
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       setBusy(false);
     }
@@ -25,25 +30,39 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Вход"
-      subtitle="Введите email и пароль"
-      footer={<>Нет аккаунта? <AuthLink to="/register">Зарегистрироваться</AuthLink></>}
+      title="Вход в кабинет"
+      subtitle="Рады видеть снова. Введите данные для входа."
+      footer={<>Нет аккаунта? <AuthLink to="/register">Создать аккаунт преподавателя</AuthLink></>}
     >
-        <ErrorMsg error={error} />
-        <form className="auth-form" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="login-email">Email</label>
-            <div className="input-with-icon"><Icon name="mail" /><input id="login-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+      <ErrorMsg error={error} />
+      <form className="auth-form" onSubmit={onSubmit}>
+        <Field label="Email">
+          <div className="input-with-icon">
+            <Icon name="mail" />
+            <input
+              id="login-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              placeholder="you@example.ru"
+              required
+              autoFocus
+            />
           </div>
-          <div className="field">
-            <label htmlFor="login-password">Пароль</label>
-            <div className="input-with-icon"><Icon name="lock" /><input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
-          </div>
-          <button className="primary auth-submit" type="submit" disabled={busy}>
-            <Icon name="login" />
-            {busy ? "Вход..." : "Войти"}
-          </button>
-        </form>
+        </Field>
+        <Field label="Пароль">
+          <PasswordInput id="login-password" value={password} onChange={setPassword} autoComplete="current-password" required />
+        </Field>
+        <Button variant="primary" type="submit" icon="login" loading={busy} className="auth-submit">
+          Войти
+        </Button>
+      </form>
+
+      <div className="info-note auth-info">
+        <Icon name="info" />
+        <span>Ученики не регистрируются сами — преподаватель создаёт аккаунт и выдаёт временный пароль.</span>
+      </div>
     </AuthLayout>
   );
 }

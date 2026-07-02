@@ -19,12 +19,6 @@ export interface RealtimeEvent<T = Record<string, unknown>> {
   seq: number;
 }
 
-interface Toast {
-  id: string;
-  title: string;
-  body: string;
-}
-
 interface RealtimeState {
   lastEvent: RealtimeEvent | null;
   online: Record<string, boolean>;
@@ -36,7 +30,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null);
   const [online, setOnline] = useState<Record<string, boolean>>({});
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const seqRef = useRef(0);
 
   useEffect(() => {
@@ -86,20 +79,6 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
               setOnline((prev) => ({ ...prev, [userId]: Boolean(event.payload.online) }));
             }
           }
-          if (event.type === "notification") {
-            const id = String(event.payload.notification_id ?? Date.now());
-            setToasts((prev) => [
-              {
-                id,
-                title: String(event.payload.title ?? "Уведомление"),
-                body: String(event.payload.body ?? ""),
-              },
-              ...prev,
-            ].slice(0, 3));
-            window.setTimeout(() => {
-              setToasts((prev) => prev.filter((toast) => toast.id !== id));
-            }, 6000);
-          }
         } catch {
           /* ignore malformed realtime frames */
         }
@@ -124,21 +103,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => ({ lastEvent, online }), [lastEvent, online]);
 
-  return (
-    <RealtimeContext.Provider value={value}>
-      {children}
-      {toasts.length > 0 && (
-        <div className="toast-stack">
-          {toasts.map((toast) => (
-            <div className="toast" key={toast.id}>
-              <div className="toast-title">{toast.title}</div>
-              <div className="toast-body">{toast.body}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </RealtimeContext.Provider>
-  );
+  return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }
 
 export function useRealtimeEvent(

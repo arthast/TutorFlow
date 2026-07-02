@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { api, reports, type Receipt, type StudentDashboard } from "../api";
-import { AppShell, Card, ErrorMsg, SkeletonRows, Tabs, useAsync, type TabItem } from "../ui";
+import { AppShell, Card, ErrorMsg, ErrorState, SkeletonRows, Tabs, useAsync, type TabItem } from "../ui";
 import { studentNav } from "./studentNav";
 import { StudentReceiptHistory, type StudentReceiptFilter } from "./StudentReceiptHistory";
 
@@ -49,9 +49,11 @@ export default function StudentReceipts() {
       <div className="container receipts-container">
         <Tabs items={tabs} active={status} onChange={(key) => setStatus(key as StudentReceiptFilter)} />
         <Card title="Чеки" icon="receipt_long">
-          <ErrorMsg error={error || receipts.error || dashboard.error} />
+          <ErrorMsg error={error || dashboard.error} />
           {receipts.loading && !receipts.data ? (
             <SkeletonRows count={5} />
+          ) : receipts.error ? (
+            <ErrorState error={receipts.error} onRetry={receipts.reload} />
           ) : (
             <StudentReceiptHistory
               receipts={filtered}

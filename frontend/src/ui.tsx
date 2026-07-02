@@ -56,6 +56,8 @@ export function AppShell({
 }) {
   const { user, role, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(() => {
+    // На узких экранах дровер всегда стартует закрытым, что бы ни лежало в localStorage.
+    if (typeof window !== "undefined" && window.innerWidth < 880) return true;
     try {
       const saved = localStorage.getItem("tf_sb_collapsed");
       if (saved !== null) return saved === "1";
@@ -89,6 +91,8 @@ export function AppShell({
 
   return (
     <div className={"app-shell app-shell-" + accent + (collapsed ? " is-collapsed" : "")}>
+      {/* Затемнение под мобильным дровером; на десктопе скрыто через CSS */}
+      {!collapsed && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setCollapsed(true)} />}
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-mark">T</div>
@@ -121,7 +125,7 @@ export function AppShell({
                 <div className="sidebar-user-name">{user?.display_name ?? "Пользователь"}</div>
                 <div className="sidebar-user-role">{roleLabel}</div>
               </div>
-              <button className="icon-button" onClick={logout} title="Выйти">
+              <button className="icon-button" onClick={logout} title="Выйти" aria-label="Выйти из аккаунта">
                 <Icon name="logout" />
               </button>
             </>
@@ -131,7 +135,13 @@ export function AppShell({
 
       <div className="app-main">
         <header className="app-header">
-          <button className="icon-button menu-button" onClick={toggle} title="Свернуть меню">
+          <button
+            className="icon-button menu-button"
+            onClick={toggle}
+            title={collapsed ? "Открыть меню" : "Свернуть меню"}
+            aria-label={collapsed ? "Открыть меню" : "Свернуть меню"}
+            aria-expanded={!collapsed}
+          >
             <Icon name="menu" />
           </button>
           <div className="app-title">
@@ -141,22 +151,6 @@ export function AppShell({
           <div className="header-actions">{actions}</div>
         </header>
         <main className="app-content tf-scroll">{children}</main>
-      </div>
-    </div>
-  );
-}
-
-export function TopBar() {
-  const { user, role, logout } = useAuth();
-  return (
-    <div className="topbar">
-      <div className="brand">TutorFlow</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className={"role-chip " + (role === "teacher" ? "role-teacher" : "role-student")}>
-          {role === "teacher" ? "Преподаватель" : "Ученик"}
-        </span>
-        <span className="muted">{user?.display_name}</span>
-        <button className="small" onClick={logout}>Выйти</button>
       </div>
     </div>
   );
@@ -459,6 +453,17 @@ export function ListRow({
       className={"dash-row " + (onClick ? "clickable " : "") + className}
       onClick={onClick}
       role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onClick();
+            }
+          }
+          : undefined
+      }
     >
       {time !== undefined && <div className="dash-time">{time}</div>}
       {leading}
@@ -477,17 +482,20 @@ export function EmptyState({
   title,
   hint,
   tone,
+  action,
 }: {
   icon?: string;
   title: string;
   hint?: string;
   tone?: "success";
+  action?: ReactNode;
 }) {
   return (
     <div className={"empty-state" + (tone ? " " + tone : "")}>
       <Icon name={icon} />
       <strong>{title}</strong>
       {hint && <p>{hint}</p>}
+      {action}
     </div>
   );
 }
@@ -547,7 +555,7 @@ export function Tabs({
     <div className="page-tabs-bar">
       <div className="page-tabs">
         {items.map((it) => (
-          <button key={it.key} className={active === it.key ? "active" : ""} onClick={() => onChange(it.key)}>
+          <button key={it.key} type="button" className={active === it.key ? "active" : ""} onClick={() => onChange(it.key)}>
             {it.label}
             {it.count !== undefined && it.count !== null && <span>{it.count}</span>}
           </button>
@@ -570,7 +578,7 @@ export function Segmented({
   return (
     <div className="segmented">
       {items.map((it) => (
-        <button key={it.key} className={active === it.key ? "active" : ""} onClick={() => onChange(it.key)}>
+        <button key={it.key} type="button" className={active === it.key ? "active" : ""} onClick={() => onChange(it.key)}>
           {it.label}
           {it.count !== undefined && it.count !== null && <span className="tab-count">{it.count}</span>}
         </button>
@@ -597,12 +605,54 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const panelRef = useRef<HTMLElement | null>(null);
+
+  // Esc закрывает; Tab зациклен внутри панели; фокус возвращается инициатору.
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+
+    function focusables(): HTMLElement[] {
+      if (!panel) return [];
+      return Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+    }
+
+    // Начальный фокус: autoFocus-поле, иначе первое поле формы, иначе первая кнопка.
+    if (panel && !panel.contains(document.activeElement)) {
+      const list = focusables();
+      const field = list.find((el) => ["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName));
+      (field ?? list[0])?.focus();
+    }
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panel?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
   const panelClass = "modal-panel" + (wide ? " modal-panel-wide" : "");
@@ -613,7 +663,7 @@ export function Modal({
           <h2>{title}</h2>
           {subtitle !== undefined && <p>{subtitle}</p>}
         </div>
-        <button className="icon-button" type="button" onClick={onClose} title="Закрыть">
+        <button className="icon-button" type="button" onClick={onClose} title="Закрыть" aria-label="Закрыть окно">
           <Icon name="close" />
         </button>
       </div>
@@ -623,10 +673,11 @@ export function Modal({
   );
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className="modal-overlay" onMouseDown={onClose} role="dialog" aria-modal="true">
       {onSubmit ? (
         <form
           className={panelClass}
+          ref={(el) => { panelRef.current = el; }}
           onMouseDown={(e) => e.stopPropagation()}
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
@@ -636,7 +687,11 @@ export function Modal({
           {heading}
         </form>
       ) : (
-        <div className={panelClass} onMouseDown={(e) => e.stopPropagation()}>
+        <div
+          className={panelClass}
+          ref={(el) => { panelRef.current = el; }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           {heading}
         </div>
       )}
@@ -698,7 +753,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div className="toast-title">{t.title}</div>
               {t.body && <div className="toast-body">{t.body}</div>}
             </div>
-            <button className="toast-close icon-button" type="button" onClick={() => dismiss(t.id)} title="Закрыть">
+            <button className="toast-close icon-button" type="button" onClick={() => dismiss(t.id)} title="Закрыть" aria-label="Закрыть уведомление">
               <Icon name="close" />
             </button>
           </div>
@@ -712,82 +767,69 @@ export function useToast() {
   return useContext(ToastCtx);
 }
 
+// Ненавязчивые тосты на входящие realtime-события (notification + chat.message).
+// Дедуп по id + троттлинг, чтобы не спамить; сообщения не тостим на самой странице чата.
+export function RealtimeToasts() {
+  const toast = useToast();
+  const { user } = useAuth();
+  const selfId = user?.user_id ?? "";
+  const seen = useRef<Set<string>>(new Set());
+  const lastAt = useRef(0);
+
+  useRealtimeEvent((event) => {
+    const now = Date.now();
+    if (now - lastAt.current < 1500) return; // троттлинг
+
+    if (event.type === "notification") {
+      const id = "n:" + String(event.payload.notification_id ?? event.payload.id ?? event.seq);
+      if (seen.current.has(id)) return;
+      seen.current.add(id);
+      lastAt.current = now;
+      toast({
+        tone: "info",
+        icon: notifIcon(String(event.payload.type ?? "notification")),
+        title: String(event.payload.title ?? "Новое уведомление"),
+        body: String(event.payload.body ?? ""),
+      });
+      return;
+    }
+
+    if (event.type === "chat.message") {
+      const senderId = String(event.payload.sender_id ?? "");
+      if (senderId && senderId === selfId) return; // своё сообщение не тостим
+      // не тостим, когда пользователь уже в чате
+      if (typeof window !== "undefined" && window.location.pathname.includes("/chat")) return;
+      const id = "m:" + String(event.payload.message_id ?? event.payload.id ?? event.seq);
+      if (seen.current.has(id)) return;
+      seen.current.add(id);
+      lastAt.current = now;
+      const preview = String(event.payload.text ?? "");
+      toast({
+        tone: "info",
+        icon: "chat_bubble",
+        title: String(event.payload.sender_name ?? "Новое сообщение"),
+        body: preview || "Вложение",
+      });
+    }
+  }, [selfId]);
+
+  return null;
+}
+
 export function ErrorMsg({ error }: { error: string | null }) {
   if (!error) return null;
   return <div className="error">{error}</div>;
 }
 
-// Зелёное уведомление об успехе действия.
-export function Notice({ text }: { text: string | null }) {
-  if (!text) return null;
-  return <div className="notice">{text}</div>;
-}
-
-// Единообразные состояния списка: загрузка / ошибка (+повтор) / пусто.
-// Возвращает узел-состояние или null, если данные готовы и не пусты.
-export function ListState<T>({
-  query,
-  empty = "Пока ничего нет.",
-}: {
-  query: { data: T[] | null; error: string | null; loading: boolean; reload: () => void };
-  empty?: string;
-}) {
-  if (query.loading && !query.data) return <p className="hint">Загрузка…</p>;
-  if (query.error) {
-    return (
-      <div>
-        <ErrorMsg error={query.error} />
-        <button className="small" onClick={query.reload}>Повторить</button>
-      </div>
-    );
-  }
-  if ((query.data ?? []).length === 0) return <p className="hint">{empty}</p>;
-  return null;
-}
-
-export function NotificationsCard() {
-  const notifications = useAsync<AppNotification[]>(() => api.get("/notifications"), []);
-  const [error, setError] = useState<string | null>(null);
-  const [actingId, setActingId] = useState<string | null>(null);
-  const items = notifications.data ?? [];
-  const unread = items.filter((n) => !n.is_read).length;
-
-  useRealtimeEvent((event) => {
-    if (event.type === "notification") notifications.reload();
-  }, [notifications.reload]);
-
-  async function markRead(id: string) {
-    setError(null);
-    setActingId(id);
-    try {
-      await api.post(`/notifications/${id}/read`);
-      notifications.reload();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setActingId(null);
-    }
-  }
-
+// Единообразная ошибка списка/карточки: сообщение + «Повторить».
+export function ErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
   return (
-    <Card title={unread ? `Уведомления (${unread})` : "Уведомления"}>
-      <ErrorMsg error={error} />
-      {items.map((n) => (
-        <div className={"notification " + (n.is_read ? "notification-read" : "notification-unread")} key={n.id}>
-          <div>
-            <div className="notification-title">{n.title}</div>
-            <div className="muted">{n.body}</div>
-            <div className="hint">{fmtDate(n.created_at)}</div>
-          </div>
-          {!n.is_read && (
-            <button className="small" disabled={actingId === n.id} onClick={() => markRead(n.id)}>
-              {actingId === n.id ? "…" : "Прочитано"}
-            </button>
-          )}
-        </div>
-      ))}
-      <ListState query={notifications} empty="Новых уведомлений нет." />
-    </Card>
+    <EmptyState
+      icon="error"
+      title="Не удалось загрузить"
+      hint={error}
+      action={onRetry && <Button size="sm" icon="refresh" onClick={onRetry}>Повторить</Button>}
+    />
   );
 }
 
@@ -875,6 +917,15 @@ export function NotificationsPanel() {
     }
   }
 
+  async function markOne(id: string) {
+    try {
+      await api.post(`/notifications/${id}/read`);
+      notifications.reload();
+    } catch {
+      /* mark-read не критичен */
+    }
+  }
+
   return (
     <Card
       title={
@@ -893,7 +944,7 @@ export function NotificationsPanel() {
       {notifications.loading && !notifications.data ? (
         <SkeletonRows count={3} />
       ) : notifications.error ? (
-        <EmptyState icon="error" title="Не удалось загрузить" hint={notifications.error} />
+        <ErrorState error={notifications.error} onRetry={notifications.reload} />
       ) : items.length === 0 ? (
         <EmptyState icon="notifications" title="Новых уведомлений нет" />
       ) : (
@@ -902,6 +953,7 @@ export function NotificationsPanel() {
             <ListRow
               key={n.id}
               className={n.is_read ? "dim" : ""}
+              onClick={n.is_read ? undefined : () => markOne(n.id)}
               leading={<span className="dash-icon"><Icon name={notifIcon(n.type)} /></span>}
               title={n.title}
               subtitle={n.body || fmtDate(n.created_at)}
@@ -943,6 +995,8 @@ export function MessagesCard({
     <Card title="Сообщения" icon="forum" actions={<Link className="card-head-link" to={chatHref}>Открыть чат</Link>}>
       {dialogs.loading && !dialogs.data ? (
         <SkeletonRows count={3} />
+      ) : dialogs.error ? (
+        <ErrorState error={dialogs.error} onRetry={dialogs.reload} />
       ) : list.length === 0 ? (
         <EmptyState icon="forum" title="Диалогов пока нет" hint="Начните переписку на странице «Чат»." />
       ) : (
@@ -1034,6 +1088,7 @@ export function CommentThread({
       <div className="comment-form">
         <textarea
           placeholder="Написать комментарий…"
+          aria-label="Текст комментария"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -1048,9 +1103,163 @@ export function CommentThread({
   );
 }
 
+// ====== Пароль: поле с показать/скрыть + индикатор надёжности ======
+export function PasswordInput({
+  value,
+  onChange,
+  id,
+  placeholder,
+  icon = "lock",
+  autoComplete,
+  required,
+  minLength,
+  invalid,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  id?: string;
+  placeholder?: string;
+  icon?: string;
+  autoComplete?: string;
+  required?: boolean;
+  minLength?: number;
+  invalid?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="input-with-icon pw-field">
+      <Icon name={icon} />
+      <input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        required={required}
+        minLength={minLength}
+        className={invalid ? "invalid" : ""}
+      />
+      <button
+        type="button"
+        className="pw-toggle"
+        onClick={() => setShow((s) => !s)}
+        title={show ? "Скрыть пароль" : "Показать пароль"}
+        aria-label={show ? "Скрыть пароль" : "Показать пароль"}
+      >
+        <Icon name={show ? "visibility_off" : "visibility"} />
+      </button>
+    </div>
+  );
+}
+
+// 0 — пусто, 1 — слабый, 2 — средний, 3 — надёжный.
+export function passwordStrength(pw: string): number {
+  if (!pw) return 0;
+  let n = 0;
+  if (pw.length >= 8) n += 1;
+  if (/[a-zа-яё]/.test(pw) && /[A-ZА-ЯЁ]/.test(pw)) n += 1;
+  if (/[0-9]/.test(pw) || /[^A-Za-zА-Яа-яЁё0-9]/.test(pw)) n += 1;
+  return Math.min(n, 3);
+}
+
+const STRENGTH = [
+  { label: "Используйте буквы, цифры и регистр", cls: "" },
+  { label: "Слабый пароль", cls: "s1" },
+  { label: "Средний пароль", cls: "s2" },
+  { label: "Надёжный пароль", cls: "s3" },
+];
+
+export function PasswordStrength({ value }: { value: string }) {
+  const score = passwordStrength(value);
+  const meta = STRENGTH[value ? score : 0];
+  return (
+    <div className={"pw-strength " + meta.cls}>
+      <div className="pw-strength-bars"><span /><span /><span /></div>
+      <div className="pw-strength-label">{meta.label}</div>
+    </div>
+  );
+}
+
+// ====== Общая карточка смены пароля (Settings, teacher + student) ======
+export function ChangePasswordCard() {
+  const toast = useToast();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const mismatch = confirm.length > 0 && confirm !== next;
+  const canSubmit = current.length > 0 && next.length >= 8 && next === confirm;
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (next.length < 8) {
+      setError("Новый пароль — минимум 8 символов.");
+      return;
+    }
+    if (next !== confirm) {
+      setError("Пароли не совпадают.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.post("/auth/change-password", { current_password: current, new_password: next });
+      toast({ tone: "success", title: "Пароль обновлён", body: "Используйте новый пароль при следующем входе." });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+    } catch (err) {
+      setError((err as Error).message);
+      toast({ tone: "danger", title: "Не удалось сменить пароль", body: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card title="Смена пароля" icon="lock_reset">
+      <p className="card-note">Если вы вошли по временному паролю — задайте здесь постоянный.</p>
+      <ErrorMsg error={error} />
+      <form onSubmit={submit}>
+        <Field label="Текущий пароль">
+          <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" required />
+        </Field>
+        <Field label="Новый пароль">
+          <PasswordInput value={next} onChange={setNext} autoComplete="new-password" minLength={8} required />
+        </Field>
+        {next.length > 0 && <PasswordStrength value={next} />}
+        <Field label="Повторите новый пароль" error={mismatch ? "Пароли не совпадают" : null}>
+          <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" invalid={mismatch} required />
+        </Field>
+        <Button variant="primary" type="submit" icon="lock_reset" loading={busy} disabled={!canSubmit} className="auth-submit">
+          Обновить пароль
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
 export function fmtDate(iso?: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString("ru-RU", { dateStyle: "medium", timeStyle: "short" });
+}
+
+// ====== Деньги: единый формат на весь продукт ======
+// «15 000 ₽» для RUB, иначе «15 000 XXX»; «—» если значения нет.
+export function money(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  const symbol = currency === "RUB" ? "₽" : currency;
+  return `${Math.round(value).toLocaleString("ru-RU")} ${symbol}`;
+}
+
+// Со знаком: минус для отрицательных (переплата), без плюса.
+export function signedMoney(value?: number, currency = "RUB"): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  if (value === 0) return money(0, currency);
+  return `${value < 0 ? "−" : ""}${money(Math.abs(value), currency)}`;
 }

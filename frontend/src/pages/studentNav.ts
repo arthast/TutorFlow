@@ -17,23 +17,5 @@ export function studentNav(
   ];
 }
 
-export function money(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  return `${Math.round(value)} ${currency}`;
-}
-
-export function lessonInterval(startsAt?: string, endsAt?: string): string {
-  if (!startsAt) return "-";
-  const start = new Date(startsAt);
-  if (isNaN(start.getTime())) return startsAt;
-  const startText = start.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  if (!endsAt) return startText;
-  const end = new Date(endsAt);
-  if (isNaN(end.getTime())) return `${startText} - ${endsAt}`;
-  return `${startText} - ${end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
-}
+// Единый формат денег живёт в ui.tsx; реэкспорт для страниц ученика.
+export { money, signedMoney } from "../ui";

@@ -15,6 +15,7 @@ import {
   Card,
   EmptyState,
   ErrorMsg,
+  ErrorState,
   Field,
   Icon,
   Input,
@@ -27,21 +28,10 @@ import {
   useAsync,
   useToast,
 } from "../ui";
-import { teacherNav } from "./teacherNav";
+import { money as formatMoney, signedMoney as formatSignedBalance, teacherNav } from "./teacherNav";
 
 type FinanceFilter = "all" | "debt" | "pending" | "overpaid";
 type TxFilter = "all" | "charge" | "payment" | "correction" | "refund";
-
-function formatMoney(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  return `${Math.round(value).toLocaleString("ru-RU")} ${currency}`;
-}
-
-function formatSignedBalance(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  if (value === 0) return `0 ${currency}`;
-  return `${value < 0 ? "-" : ""}${formatMoney(Math.abs(value), currency)}`;
-}
 
 function shortDate(iso?: string): string {
   if (!iso) return "-";
@@ -201,7 +191,7 @@ export default function TeacherFinance() {
             {dashboard.loading && !dashboard.data ? (
               <SkeletonRows count={5} />
             ) : dashboard.error ? (
-              <ErrorMsg error={dashboard.error} />
+              <ErrorState error={dashboard.error} onRetry={dashboard.reload} />
             ) : visibleSummaries.length === 0 ? (
               <EmptyState icon="account_balance_wallet" title="По фильтру пусто" hint="Финансовых записей в этой категории нет." />
             ) : (
@@ -255,7 +245,7 @@ export default function TeacherFinance() {
                   ))}
                 </Select>
               </div>
-              <ErrorMsg error={error} />
+              {error && !loadingTx && <ErrorState error={error} onRetry={() => loadTransactions(studentId)} />}
               {loadingTx && <SkeletonRows count={3} />}
               {!loadingTx && filteredTransactions.map((transaction) => {
                 const effect = transactionEffect(transaction);
