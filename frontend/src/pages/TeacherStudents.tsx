@@ -8,6 +8,7 @@ import {
   Card,
   EmptyState,
   ErrorMsg,
+  ErrorState,
   Field,
   Icon,
   Modal,
@@ -18,13 +19,7 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
-import { money, teacherNav } from "./teacherNav";
-
-function signedMoney(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "—";
-  if (value === 0) return `0 ${currency}`;
-  return `${value < 0 ? "−" : ""}${Math.abs(Math.round(value)).toLocaleString("ru-RU")} ${currency}`;
-}
+import { money, signedMoney, teacherNav } from "./teacherNav";
 
 function studentTone(balance?: number): "teacher" | "student" | "muted" {
   if (typeof balance !== "number" || balance === 0) return "muted";
@@ -86,13 +81,13 @@ export default function TeacherStudents() {
           <div className="toolbar-right">
             <div className="search-field">
               <Icon name="search" />
-              <input placeholder="Поиск по имени или предмету…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <input placeholder="Поиск по имени или предмету…" aria-label="Поиск по имени или предмету" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
             <div className="view-toggle" aria-label="Вид списка учеников">
-              <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} title="Карточки">
+              <button className={view === "grid" ? "active" : ""} type="button" onClick={() => setView("grid")} title="Карточки" aria-label="Показать карточками" aria-pressed={view === "grid"}>
                 <Icon name="grid_view" />
               </button>
-              <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")} title="Список">
+              <button className={view === "list" ? "active" : ""} type="button" onClick={() => setView("list")} title="Список" aria-label="Показать списком" aria-pressed={view === "list"}>
                 <Icon name="view_list" />
               </button>
             </div>
@@ -102,7 +97,7 @@ export default function TeacherStudents() {
         {students.loading && !students.data ? (
           <Card title="Ученики" icon="group"><SkeletonRows count={5} /></Card>
         ) : students.error ? (
-          <ErrorMsg error={students.error} />
+          <ErrorState error={students.error} onRetry={students.reload} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="person_search" title="Никого не найдено" hint="Измените запрос или фильтр." />
         ) : view === "grid" ? (
@@ -265,7 +260,7 @@ function CreateStudentModal({ onClose, onCreated }: { onClose: () => void; onCre
         <Field label="Временный пароль" hint="Ученик сменит его при первом входе.">
           <div className="generated-field">
             <input value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
-            <button type="button" onClick={() => setPassword(generatePassword())} title="Сгенерировать заново">
+            <button type="button" onClick={() => setPassword(generatePassword())} title="Сгенерировать заново" aria-label="Сгенерировать пароль заново">
               <Icon name="autorenew" />
             </button>
           </div>
@@ -283,7 +278,7 @@ function CredentialRow({ icon, label, value, strong = false, toast }: { icon: st
         <span>{label}</span>
         <strong className={strong ? "credential-strong" : ""}>{value}</strong>
       </div>
-      <button type="button" className="icon-button compact" onClick={() => copyText(value, toast)} title="Скопировать">
+      <button type="button" className="icon-button compact" onClick={() => copyText(value, toast)} title="Скопировать" aria-label={`Скопировать: ${label}`}>
         <Icon name="content_copy" />
       </button>
     </div>

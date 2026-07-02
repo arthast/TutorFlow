@@ -15,6 +15,7 @@ import {
   Card,
   Counter,
   EmptyState,
+  ErrorState,
   Icon,
   ListRow,
   MessagesCard,
@@ -273,7 +274,7 @@ function ActiveAssignmentsCard({
       {assignments.loading && !assignments.data ? (
         <SkeletonRows count={2} />
       ) : assignments.error ? (
-        <EmptyState icon="error" title="Не удалось загрузить" hint={assignments.error} />
+        <ErrorState error={assignments.error} onRetry={assignments.reload} />
       ) : toSubmit.length === 0 ? (
         <EmptyState tone="success" icon="task_alt" title="Нет заданий к сдаче" hint="Все домашние работы сданы." />
       ) : (
@@ -361,7 +362,7 @@ function MyReceiptsCard({ receipts }: { receipts: Async<Receipt[]> }) {
       {receipts.loading && !receipts.data ? (
         <SkeletonRows count={3} />
       ) : receipts.error ? (
-        <EmptyState icon="error" title="Не удалось загрузить" hint={receipts.error} />
+        <ErrorState error={receipts.error} onRetry={receipts.reload} />
       ) : list.length === 0 ? (
         <EmptyState icon="receipt_long" title="Чеков пока нет" hint="Загрузите чек об оплате на странице «Оплата»." />
       ) : (
@@ -372,7 +373,7 @@ function MyReceiptsCard({ receipts }: { receipts: Async<Receipt[]> }) {
               <ListRow
                 key={r.id}
                 leading={<span className={"dash-icon " + meta.tone}><Icon name={meta.icon} /></span>}
-                title={`${Math.round(r.amount)} ${r.currency ?? "₽"}`}
+                title={money(r.amount, r.currency)}
                 subtitle={fmtDate(r.submitted_at) || "—"}
               >
                 <StatusPill status={r.status} />

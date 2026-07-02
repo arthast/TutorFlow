@@ -1,19 +1,8 @@
 import { Link } from "react-router-dom";
 import { api, openFile, type FileMeta, type Receipt, type StudentDashboard } from "../api";
-import { Button, EmptyState, Icon, StatusPill, useAsync } from "../ui";
+import { Button, EmptyState, Icon, StatusPill, money, useAsync } from "../ui";
 
 export type StudentReceiptFilter = "all" | "pending_review" | "confirmed" | "rejected";
-
-export function formatMoney(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  return `${Math.round(value).toLocaleString("ru-RU")} ${currency}`;
-}
-
-export function formatSignedBalance(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  if (value === 0) return `0 ${currency}`;
-  return `${value < 0 ? "-" : ""}${formatMoney(Math.abs(value), currency)}`;
-}
 
 export function dateLabel(iso?: string): string {
   if (!iso) return "-";
@@ -58,7 +47,7 @@ export function StudentReceiptHistory({
           <div className="dash-icon lg tone-warning"><Icon name={receipt.status === "confirmed" ? "task_alt" : receipt.status === "rejected" ? "cancel" : "receipt_long"} /></div>
           <div className="student-receipt-main">
             <div className="student-receipt-title">
-              <strong>{formatMoney(receipt.amount, receipt.currency)}</strong>
+              <strong>{money(receipt.amount, receipt.currency)}</strong>
               <span>{teacherName(dashboard, receipt.teacher_id)}</span>
             </div>
             <ReceiptFileLink receipt={receipt} onError={onError} />

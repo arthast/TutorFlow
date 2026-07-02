@@ -18,6 +18,7 @@ import {
   Card,
   Counter,
   EmptyState,
+  ErrorState,
   Field,
   Icon,
   Input,
@@ -202,6 +203,8 @@ function TodayCard({
     >
       {lessons.loading && !lessons.data ? (
         <SkeletonRows count={3} />
+      ) : lessons.error ? (
+        <ErrorState error={lessons.error} onRetry={lessons.reload} />
       ) : todayLessons.length === 0 ? (
         <EmptyState icon="event_available" title="На сегодня занятий нет" hint="Запланируйте занятие на странице «Занятия»." />
       ) : (
@@ -268,7 +271,7 @@ function TodayLessonRow({
     >
       <StatusPill status={lesson.status} />
       <Button variant="primary" size="sm" loading={busy} onClick={complete}>Завершить</Button>
-      <button className="icon-button small" type="button" title="Перенести" onClick={() => setRescheduleOpen(true)}>
+      <button className="icon-button small" type="button" title="Перенести" aria-label="Перенести занятие" onClick={() => setRescheduleOpen(true)}>
         <Icon name="schedule" />
       </button>
       {rescheduleOpen && (
@@ -369,6 +372,8 @@ function AttentionCard({
       </div>
       {loading && !receipts.data ? (
         <SkeletonRows count={2} />
+      ) : receipts.error ? (
+        <ErrorState error={receipts.error} onRetry={receipts.reload} />
       ) : list.length === 0 ? (
         <EmptyState tone="success" icon="task_alt" title="Все чеки обработаны" />
       ) : (
@@ -444,7 +449,7 @@ function ReceiptRow({
   }
 
   function reject() {
-    if (!window.confirm(`Отклонить чек ученика ${name} на ${Math.round(receipt.amount)} ₽?`)) return;
+    if (!window.confirm(`Отклонить чек ученика ${name} на ${money(receipt.amount, receipt.currency)}?`)) return;
     const reason = window.prompt("Причина отклонения (необязательно):", "") ?? "";
     act(`/payments/receipts/${receipt.id}/reject`, { comment: reason }, {
       tone: "warning",
@@ -459,11 +464,12 @@ function ReceiptRow({
       title={name}
       subtitle={fmtDate(receipt.submitted_at) || "чек на оплату"}
     >
-      <span className="dash-amount">{Math.round(receipt.amount)} ₽</span>
+      <span className="dash-amount">{money(receipt.amount, receipt.currency)}</span>
       <button
         className="icon-button small"
         type="button"
         title="Открыть чек"
+        aria-label="Открыть файл чека"
         onClick={() => openFile(receipt.file_id).catch((e) => toast({ tone: "danger", title: "Ошибка", body: (e as Error).message }))}
       >
         <Icon name="visibility" />

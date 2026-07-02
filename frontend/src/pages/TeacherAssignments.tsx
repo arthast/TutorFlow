@@ -13,6 +13,7 @@ import {
   Button,
   EmptyState,
   ErrorMsg,
+  ErrorState,
   Field,
   Icon,
   Modal,
@@ -142,7 +143,7 @@ export default function TeacherAssignments() {
           right={
             <div className="search-field">
               <Icon name="search" />
-              <input placeholder="Поиск по теме или ученику…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <input placeholder="Поиск по теме или ученику…" aria-label="Поиск по теме или ученику" value={query} onChange={(e) => setQuery(e.target.value)} />
             </div>
           }
         />
@@ -150,7 +151,7 @@ export default function TeacherAssignments() {
         {assignments.loading && !assignments.data ? (
           <div className="card"><SkeletonRows count={4} /></div>
         ) : assignments.error ? (
-          <ErrorMsg error={assignments.error} />
+          <ErrorState error={assignments.error} onRetry={assignments.reload} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="assignment" title="Заданий нет" hint="В этой вкладке пока пусто." />
         ) : (
@@ -306,7 +307,7 @@ function CreateAssignmentModal({
                     <strong>{file.name}</strong>
                     <span>{fileSize(file)}</span>
                   </div>
-                  <button type="button" className="icon-button compact" onClick={() => removeFile(index)} title="Удалить">
+                  <button type="button" className="icon-button compact" onClick={() => removeFile(index)} title="Удалить" aria-label={`Удалить файл ${file.name}`}>
                     <Icon name="close" />
                   </button>
                 </div>

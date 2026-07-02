@@ -4,7 +4,7 @@ import {
   AppShell,
   Avatar,
   EmptyState,
-  ErrorMsg,
+  ErrorState,
   FileChips,
   Segmented,
   SkeletonRows,
@@ -93,7 +93,7 @@ export default function StudentLessons() {
         {lessons.loading && !lessons.data ? (
           <div className="card"><SkeletonRows count={4} /></div>
         ) : lessons.error ? (
-          <ErrorMsg error={lessons.error} />
+          <ErrorState error={lessons.error} onRetry={lessons.reload} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="event_busy" title="Здесь пусто" hint="В этом разделе пока нет занятий." />
         ) : (

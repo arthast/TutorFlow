@@ -12,7 +12,7 @@ import {
   Button,
   CommentThread,
   EmptyState,
-  ErrorMsg,
+  ErrorState,
   FileChips,
   Icon,
   Segmented,
@@ -124,7 +124,7 @@ export default function StudentAssignments() {
         {assignments.loading && !assignments.data ? (
           <div className="card"><SkeletonRows count={4} /></div>
         ) : assignments.error ? (
-          <ErrorMsg error={assignments.error} />
+          <ErrorState error={assignments.error} onRetry={assignments.reload} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="assignment" title="Заданий нет" hint="В этой вкладке пока пусто." />
         ) : (
@@ -250,7 +250,7 @@ function AssignmentDetailPanel({
       {detail.loading && !a ? (
         <SkeletonRows count={2} />
       ) : detail.error ? (
-        <ErrorMsg error={detail.error} />
+        <ErrorState error={detail.error} onRetry={detail.reload} />
       ) : (
         <>
           {a?.description && <p className="review-text">{a.description}</p>}

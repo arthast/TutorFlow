@@ -13,6 +13,7 @@ import {
   Button,
   Card,
   ErrorMsg,
+  ErrorState,
   Field,
   Icon,
   Input,
@@ -22,8 +23,8 @@ import {
   useAsync,
   useToast,
 } from "../ui";
-import { studentNav } from "./studentNav";
-import { StudentReceiptHistory, formatMoney, formatSignedBalance } from "./StudentReceiptHistory";
+import { money as formatMoney, signedMoney as formatSignedBalance, studentNav } from "./studentNav";
+import { StudentReceiptHistory } from "./StudentReceiptHistory";
 
 export default function StudentPayments() {
   const dashboard = useAsync<StudentDashboard>(() => reports.studentDashboard(), []);
@@ -119,9 +120,11 @@ export default function StudentPayments() {
           </div>
 
           <Card title="История чеков" icon="receipt_long">
-            <ErrorMsg error={error || receipts.error || dashboard.error} />
+            <ErrorMsg error={error || dashboard.error} />
             {receipts.loading && !receipts.data ? (
               <SkeletonRows count={4} />
+            ) : receipts.error ? (
+              <ErrorState error={receipts.error} onRetry={receipts.reload} />
             ) : (
               <StudentReceiptHistory
                 receipts={sortedReceipts}

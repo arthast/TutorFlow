@@ -1,25 +1,41 @@
 import { useState, type FormEvent } from "react";
+import { ApiError } from "../api";
 import { useAuth } from "../auth";
-import { ErrorMsg, Icon } from "../ui";
+import { Button, ErrorMsg, Field, Icon, PasswordInput, PasswordStrength } from "../ui";
 import AuthLayout, { AuthLink } from "./AuthLayout";
 
 export default function Register() {
   const { register } = useAuth();
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<"teacher" | "student">("teacher");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const mismatch = confirm.length > 0 && confirm !== password;
+  const canSubmit = displayName.trim().length > 0 && email.trim().length > 0 && password.length >= 8 && password === confirm;
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    if (password.length < 8) {
+      setError("Пароль — минимум 8 символов.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Пароли не совпадают.");
+      return;
+    }
+    setBusy(true);
     try {
-      await register({ email, password, role, display_name: displayName });
+      await register({ email: email.trim(), password, role: "teacher", display_name: displayName.trim() });
     } catch (err) {
-      setError((err as Error).message);
+      if (err instanceof ApiError && err.status === 409) {
+        setError("Этот email уже зарегистрирован. Войдите или используйте другой адрес.");
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       setBusy(false);
     }
@@ -27,36 +43,36 @@ export default function Register() {
 
   return (
     <AuthLayout
-      title="Регистрация"
-      subtitle="Создайте рабочий аккаунт"
+      title="Аккаунт преподавателя"
+      subtitle="Создайте кабинет и приглашайте учеников."
+      back={{ to: "/login", label: "Назад ко входу" }}
       footer={<>Уже есть аккаунт? <AuthLink to="/login">Войти</AuthLink></>}
     >
-        <ErrorMsg error={error} />
-        <form className="auth-form" onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="register-role">Я —</label>
-            <div className="role-segment">
-              <button className={role === "teacher" ? "active" : ""} type="button" onClick={() => setRole("teacher")}><Icon name="school" />Преподаватель</button>
-              <button className={role === "student" ? "active" : ""} type="button" onClick={() => setRole("student")}><Icon name="person" />Ученик</button>
-            </div>
+      <ErrorMsg error={error} />
+      <form className="auth-form" onSubmit={onSubmit}>
+        <Field label="Имя и фамилия">
+          <div className="input-with-icon">
+            <Icon name="badge" />
+            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Елена Соколова" required autoFocus />
           </div>
-          <div className="field">
-            <label htmlFor="register-name">Имя</label>
-            <div className="input-with-icon"><Icon name="badge" /><input id="register-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required /></div>
+        </Field>
+        <Field label="Email">
+          <div className="input-with-icon">
+            <Icon name="mail" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.ru" autoComplete="username" required />
           </div>
-          <div className="field">
-            <label htmlFor="register-email">Email</label>
-            <div className="input-with-icon"><Icon name="mail" /><input id="register-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-          </div>
-          <div className="field">
-            <label htmlFor="register-password">Пароль (мин. 8 символов)</label>
-            <div className="input-with-icon"><Icon name="lock" /><input id="register-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required /></div>
-          </div>
-          <button className="primary auth-submit" type="submit" disabled={busy}>
-            <Icon name="person_add" />
-            {busy ? "Создание..." : "Создать аккаунт"}
-          </button>
-        </form>
+        </Field>
+        <Field label="Пароль">
+          <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" minLength={8} placeholder="Минимум 8 символов" required />
+        </Field>
+        {password.length > 0 && <PasswordStrength value={password} />}
+        <Field label="Повторите пароль" error={mismatch ? "Пароли не совпадают" : null}>
+          <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" invalid={mismatch} required />
+        </Field>
+        <Button variant="primary" type="submit" icon="person_add" loading={busy} disabled={!canSubmit} className="auth-submit">
+          Создать аккаунт
+        </Button>
+      </form>
     </AuthLayout>
   );
 }

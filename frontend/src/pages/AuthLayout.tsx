@@ -7,35 +7,48 @@ export default function AuthLayout({
   subtitle,
   children,
   footer,
+  back,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
   footer: ReactNode;
+  back?: { to: string; label: string };
 }) {
   return (
     <div className="auth-page">
       <section className="auth-brand-panel">
-        <div className="auth-logo">T</div>
-        <div>
-          <h1>TutorFlow</h1>
-          <p>Кабинет преподавателя и ученика</p>
+        <div className="auth-brand-top">
+          <div className="auth-logo">T</div>
+          <span className="auth-brand-name">TutorFlow</span>
         </div>
-        <div className="auth-feature-list">
-          <Feature icon="calendar_month" title="Расписание и занятия" text="переносы, статусы, история" />
-          <Feature icon="receipt_long" title="Оплаты по чекам" text="подтверждение вручную, без карт" />
-          <Feature icon="chat_bubble" title="Чат и уведомления" text="в реальном времени" />
+
+        <div className="auth-brand-hero">
+          <h1>Спокойное пространство для занятий и расчётов</h1>
+          <p>Расписание, домашние задания, проверка работ и понятный учёт оплат — всё в одном рабочем кабинете.</p>
+          <div className="auth-feature-list">
+            <Feature icon="calendar_month" title="Расписание и занятия" text="переносы, статусы, история" />
+            <Feature icon="receipt_long" title="Оплаты по чекам" text="подтверждение вручную, без карт" />
+            <Feature icon="chat_bubble" title="Чат и уведомления" text="в реальном времени" />
+          </div>
         </div>
+
+        <div className="auth-copyright">© 2026 TutorFlow · Учебный рабочий инструмент</div>
       </section>
 
       <main className="auth-form-side">
         <div className="auth-form-card">
+          {back && (
+            <Link className="auth-back" to={back.to}>
+              <Icon name="arrow_back" />{back.label}
+            </Link>
+          )}
           <div className="auth-form-heading">
             <h2>{title}</h2>
             <p>{subtitle}</p>
           </div>
           {children}
-          <div className="auth-footer">{footer}</div>
+          {footer && <div className="auth-footer">{footer}</div>}
         </div>
       </main>
     </div>

@@ -6,6 +6,7 @@ import {
   Button,
   EmptyState,
   ErrorMsg,
+  ErrorState,
   Icon,
   Modal,
   SkeletonRows,
@@ -16,21 +17,10 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
-import { teacherNav } from "./teacherNav";
+import { money as formatMoney, signedMoney as formatSignedBalance, teacherNav } from "./teacherNav";
 
 type ReceiptFilter = "pending_review" | "confirmed" | "rejected" | "all";
 type ReceiptAction = "confirm" | "reject";
-
-function formatMoney(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  return `${Math.round(value).toLocaleString("ru-RU")} ${currency}`;
-}
-
-function formatSignedBalance(value?: number, currency = "RUB"): string {
-  if (typeof value !== "number") return "-";
-  if (value === 0) return `0 ${currency}`;
-  return `${value < 0 ? "-" : ""}${formatMoney(Math.abs(value), currency)}`;
-}
 
 function dateLabel(iso?: string): string {
   if (!iso) return "-";
@@ -150,9 +140,11 @@ export default function TeacherReceipts() {
           <span></span>
         </div>
 
-        <ErrorMsg error={error || receipts.error || dashboard.error || students.error} />
+        <ErrorMsg error={error || dashboard.error || students.error} />
         {receipts.loading && !receipts.data ? (
           <div className="card"><SkeletonRows count={4} /></div>
+        ) : receipts.error ? (
+          <ErrorState error={receipts.error} onRetry={receipts.reload} />
         ) : filtered.length === 0 ? (
           <EmptyState icon="task_alt" title={status === "pending_review" ? "Чеков на проверке нет" : "Чеки не найдены"} hint="Все оплаты в этой категории уже обработаны." tone={status === "pending_review" ? "success" : undefined} />
         ) : (
