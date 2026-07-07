@@ -58,7 +58,7 @@ FileMeta FileService::Upload(const std::string& owner_user_id,
         data_size, storage_key);
 }
 
-FileMeta FileService::GetMeta(const std::string& file_id) const {
+FileMeta FileService::GetMetaUnchecked(const std::string& file_id) const {
     auto found = repository_.FindById(file_id);
     if (!found) {
         throw tutorflow::common::ServiceError::NotFound("file not found");
@@ -66,27 +66,39 @@ FileMeta FileService::GetMeta(const std::string& file_id) const {
     return *found;
 }
 
+void FileService::EnsureAccess(const FileMeta& meta,
+                               const std::string& requester_id,
+                               bool requester_is_teacher) const {
+    if (meta.owner_user_id == requester_id) return;
+
+    // Доступ симметричен: либо зовущий — преподаватель владельца-ученика,
+    // либо зовущий — ученик владельца-преподавателя (вложение ДЗ, материалы
+    // урока). В обоих случаях связь подтверждает identity check-access
+    // (teacher, student).
+    const bool allowed =
+        requester_is_teacher
+            ? identity_.CheckAccess(requester_id, meta.owner_user_id).allowed
+            : identity_.CheckAccess(meta.owner_user_id, requester_id).allowed;
+    if (!allowed) {
+        throw tutorflow::common::ServiceError::Forbidden(
+            "access denied: no active teacher-student relation");
+    }
+}
+
+FileMeta FileService::GetMeta(const std::string& file_id,
+                              const std::string& requester_id,
+                              bool requester_is_teacher) const {
+    auto meta = GetMetaUnchecked(file_id);
+    EnsureAccess(meta, requester_id, requester_is_teacher);
+    return meta;
+}
+
 std::pair<FileMeta, std::string> FileService::Download(
     const std::string& file_id,
     const std::string& requester_id,
     bool requester_is_teacher) const {
-    auto meta = GetMeta(file_id);
-
-    const bool is_owner = (meta.owner_user_id == requester_id);
-    if (!is_owner) {
-        // Доступ симметричен: либо зовущий — преподаватель владельца-ученика,
-        // либо зовущий — ученик владельца-преподавателя (вложение ДЗ, материалы
-        // урока). В обоих случаях связь подтверждает identity check-access
-        // (teacher, student).
-        const bool allowed =
-            requester_is_teacher
-                ? identity_.CheckAccess(requester_id, meta.owner_user_id).allowed
-                : identity_.CheckAccess(meta.owner_user_id, requester_id).allowed;
-        if (!allowed) {
-            throw tutorflow::common::ServiceError::Forbidden(
-                "access denied: no active teacher-student relation");
-        }
-    }
+    auto meta = GetMetaUnchecked(file_id);
+    EnsureAccess(meta, requester_id, requester_is_teacher);
 
     std::string content = storage_.Get(meta.storage_key);
 
