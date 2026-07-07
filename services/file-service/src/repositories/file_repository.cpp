@@ -10,7 +10,6 @@ namespace {
 namespace pg = userver::storages::postgres;
 
 constexpr auto kMaster = pg::ClusterHostType::kMaster;
-constexpr auto kSlave  = pg::ClusterHostType::kSlave;
 
 constexpr std::string_view kSelectFields = R"(
     id::text,
@@ -66,7 +65,7 @@ FileMeta FileRepository::SaveFileMeta(const std::string& owner_user_id,
 
 std::optional<FileMeta> FileRepository::FindById(const std::string& file_id) const {
     const auto result = pg_->Execute(
-        kSlave,
+        kMaster,
         "SELECT " + std::string{kSelectFields} +
             " FROM files WHERE id = $1::uuid",
         file_id);

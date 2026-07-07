@@ -1,7 +1,11 @@
 #include "domain/file_service.hpp"
 
+#include <exception>
+#include <stdexcept>
+
 #include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
+#include <userver/logging/log.hpp>
 #include <userver/utils/uuid4.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
@@ -19,7 +23,11 @@ FileService::FileService(const userver::components::ComponentConfig& config,
       repository_(context.FindComponent<FileRepository>()),
       identity_(context.FindComponent<tutorflow::clients::GrpcIdentityClient>()),
       storage_(context.FindComponent<FileStorageComponent>()),
-      max_size_bytes_(config["max-size-bytes"].As<int64_t>(10 * 1024 * 1024)) {}
+      max_size_bytes_(config["max-size-bytes"].As<int64_t>(10 * 1024 * 1024)) {
+    if (max_size_bytes_ <= 0) {
+        throw std::runtime_error("max-size-bytes must be positive");
+    }
+}
 
 // static
 userver::yaml_config::Schema FileService::GetStaticConfigSchema() {
@@ -31,6 +39,7 @@ additionalProperties: false
 properties:
     max-size-bytes:
         type: integer
+        minimum: 1
         description: upload size limit in bytes
         defaultDescription: '10485760'
 )");
@@ -53,9 +62,19 @@ FileMeta FileService::Upload(const std::string& owner_user_id,
 
     storage_.Put(storage_key, std::move(data), content_type);
 
-    return repository_.SaveFileMeta(
-        owner_user_id, purpose, original_name, content_type,
-        data_size, storage_key);
+    try {
+        return repository_.SaveFileMeta(
+            owner_user_id, purpose, original_name, content_type,
+            data_size, storage_key);
+    } catch (...) {
+        try {
+            storage_.Delete(storage_key);
+        } catch (const std::exception& e) {
+            LOG_ERROR() << "failed to cleanup orphan storage object "
+                        << storage_key << ": " << e;
+        }
+        throw;
+    }
 }
 
 FileMeta FileService::GetMetaUnchecked(const std::string& file_id) const {

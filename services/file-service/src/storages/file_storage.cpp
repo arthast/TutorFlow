@@ -239,13 +239,22 @@ void LocalFileStorage::Put(const std::string& storage_key,
                            const std::string&) const {
     const std::string path = StoragePath(storage_key);
     userver::engine::AsyncNoTracing(fs_tp_, [path, d = std::move(bytes)]() {
-        std::filesystem::create_directories(
-            std::filesystem::path(path).parent_path());
-        std::ofstream out(path, std::ios::binary | std::ios::trunc);
-        if (!out) {
-            throw std::runtime_error("cannot open file for writing: " + path);
+        const std::filesystem::path final_path{path};
+        const std::string tmp_path = path + ".tmp";
+        std::filesystem::create_directories(final_path.parent_path());
+        {
+            std::ofstream out(tmp_path, std::ios::binary | std::ios::trunc);
+            if (!out) {
+                throw std::runtime_error("cannot open file for writing: " + tmp_path);
+            }
+            out.write(d.data(), static_cast<std::streamsize>(d.size()));
+            if (!out) {
+                std::error_code ec;
+                std::filesystem::remove(tmp_path, ec);
+                throw std::runtime_error("failed to write file: " + tmp_path);
+            }
         }
-        out.write(d.data(), static_cast<std::streamsize>(d.size()));
+        std::filesystem::rename(tmp_path, final_path);
     }).Get();
 }
 
@@ -317,8 +326,8 @@ std::string S3FileStorage::Get(const std::string& storage_key) const {
                               .perform();
     const auto status = static_cast<int>(response->status_code());
     if (status == 404) {
-        throw tutorflow::common::ServiceError::NotFound(
-            "file object not found in storage");
+        throw tutorflow::common::ServiceError::Internal(
+            "storage object missing for existing metadata");
     }
     if (status < 200 || status >= 300) {
         throw tutorflow::common::ServiceError::Internal(

@@ -1,8 +1,10 @@
 #include "handlers/file_handlers.hpp"
 
 #include <cctype>
+#include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <userver/components/component_context.hpp>
 #include <userver/formats/json/serialize.hpp>
@@ -31,9 +33,16 @@ struct ParsedUpload {
     std::string data;
 };
 
+bool IsSafeHeaderValue(std::string_view value);
+void TruncateUtf8(std::string& s, std::size_t max_bytes);
+
 ParsedUpload ParseUploadRequest(const http::HttpRequest& req) {
     const auto& ct_header = req.GetHeader("Content-Type");
-    if (ct_header.find("multipart/form-data") == std::string::npos) {
+    std::string ct_lc{ct_header};
+    for (char& c : ct_lc) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    if (ct_lc.find("multipart/form-data") == std::string::npos) {
         throw ServiceError(http::HttpStatus::kUnsupportedMediaType,
                            "unsupported_media_type",
                            "Content-Type must be multipart/form-data");
@@ -67,7 +76,46 @@ ParsedUpload ParseUploadRequest(const http::HttpRequest& req) {
     if (!valid_purpose) {
         throw ServiceError::Validation("invalid purpose value");
     }
+    if (!IsSafeHeaderValue(result.content_type)) {
+        result.content_type = "application/octet-stream";
+    }
+    TruncateUtf8(result.original_name, 255);
+    if (result.original_name.empty()) result.original_name = "upload";
     return result;
+}
+
+bool IsSafeHeaderValue(std::string_view value) {
+    if (value.empty() || value.size() > 255) return false;
+    for (unsigned char c : value) {
+        if (c < 0x20 || c == 0x7F) return false;
+    }
+    return true;
+}
+
+void TruncateUtf8(std::string& s, std::size_t max_bytes) {
+    if (s.size() <= max_bytes) return;
+
+    std::size_t pos = 0;
+    std::size_t last_valid = 0;
+    while (pos < s.size() && pos < max_bytes) {
+        const auto c = static_cast<unsigned char>(s[pos]);
+        std::size_t len = 1;
+        if ((c & 0x80) == 0) {
+            len = 1;
+        } else if ((c & 0xE0) == 0xC0) {
+            len = 2;
+        } else if ((c & 0xF0) == 0xE0) {
+            len = 3;
+        } else if ((c & 0xF8) == 0xF0) {
+            len = 4;
+        } else {
+            break;
+        }
+        if (pos + len > max_bytes || pos + len > s.size()) break;
+        last_valid = pos + len;
+        pos += len;
+    }
+    s.resize(last_valid);
 }
 
 std::string RequiredPathArg(const http::HttpRequest& req, std::string_view name) {
@@ -114,6 +162,41 @@ std::string SanitizeDispositionFilename(const std::string& name) {
     return out;
 }
 
+std::string AsciiFallbackFilename(const std::string& sanitized) {
+    std::string out;
+    out.reserve(sanitized.size());
+    for (std::size_t i = 0; i < sanitized.size(); ++i) {
+        const auto c = static_cast<unsigned char>(sanitized[i]);
+        if (c < 0x80) {
+            out.push_back(static_cast<char>(c));
+        } else {
+            out.push_back('_');
+            while (i + 1 < sanitized.size() &&
+                   (static_cast<unsigned char>(sanitized[i + 1]) & 0xC0) == 0x80) {
+                ++i;
+            }
+        }
+    }
+    if (out.empty()) out = "upload";
+    return out;
+}
+
+std::string PercentEncodeUtf8(std::string_view value) {
+    static constexpr char kHex[] = "0123456789ABCDEF";
+    std::string out;
+    out.reserve(value.size() * 3);
+    for (unsigned char c : value) {
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            out.push_back(static_cast<char>(c));
+        } else {
+            out.push_back('%');
+            out.push_back(kHex[(c >> 4) & 0x0F]);
+            out.push_back(kHex[c & 0x0F]);
+        }
+    }
+    return out;
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -131,12 +214,12 @@ std::string UploadHandler::HandleRequestThrow(
     userver::server::request::RequestContext&) const {
     return HandleEnvelope(request, [&] {
         const auto auth = tutorflow::common::ParseAuthContext(request);
-        const auto upload = ParseUploadRequest(request);
+        auto upload = ParseUploadRequest(request);
         return JsonResponse(
             request,
             ToJson(service_.Upload(auth.user_id, upload.purpose,
                                    upload.original_name, upload.content_type,
-                                   upload.data)),
+                                   std::move(upload.data))),
             http::HttpStatus::kCreated);
     });
 }
@@ -190,10 +273,11 @@ std::string DownloadHandler::HandleRequestThrow(
         request.GetHttpResponse().SetStatus(http::HttpStatus::kOk);
         request.GetHttpResponse().SetHeader(std::string{"Content-Type"},
                                             meta.content_type);
+        const auto safe_name = SanitizeDispositionFilename(meta.original_name);
         request.GetHttpResponse().SetHeader(
             std::string{"Content-Disposition"},
-            "attachment; filename=\"" +
-                SanitizeDispositionFilename(meta.original_name) + "\"");
+            "attachment; filename=\"" + AsciiFallbackFilename(safe_name) +
+                "\"; filename*=UTF-8''" + PercentEncodeUtf8(safe_name));
         request.GetHttpResponse().SetHeader(
             std::string{"Content-Length"},
             std::to_string(content.size()));
