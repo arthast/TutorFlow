@@ -4,6 +4,73 @@ const BASE_URL: string =
   (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8080";
 
 const TOKEN_KEY = "tutorflow_token";
+const FALLBACK_ERROR_MESSAGE = "Что-то пошло не так. Попробуйте ещё раз.";
+
+const RU_BY_CODE: Record<string, string> = {
+  validation_error: "Проверьте заполненные поля",
+  unauthorized: "Сессия истекла — войдите заново",
+  forbidden: "Нет доступа к этому действию",
+  not_found: "Не найдено — возможно, объект уже удалён",
+  conflict: "Действие уже выполнено или конфликтует с текущим состоянием",
+  payload_too_large: "Файл слишком большой",
+  unsupported_media_type: "Неподдерживаемый формат",
+  business_rule: "Действие недоступно по правилам платформы",
+  internal_error: "Ошибка на сервере. Попробуйте позже",
+  network_error: "Нет соединения с сервером. Проверьте интернет",
+};
+
+const RU_CONTEXT_MESSAGES = [
+  {
+    method: "POST",
+    path: "/assignments/:id/submit",
+    code: "conflict",
+    message: "Задание уже закрыто — сдать решение нельзя",
+  },
+  {
+    method: "POST",
+    path: "/auth/login",
+    code: "unauthorized",
+    message: "Неверный email или пароль",
+  },
+  {
+    method: "POST",
+    path: "/auth/change-password",
+    code: "unauthorized",
+    message: "Неверный текущий пароль",
+  },
+  {
+    method: "POST",
+    path: "/students",
+    code: "conflict",
+    message: "Ученик с таким email уже существует",
+  },
+  {
+    method: "POST",
+    path: "/files",
+    code: "payload_too_large",
+    message: "Файл слишком большой (лимит 10 МБ)",
+  },
+];
+
+function matchesPath(pattern: string, path: string): boolean {
+  const patternParts = pattern.split("/");
+  const pathParts = path.split("?")[0].split("/");
+  if (patternParts.length !== pathParts.length) return false;
+  return patternParts.every((part, index) => part.startsWith(":") || part === pathParts[index]);
+}
+
+function messageFor(status: number, method: string, path: string, code: string): string {
+  const context = RU_CONTEXT_MESSAGES.find(
+    (item) => item.method === method && item.code === code && matchesPath(item.path, path),
+  );
+
+  if (context) return context.message;
+  if (RU_BY_CODE[code]) return RU_BY_CODE[code];
+  if (status === 413) return "Файл слишком большой";
+  if (status === 401) return RU_BY_CODE.unauthorized;
+  if (status >= 500) return RU_BY_CODE.internal_error;
+  return FALLBACK_ERROR_MESSAGE;
+}
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -18,10 +85,14 @@ export function clearToken(): void {
 export class ApiError extends Error {
   code: string;
   status: number;
-  constructor(status: number, code: string, message: string) {
-    super(message);
+  raw: string;
+
+  constructor(status: number, code: string, raw: string, method = "", path = "") {
+    super(messageFor(status, method, path, code));
     this.code = code;
     this.status = status;
+    this.raw = raw;
+    console.debug("ApiError", { status, code, raw, method, path });
   }
 }
 
@@ -52,14 +123,19 @@ async function request<T>(
     body = JSON.stringify(opts.body);
   }
 
-  const res = await fetch(BASE_URL + path, { method, headers, body });
+  let res: Response;
+  try {
+    res = await fetch(BASE_URL + path, { method, headers, body });
+  } catch (err) {
+    throw new ApiError(0, "network_error", (err as Error).message, method, path);
+  }
   const data = await parse(res);
 
   if (!res.ok) {
     const env = data as { error?: { code?: string; message?: string } };
     const code = env?.error?.code ?? "error";
-    const message = env?.error?.message ?? `Ошибка ${res.status}`;
-    throw new ApiError(res.status, code, message);
+    const raw = env?.error?.message ?? `HTTP ${res.status}`;
+    throw new ApiError(res.status, code, raw, method, path);
   }
   return data as T;
 }
@@ -68,11 +144,18 @@ async function requestBlob(path: string): Promise<Blob> {
   const token = getToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = "Bearer " + token;
-  const res = await fetch(BASE_URL + path, { headers });
+  let res: Response;
+  try {
+    res = await fetch(BASE_URL + path, { headers });
+  } catch (err) {
+    throw new ApiError(0, "network_error", (err as Error).message, "GET", path);
+  }
   if (!res.ok) {
     const data = await parse(res);
     const env = data as { error?: { code?: string; message?: string } };
-    throw new ApiError(res.status, env?.error?.code ?? "error", env?.error?.message ?? `Ошибка ${res.status}`);
+    const code = env?.error?.code ?? "error";
+    const raw = env?.error?.message ?? `HTTP ${res.status}`;
+    throw new ApiError(res.status, code, raw, "GET", path);
   }
   return res.blob();
 }

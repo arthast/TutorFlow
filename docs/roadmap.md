@@ -1000,6 +1000,90 @@ DoD: один запрос помечает все прочитанными.
 
 ---
 
+## Этап 7 — доработки по пользовательскому фидбеку (зафиксировано 2026-07-08)
+
+> Источник: список изменений от владельца проекта. Каждый пункт проверен по коду;
+> ниже зафиксировано фактическое состояние и согласуемое решение. Пункты, меняющие
+> контракты, — через координатора (как в «Правилах назначения задач»).
+
+**7.1 Переотправка ДЗ учеником — P1. [frontend, backend не трогаем]**
+Факт по коду: backend блокирует submit только при статусах `done`/`expired`
+(`assignment_service.cpp: SubmitAssignment`), т.е. повторная сдача уже разрешена
+для `assigned`/`needs_fix`/`submitted`/`reviewed`. Фронт же показывает форму сдачи
+только для `assigned`/`needs_fix` (`StudentAssignments.tsx`, set `TODO`): после
+review со статусом `needs_fix` «Сдать заново» уже работает, но пока решение висит
+в `submitted` (до проверки) или после `reviewed` — переотправить нельзя.
+Решение: во фронте разрешить повторную отправку в статусе `submitted`
+(«заменить решение до проверки») и решить продуктово, разрешать ли после
+`reviewed`. Преподаватель ревьюит последнюю submission (`ReviewLatestSubmission`),
+история сохраняется — доменных изменений не требуется.
+DoD: ученик может отправить новое решение до проверки; в панели видна история
+solutions; преподаватель проверяет последнюю версию.
+
+**7.2 Имя преподавателя в чате у ученика — P1. Меняет контракт (gateway OpenAPI).**
+Факт по коду: `ChatDialog` не содержит имён участников (`chat.proto`, `api.ts`).
+Фронт ученика собирает имена из report summaries (`teacher_name`) и из
+lessons/assignments с fallback `teacher_id.slice(0,8)` (`ChatPage.tsx: contacts`).
+Если read-model ещё пуст (преподаватель только создал ученика и написал первым),
+ученик видит обрезанный uuid вместо имени.
+Решение: gateway при `GET /chats` обогащает каждый диалог полем `peer_name`
+через `identity.GetUser(user_id)` (метод уже есть в `identity.proto`; это
+допустимая read-агрегация без бизнес-логики). Фронт использует `peer_name`
+с текущим fallback. Кэшировать имена в gateway per-request (диалогов немного).
+DoD: ученик видит имя преподавателя в списке диалогов и шапке треда даже без
+данных report-service; teacher-сторона продолжает работать как сейчас.
+
+**7.3 Автообновление интерфейса при событиях — P1. [сначала frontend, затем realtime]**
+Факт по коду: realtime-service пушит только `chat.message`, `chat.read`,
+`presence`, `notification` (см. `docs/agent-realtime-service.md`). Страницы
+`StudentAssignments`/`TeacherAssignmentReview` подписаны на несуществующие типы
+`assignment*`/`submission*`/`review*` → realtime-обновление там никогда не
+срабатывает; Lessons/Receipts/Payments-страницы не подписаны вовсе; дашборды
+Teacher/Student обновляются (слушают `notification`); чат живёт на polling
+3–5 с + realtime.
+Шаг 1 (только фронт, без изменения backend):
+- в подписках страниц заменить фильтры на `type === "notification"` +
+  разбор `payload.type` (`assignment.*`, `lesson.*`, `payment.*`, …);
+- добавить `useRealtimeEvent` на TeacherLessons/StudentLessons/TeacherReceipts/
+  StudentPayments/TeacherFinance;
+- fallback: refetch при возврате фокуса вкладки и/или мягкий polling 30–60 с.
+Шаг 2 (расширение realtime-service, по необходимости): консюмить `lesson.*`,
+`assignment.*`, `finance.*` и пушить типизированные события обоим участникам
+(teacher_id/student_id уже есть в payload событий). Контракт push-сообщений
+дополнить в `docs/agent-realtime-service.md`.
+DoD: открытые страницы обеих ролей отражают изменения (сдача ДЗ, review,
+завершение урока, загрузка/подтверждение чека) без ручного refresh.
+
+**7.4 Kubernetes — P3. [deploy] Требует отдельного решения.**
+Факт: деплой — `docker-compose.prod.yml` + Caddy + GHCR CI/CD на один сервер
+(`docs/deploy.md`); k8s-манифестов в репо нет. Для одного сервера и MVP-нагрузки
+k8s даёт мало пользы при заметной сложности (10 сервисов + Postgres/Kafka/
+Redis/MinIO как stateful).
+Если делать: `deploy/k8s/` — Deployments для app-сервисов + gateway + frontend,
+StatefulSets (или managed-аналоги) для Postgres/Kafka/Redis/MinIO, Ingress вместо
+Caddy, Secrets/ConfigMaps из `.env`, Job для migrator; упаковать Helm chart или
+kustomize overlays (dev/prod). Стартовать с k3s на текущем сервере.
+Рекомендация: отложить до реальной потребности (масштабирование/второй сервер);
+сначала закрыть 5K observability/hardening.
+
+**7.5 Русские сообщения об ошибках — P1. [frontend, backend не трогаем]**
+Факт по коду: envelope `{code, message}` — все `message` захардкожены на
+английском в сервисах («assignment not found», «teacher-student relation is not
+active», …); фронт показывает `err.message` как есть в тостах/ErrorState
+(`api.ts: ApiError`, `ui.tsx`). Машинные коды уже едины (`error_codes.hpp`):
+`validation_error`, `unauthorized`, `forbidden`, `not_found`, `conflict`,
+`payload_too_large`, `unsupported_media_type`, `business_rule`, `internal_error`.
+Решение (MVP): словарь `code → русский текст` во фронте + контекстные
+переопределения на месте вызова (например, для submit ДЗ `conflict` →
+«Задание уже закрыто — сдать решение нельзя»). Оригинальный `err.message`
+оставить в details/console для отладки. Backend не трогаем: английские message
+остаются для логов и API-клиентов. Позже (опционально): доменные reason-коды в
+`details` для более точных текстов без парсинга английских строк.
+DoD: все типовые ошибки в UI показываются понятным русским текстом; сырые
+английские строки пользователю не видны.
+
+---
+
 ## Backlog (не в критическом пути MVP)
 - **file-service: хранить опциональный `resource_id`** в метаданных файла для
   аудита и кросс-ресурсного поиска. Сейчас связь уже держится на стороне
