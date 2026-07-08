@@ -36,7 +36,9 @@ public:
                     const std::string& content_type,
                     std::string data) const;
 
-    FileMeta GetMeta(const std::string& file_id) const;
+    FileMeta GetMeta(const std::string& file_id,
+                     const std::string& requester_id,
+                     bool requester_is_teacher) const;
 
     // Returns {meta, file_content}. Checks access for requester.
     std::pair<FileMeta, std::string> Download(
@@ -45,6 +47,11 @@ public:
         bool requester_is_teacher) const;
 
 private:
+    FileMeta GetMetaUnchecked(const std::string& file_id) const;
+    void EnsureAccess(const FileMeta& meta,
+                      const std::string& requester_id,
+                      bool requester_is_teacher) const;
+
     FileRepository& repository_;
     tutorflow::clients::IdentityClient& identity_;
     IFileStorage& storage_;

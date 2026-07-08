@@ -38,12 +38,14 @@ paths:
 
   /internal/files/{fileId}:
     get:
-      summary: Метаданные файла
+      summary: Метаданные файла. Доступ как у скачивания: владелец или связанный teacher/student.
       parameters:
         - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
         - { $ref: "#/components/parameters/XUserId" }
+        - { $ref: "#/components/parameters/XUserRoles" }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/FileMeta" } } } }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
   /internal/files/{fileId}/download:

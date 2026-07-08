@@ -177,6 +177,7 @@ components_manager:
             path: /files
             method: POST,OPTIONS
             task_processor: main-task-processor
+            max_request_size: 12582912
         gateway-file-meta-handler:
             path: /files/{fileId}
             method: GET,OPTIONS

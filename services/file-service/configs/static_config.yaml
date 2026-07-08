@@ -53,6 +53,7 @@ components_manager:
             path: /internal/files
             method: POST
             task_processor: main-task-processor
+            max_request_size: 12582912
         file-get-meta-handler:
             path: /internal/files/{fileId}
             method: GET
