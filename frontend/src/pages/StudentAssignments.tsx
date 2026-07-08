@@ -24,7 +24,7 @@ import {
   type TabItem,
 } from "../ui";
 import { useAuth } from "../auth";
-import { useRealtimeEvent } from "../realtime";
+import { useDomainRefresh } from "../realtime";
 import { studentNav } from "./studentNav";
 
 type Filter = "todo" | "submitted" | "reviewed" | "all";
@@ -68,13 +68,10 @@ export default function StudentAssignments() {
   const activeAssignments = dashboard.data?.summaries.reduce((s, i) => s + i.activity.active_assignments_count, 0) ?? 0;
   const upcomingLessons = dashboard.data?.summaries.reduce((s, i) => s + i.activity.upcoming_lessons_count, 0) ?? 0;
 
-  useRealtimeEvent((event) => {
-    if (["assignment", "submission", "review"].some((t) => event.type.startsWith(t))) {
-      assignments.reload();
-      dashboard.reload();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useDomainRefresh(() => {
+    assignments.reload();
+    dashboard.reload();
+  }, ["assignment", "submission"]);
 
   const counts = useMemo(
     () => ({

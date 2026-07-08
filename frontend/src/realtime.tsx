@@ -12,6 +12,7 @@ import { useAuth } from "./auth";
 
 const WS_URL: string =
   (import.meta.env.VITE_REALTIME_URL as string | undefined) ?? "ws://localhost:8089/ws";
+const FOCUS_REFRESH_INTERVAL_MS = 10_000;
 
 export interface RealtimeEvent<T = Record<string, unknown>> {
   type: string;
@@ -119,6 +120,45 @@ export function useRealtimeEvent(
     handler(ctx.lastEvent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.lastEvent, ...deps]);
+}
+
+export function useDomainRefresh(reload: () => void, prefixes: string[]): void {
+  const reloadRef = useRef(reload);
+  const prefixesRef = useRef(prefixes);
+  const lastFocusReloadAt = useRef(0);
+
+  useEffect(() => {
+    reloadRef.current = reload;
+  }, [reload]);
+
+  useEffect(() => {
+    prefixesRef.current = prefixes;
+  }, [prefixes]);
+
+  useRealtimeEvent((event) => {
+    if (event.type !== "notification") return;
+    const domainType = String(event.payload.type ?? "");
+    if (prefixesRef.current.some((prefix) => domainType.startsWith(prefix))) {
+      reloadRef.current();
+    }
+  }, []);
+
+  useEffect(() => {
+    function reloadIfVisible() {
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastFocusReloadAt.current < FOCUS_REFRESH_INTERVAL_MS) return;
+      lastFocusReloadAt.current = now;
+      reloadRef.current();
+    }
+
+    document.addEventListener("visibilitychange", reloadIfVisible);
+    window.addEventListener("focus", reloadIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", reloadIfVisible);
+      window.removeEventListener("focus", reloadIfVisible);
+    };
+  }, []);
 }
 
 export function useOnlineStatus(userId?: string): boolean {

@@ -19,6 +19,7 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { money, signedMoney, teacherNav } from "./teacherNav";
 
 function studentTone(balance?: number): "teacher" | "student" | "muted" {
@@ -61,6 +62,11 @@ export default function TeacherStudents() {
   function balanceOf(studentId: string): number | undefined {
     return summaries.find((s) => s.student_id === studentId)?.finance.balance_amount;
   }
+
+  useDomainRefresh(() => {
+    students.reload();
+    dashboard.reload();
+  }, ["lesson", "assignment", "payment"]);
 
   return (
     <AppShell
