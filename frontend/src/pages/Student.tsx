@@ -26,7 +26,7 @@ import {
   useAsync,
 } from "../ui";
 import { useAuth } from "../auth";
-import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { useDomainRefresh, useOnlineStatus } from "../realtime";
 import { studentNav, money } from "./studentNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
@@ -81,12 +81,7 @@ export default function Student() {
     receipts.reload();
   }
 
-  useRealtimeEvent((event) => {
-    if (["lesson", "receipt", "assignment", "submission", "review", "notification"].some((t) => event.type.startsWith(t))) {
-      reloadAll();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useDomainRefresh(reloadAll, [""]);
 
   const scheduled = useMemo(
     () =>

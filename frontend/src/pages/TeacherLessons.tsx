@@ -27,7 +27,7 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
-import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { useDomainRefresh, useOnlineStatus } from "../realtime";
 import { teacherNav, money } from "./teacherNav";
 
 type Segment = "scheduled" | "completed" | "cancelled" | "all";
@@ -104,10 +104,7 @@ export default function TeacherLessons() {
     dashboard.reload();
   }
 
-  useRealtimeEvent((event) => {
-    if (event.type.startsWith("lesson")) reloadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useDomainRefresh(reloadAll, ["lesson"]);
 
   const counts = useMemo(
     () => ({

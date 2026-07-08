@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { api, reports, type Receipt, type StudentDashboard } from "../api";
 import { AppShell, Card, ErrorMsg, ErrorState, SkeletonRows, Tabs, useAsync, type TabItem } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { studentNav } from "./studentNav";
 import { StudentReceiptHistory, type StudentReceiptFilter } from "./StudentReceiptHistory";
 
@@ -12,6 +13,12 @@ export default function StudentReceipts() {
 
   const activeAssignments = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.active_assignments_count, 0) ?? 0;
   const upcomingLessons = dashboard.data?.summaries.reduce((sum, item) => sum + item.activity.upcoming_lessons_count, 0) ?? 0;
+
+  useDomainRefresh(() => {
+    dashboard.reload();
+    receipts.reload();
+  }, ["payment"]);
+
   const sortedReceipts = useMemo(
     () => [...(receipts.data ?? [])].sort((a, b) => new Date(b.submitted_at ?? 0).getTime() - new Date(a.submitted_at ?? 0).getTime()),
     [receipts.data],

@@ -33,7 +33,7 @@ import {
   useAsync,
   useToast,
 } from "../ui";
-import { useOnlineStatus, useRealtimeEvent } from "../realtime";
+import { useDomainRefresh, useOnlineStatus } from "../realtime";
 import { teacherNav, money, timeOnly } from "./teacherNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
@@ -71,13 +71,8 @@ export default function Teacher() {
     assignments.reload();
   }
 
-  // Realtime: обновляем сводку, когда прилетают доменные события.
-  useRealtimeEvent((event) => {
-    if (["lesson", "receipt", "assignment", "submission", "notification"].some((t) => event.type.startsWith(t))) {
-      reloadAll();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Realtime: обновляем сводку, когда прилетают доменные уведомления.
+  useDomainRefresh(reloadAll, [""]);
 
   const todayLessons = useMemo(
     () =>
@@ -481,4 +476,3 @@ function ReceiptRow({
     </ListRow>
   );
 }
-

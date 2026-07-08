@@ -21,7 +21,7 @@ import {
   useToast,
 } from "../ui";
 import { useAuth } from "../auth";
-import { useRealtimeEvent } from "../realtime";
+import { useDomainRefresh } from "../realtime";
 import { initials, teacherNav } from "./teacherNav";
 
 type Async<T> = ReturnType<typeof useAsync<T>>;
@@ -43,9 +43,7 @@ export default function TeacherAssignmentReview() {
   const students = useAsync<StudentLink[]>(() => api.get("/students"), []);
   const detail = useAsync<AssignmentDetail>(() => api.get(`/assignments/${assignmentId}`), [assignmentId]);
 
-  useRealtimeEvent((event) => {
-    if (["assignment", "submission", "review"].some((t) => event.type.startsWith(t))) detail.reload();
-  }, [detail.reload]);
+  useDomainRefresh(() => detail.reload(), ["assignment", "submission"]);
 
   if (!assignmentId) return <Navigate to="/teacher/assignments" replace />;
 

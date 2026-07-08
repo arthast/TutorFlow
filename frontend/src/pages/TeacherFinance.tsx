@@ -28,6 +28,7 @@ import {
   useAsync,
   useToast,
 } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { money as formatMoney, signedMoney as formatSignedBalance, teacherNav } from "./teacherNav";
 
 type FinanceFilter = "all" | "debt" | "pending" | "overpaid";
@@ -133,6 +134,8 @@ export default function TeacherFinance() {
     dashboard.reload();
     loadTransactions(studentId);
   }
+
+  useDomainRefresh(afterCorrection, ["payment", "charge", "balance"]);
 
   return (
     <AppShell

@@ -23,6 +23,7 @@ import {
   useAsync,
   useToast,
 } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { money as formatMoney, signedMoney as formatSignedBalance, studentNav } from "./studentNav";
 import { StudentReceiptHistory } from "./StudentReceiptHistory";
 
@@ -60,6 +61,8 @@ export default function StudentPayments() {
     dashboard.reload();
     receipts.reload();
   }
+
+  useDomainRefresh(reloadAfterSend, ["payment", "charge", "balance"]);
 
   return (
     <AppShell

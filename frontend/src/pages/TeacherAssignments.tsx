@@ -25,7 +25,7 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
-import { useRealtimeEvent } from "../realtime";
+import { useDomainRefresh } from "../realtime";
 import { teacherNav } from "./teacherNav";
 
 type AssignmentTab = "all" | "review" | "active" | "done";
@@ -88,13 +88,10 @@ export default function TeacherAssignments() {
 
   const studentList = students.data ?? [];
 
-  useRealtimeEvent((event) => {
-    if (["assignment", "submission", "review"].some((t) => event.type.startsWith(t))) {
-      assignments.reload();
-      dashboard.reload();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useDomainRefresh(() => {
+    assignments.reload();
+    dashboard.reload();
+  }, ["assignment", "submission"]);
 
   const counts = useMemo(() => {
     const base: Record<AssignmentTab, number> = { all: 0, review: 0, active: 0, done: 0 };

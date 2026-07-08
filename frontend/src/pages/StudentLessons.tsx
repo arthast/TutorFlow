@@ -12,6 +12,7 @@ import {
   useAsync,
   type TabItem,
 } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { money, studentNav } from "./studentNav";
 
 type Segment = "scheduled" | "completed" | "cancelled" | "all";
@@ -44,6 +45,11 @@ export default function StudentLessons() {
   const list = lessons.data ?? [];
   const activeAssignments = dashboard.data?.summaries.reduce((s, i) => s + i.activity.active_assignments_count, 0) ?? 0;
   const upcomingLessons = dashboard.data?.summaries.reduce((s, i) => s + i.activity.upcoming_lessons_count, 0) ?? 0;
+
+  useDomainRefresh(() => {
+    lessons.reload();
+    dashboard.reload();
+  }, ["lesson"]);
 
   const counts = useMemo(
     () => ({

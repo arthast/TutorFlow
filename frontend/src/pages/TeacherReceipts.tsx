@@ -17,6 +17,7 @@ import {
   useToast,
   type TabItem,
 } from "../ui";
+import { useDomainRefresh } from "../realtime";
 import { money as formatMoney, signedMoney as formatSignedBalance, teacherNav } from "./teacherNav";
 
 type ReceiptFilter = "pending_review" | "confirmed" | "rejected" | "all";
@@ -80,6 +81,8 @@ export default function TeacherReceipts() {
     receipts.reload();
     dashboard.reload();
   }
+
+  useDomainRefresh(reloadAll, ["payment"]);
 
   async function act(receipt: Receipt, action: ReceiptAction, comment?: string) {
     setError(null);
