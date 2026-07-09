@@ -5,13 +5,17 @@
 #include <userver/formats/json/serialize.hpp>
 #include <userver/logging/log.hpp>
 #include <userver/storages/postgres/result_set.hpp>
+#include <userver/storages/postgres/transaction.hpp>
 
 namespace tutorflow::events {
 namespace {
 namespace pg = userver::storages::postgres;
 
-constexpr auto kMaster = pg::ClusterHostType::kMaster;
 constexpr std::string_view kTopicPrefix = "tutorflow.";
+
+// Ключ advisory-лока лидера outbox-паблишера. Лок берётся в БД сервиса,
+// поэтому разные сервисы (разные БД) друг с другом не конкурируют.
+constexpr std::string_view kLeaderLockKey = "tutorflow.outbox_publisher";
 
 }  // namespace
 
@@ -36,8 +40,24 @@ void PostgresOutboxPublisher::Start() {
 }
 
 void PostgresOutboxPublisher::PublishPending() const {
-  const auto rows = pg_->Execute(
-      kMaster,
+  // Leader-lock: при нескольких репликах сервиса батч публикует ровно одна —
+  // остальные молча пропускают tick. Без этого реплики публиковали бы дубли
+  // и, что хуже, могли бы нарушить порядок событий одного агрегата
+  // (FOR UPDATE SKIP LOCKED дал бы параллелизм, но не сохранил бы порядок —
+  // обоснование в docs/adr/0003-service-replicas-and-kafka-scaling.md).
+  // Лок транзакционный (pg_try_advisory_xact_lock): упавший лидер отпускает
+  // его автоматически вместе с rollback'ом — «зависший» лок невозможен.
+  auto trx = pg_->Begin("outbox-publish", pg::Transaction::RW);
+
+  const auto lock = trx.Execute(
+      "SELECT pg_try_advisory_xact_lock(hashtext($1)) AS acquired",
+      std::string{kLeaderLockKey});
+  if (!lock[0]["acquired"].As<bool>()) {
+    trx.Rollback();  // лидер уже есть — тихо пропускаем tick
+    return;
+  }
+
+  const auto rows = trx.Execute(
       R"(SELECT id::text AS id, event_type, event_version,
                 aggregate_id::text AS aggregate_id, payload::text AS payload,
                 to_char(created_at AT TIME ZONE 'UTC',
@@ -64,18 +84,21 @@ void PostgresOutboxPublisher::PublishPending() const {
             row["payload"].As<std::string>()),
     };
 
-    // Publish-then-mark: at-least-once. If Send throws, the row stays pending
-    // and will be retried on the next tick. Consumers must be idempotent.
+    // Publish-then-mark: at-least-once. Если Send бросит исключение,
+    // транзакция откатится и весь батч останется pending — уже отправленные
+    // события уйдут повторно на следующем tick'е (consumers идемпотентны).
     publisher_.Publish(topic, aggregate_id, event);
 
-    pg_->Execute(kMaster,
-                 "UPDATE outbox_events SET status = 'published', "
-                 "published_at = now() WHERE id = $1::uuid AND status = 'pending'",
-                 id);
+    trx.Execute(
+        "UPDATE outbox_events SET status = 'published', "
+        "published_at = now() WHERE id = $1::uuid AND status = 'pending'",
+        id);
 
     LOG_INFO() << "[outbox] published event_id=" << id
                << " type=" << event.event_type << " topic=" << topic;
   }
+
+  trx.Commit();
 }
 
 }  // namespace tutorflow::events
