@@ -20,13 +20,22 @@ Kafka используется для **асинхронных доменных 
 
 Топик: `tutorflow.<event_type>`. Ключ партиции — по агрегату (`lesson_id`,
 `student_id`, `receipt_id`, `dialog_id`), чтобы события одной сущности шли по порядку.
+
+> ⚠️ Планируется (Этап 8.3, ADR 0003): переход на доменные топики
+> `tutorflow.<domain>.events` (lesson/assignment/finance/chat/notification),
+> `event_type` — в envelope. Причина: Kafka упорядочивает только внутри
+> партиции одного топика, topic-per-event_type не гарантирует порядок между
+> `lesson.completed` и `lesson.cancelled` одного занятия.
 Нейминг: `<domain>.<past_tense>` (`lesson.completed`, `payment.confirmed`, `message.sent`).
 
 ## Outbox / Inbox
 
 - **Producer**: пишет событие в таблицу `outbox_events` ТОЙ ЖЕ транзакцией, что и
   изменение состояния (атомарность факта и события). Отдельный publisher (PeriodicTask)
-  отправляет в Kafka и помечает строку `published`.
+  отправляет в Kafka и помечает строку `published`. При нескольких репликах сервиса
+  батч публикует только одна (leader-lock через `pg_try_advisory_xact_lock` — сохраняет
+  порядок событий агрегата; обоснование в
+  `docs/adr/0003-service-replicas-and-kafka-scaling.md`).
 - **Consumer**: дедуплицирует по `processed_events(event_id)` (inbox), чтобы replay /
   повторная доставка не давали двойного эффекта.
 
