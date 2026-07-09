@@ -34,8 +34,8 @@ void LessonCompletedConsumer::OnLessonEvent(
   } else if (event.event_type == "lesson.restored") {
     OnLessonRestored(event);
   } else {
-    LOG_WARNING() << "[finance] ignoring unexpected event_type="
-                  << event.event_type << " event_id=" << event.event_id;
+    LOG_DEBUG() << "[finance] ignoring unexpected event_type="
+                << event.event_type << " event_id=" << event.event_id;
   }
 }
 

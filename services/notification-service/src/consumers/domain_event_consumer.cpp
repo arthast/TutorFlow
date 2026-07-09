@@ -212,8 +212,8 @@ void DomainEventConsumer::OnEvent(const tutorflow::events::EventEnvelope& event,
 
   const auto notification = BuildNotification(event);
   if (!notification) {
-    LOG_WARNING() << "[notification] unsupported event type=" << event.event_type
-                  << " topic=" << topic;
+    LOG_DEBUG() << "[notification] unsupported event type=" << event.event_type
+                << " topic=" << topic;
     return;
   }
 

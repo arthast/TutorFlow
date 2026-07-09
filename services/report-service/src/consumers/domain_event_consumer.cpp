@@ -175,8 +175,8 @@ void DomainEventConsumer::OnEvent(const tutorflow::events::EventEnvelope& event,
     accepted = repository_.ApplyReceiptEvent(event.event_id, event.event_type,
                                              BuildReceiptEvent(event));
   } else {
-    LOG_WARNING() << "[report] unsupported event type=" << event.event_type
-                  << " topic=" << topic;
+    LOG_DEBUG() << "[report] unsupported event type=" << event.event_type
+                << " topic=" << topic;
     return;
   }
 

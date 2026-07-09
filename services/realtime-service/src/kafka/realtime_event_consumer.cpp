@@ -87,7 +87,7 @@ void RealtimeEventConsumer::OnEvent(
       return;
     }
 
-    LOG_WARNING() << "[realtime] unsupported event type=" << event.event_type;
+    LOG_DEBUG() << "[realtime] unsupported event type=" << event.event_type;
   } catch (const std::exception& ex) {
     LOG_ERROR() << "[realtime] failed to process event_id=" << event.event_id
                 << " type=" << event.event_type << ": " << ex.what();

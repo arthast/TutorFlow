@@ -439,6 +439,8 @@ docker compose up -d
 curl http://localhost:8080/health
 ```
 
+Для локального dev/demo кластера Kafka из трёх брокеров: `docker compose down -v && docker compose -f docker-compose.yml -f docker-compose.scale.yml up --build -d`. Команда намеренно удаляет локальные volumes: KRaft metadata одноузлового и трёхузлового кворумов несовместимы.
+
 Миграции применяются автоматически через `migrator`. Ручной прогон:
 
 ```bash

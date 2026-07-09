@@ -1,0 +1,134 @@
+# Local dev/demo overlay for a three-node KRaft Kafka cluster.
+# Use only after `docker compose down -v`: a single-node KRaft data directory
+# cannot be reused as metadata for this controller quorum.
+x-scale-kafka-secdist-config: &scale-kafka-secdist-config >-
+  {"kafka_settings":{"kafka-producer":{"brokers":"kafka:9092,kafka-2:9092,kafka-3:9092"},"kafka-consumer":{"brokers":"kafka:9092,kafka-2:9092,kafka-3:9092"}}}
+
+x-kafka-cluster-healthcheck: &kafka-cluster-healthcheck
+  test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+  interval: 10s
+  timeout: 10s
+  retries: 12
+  start_period: 20s
+
+services:
+  # Node 1 overrides the single-node definition from docker-compose.yml.
+  kafka:
+    environment:
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: tutorflow-kafka-cluster-0
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+    healthcheck: *kafka-cluster-healthcheck
+
+  kafka-2:
+    image: apache/kafka:3.8.1
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      CLUSTER_ID: tutorflow-kafka-cluster-0
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka2data:/var/lib/kafka/data
+    healthcheck: *kafka-cluster-healthcheck
+    networks: [tutorflow]
+
+  kafka-3:
+    image: apache/kafka:3.8.1
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: broker,controller
+      CLUSTER_ID: tutorflow-kafka-cluster-0
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka3data:/var/lib/kafka/data
+    healthcheck: *kafka-cluster-healthcheck
+    networks: [tutorflow]
+
+  # kafka-init waits for every broker: one healthy node is insufficient for
+  # successful RF=3 topic creation.
+  kafka-init:
+    environment:
+      KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      KAFKA_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TOPIC_MIN_INSYNC_REPLICAS: 2
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  kafka-ui:
+    environment:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  lesson-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  assignment-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  finance-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  notification-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  report-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  chat-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+  realtime-service:
+    environment:
+      KAFKA_SECDIST_CONFIG: *scale-kafka-secdist-config
+
+volumes:
+  kafka2data:
+  kafka3data:

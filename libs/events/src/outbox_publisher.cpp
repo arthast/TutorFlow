@@ -1,6 +1,5 @@
 #include <tutorflow/events/outbox_publisher.hpp>
 
-#include <stdexcept>
 #include <utility>
 
 #include <userver/formats/json/serialize.hpp>
@@ -53,8 +52,8 @@ std::string TopicForEventType(std::string_view event_type) {
     return std::string{kNotificationTopic};
   }
 
-  throw std::runtime_error{"unknown Kafka event type for topic routing: " +
-                           std::string{event_type}};
+  LOG_ERROR() << "unknown event_type, using legacy topic: " << event_type;
+  return "tutorflow." + std::string{event_type};
 }
 
 PostgresOutboxPublisher::PostgresOutboxPublisher(
