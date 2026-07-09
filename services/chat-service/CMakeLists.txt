@@ -3,6 +3,7 @@ add_executable(chat-service
     src/main.cpp
     src/domain/chat_service.cpp
     src/grpc/chat_grpc_service.cpp
+    src/handlers/ready_handler.cpp
     src/repositories/chat_repository.cpp
     src/outbox/outbox_publisher.cpp
 )

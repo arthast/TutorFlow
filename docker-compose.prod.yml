@@ -2,6 +2,8 @@ name: tutorflow-prod
 
 x-image-prefix: &image-prefix ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}
 x-image-tag: &image-tag ${IMAGE_TAG:-latest}
+x-kafka-secdist-config: &kafka-secdist-config >-
+  {"kafka_settings":{"kafka-producer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"},"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}}}
 
 services:
   caddy:
@@ -100,6 +102,48 @@ services:
       start_period: 20s
     networks: [tutorflow]
 
+  kafka-init:
+    image: apache/kafka:3.8.1
+    restart: "no"
+    environment:
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS:-3}
+      KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        topics="tutorflow.lesson.events tutorflow.assignment.events tutorflow.finance.events tutorflow.chat.events tutorflow.notification.events"
+        for topic in $$topics; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server "$$KAFKA_BROKERS" \
+            --create \
+            --if-not-exists \
+            --topic "$$topic" \
+            --partitions "$$KAFKA_TOPIC_PARTITIONS" \
+            --replication-factor "$$KAFKA_TOPIC_REPLICATION_FACTOR"
+
+          partitions=$$(/opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server "$$KAFKA_BROKERS" \
+            --describe \
+            --topic "$$topic" \
+            | awk -F'PartitionCount: ' '/Topic:/ {split($$2, parts, " "); print parts[1]; exit}')
+          replicas=$$(/opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server "$$KAFKA_BROKERS" \
+            --describe \
+            --topic "$$topic" \
+            | awk -F'ReplicationFactor: ' '/Topic:/ {split($$2, parts, " "); print parts[1]; exit}')
+
+          if [ "$$partitions" != "$$KAFKA_TOPIC_PARTITIONS" ] || [ "$$replicas" != "$$KAFKA_TOPIC_REPLICATION_FACTOR" ]; then
+            echo "topic $$topic has partitions=$$partitions rf=$$replicas, expected partitions=$$KAFKA_TOPIC_PARTITIONS rf=$$KAFKA_TOPIC_REPLICATION_FACTOR" >&2
+            exit 1
+          fi
+        done
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$$KAFKA_BROKERS" --list
+    networks: [tutorflow]
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -137,16 +181,31 @@ services:
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-86400}
       GATEWAY_CORS_ORIGIN: ${GATEWAY_CORS_ORIGIN:-https://netwatch-arsen-demo.ru}
       FILE_SERVICE_URL: http://file-service:8085
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     depends_on:
-      - identity-service
-      - lesson-service
-      - assignment-service
-      - finance-service
-      - file-service
-      - notification-service
-      - report-service
-      - chat-service
-      - realtime-service
+      identity-service:
+        condition: service_healthy
+      lesson-service:
+        condition: service_healthy
+      assignment-service:
+        condition: service_healthy
+      finance-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+      report-service:
+        condition: service_healthy
+      chat-service:
+        condition: service_healthy
+      realtime-service:
+        condition: service_healthy
     networks: [tutorflow]
 
   identity-service:
@@ -163,6 +222,12 @@ services:
         condition: service_completed_successfully
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   lesson-service:
@@ -170,13 +235,20 @@ services:
     restart: unless-stopped
     environment:
       LESSON_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/lesson_db
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8082/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   assignment-service:
@@ -185,13 +257,20 @@ services:
     environment:
       ASSIGNMENT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/assignment_db
       ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS: ${ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS:-60000}
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   finance-service:
@@ -199,13 +278,20 @@ services:
     restart: unless-stopped
     environment:
       FINANCE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/finance_db
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8084/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   file-service:
@@ -227,6 +313,12 @@ services:
         condition: service_completed_successfully
       minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8085/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   notification-service:
@@ -234,13 +326,20 @@ services:
     restart: unless-stopped
     environment:
       NOTIFICATION_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/notification_db
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8086/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   report-service:
@@ -248,13 +347,20 @@ services:
     restart: unless-stopped
     environment:
       REPORT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/report_db
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8087/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   chat-service:
@@ -262,13 +368,20 @@ services:
     restart: unless-stopped
     environment:
       CHAT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chat_db
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8088/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
   realtime-service:
@@ -278,11 +391,18 @@ services:
       REALTIME_PORT: 8089
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET}
+      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       redis:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8089/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     networks: [tutorflow]
 
 networks:

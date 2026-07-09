@@ -48,6 +48,7 @@ public:
   std::optional<std::string> GetDialogPeer(const std::string& dialog_id,
                                            const std::string& user_id) const;
   void AddPeer(const std::string& user_id, const std::string& peer_id) const;
+  void Ping() const;
 
 private:
   static RedisEndpoint ParseUrl(std::string url);

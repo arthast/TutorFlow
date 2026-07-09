@@ -11,6 +11,7 @@
 
 #include "domain/identity_service.hpp"
 #include "grpc/identity_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "repositories/identity_repository.hpp"
 
 int main(int argc, char* argv[]) {
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
             .Append<userver::components::Postgres>("identity-db")
             .Append<userver::ugrpc::server::HealthComponent>()
             .Append<tutorflow::common::HealthHandler>()
+            .Append<tutorflow::identity::ReadyHandler>()
             .Append<tutorflow::identity::IdentityRepository>()
             .Append<tutorflow::identity::IdentityService>()
             .Append<tutorflow::identity::IdentityGrpcService>();

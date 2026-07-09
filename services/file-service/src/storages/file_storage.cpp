@@ -278,6 +278,8 @@ void LocalFileStorage::Delete(const std::string& storage_key) const {
     }).Get();
 }
 
+void LocalFileStorage::CheckReady() const {}
+
 std::string LocalFileStorage::StoragePath(const std::string& storage_key) const {
     return storage_dir_ + "/" + storage_key;
 }
@@ -353,6 +355,25 @@ void S3FileStorage::Delete(const std::string& storage_key) const {
     }
 }
 
+void S3FileStorage::CheckReady() const {
+    CheckBucketExists();
+}
+
+void S3FileStorage::CheckBucketExists() const {
+    const auto bucket_path = "/" + UriEncode(settings_.bucket);
+    const auto headers = BuildSignedHeaders(settings_, host_, "HEAD",
+                                            bucket_path, "", std::nullopt);
+    const auto response = http_client_.CreateRequest()
+                              .headers(headers.headers)
+                              .timeout(timeout_)
+                              .head(Url(bucket_path))
+                              .perform();
+    const auto status = static_cast<int>(response->status_code());
+    if (status >= 200 && status < 300) return;
+    throw tutorflow::common::ServiceError::Internal(
+        "failed to check s3 bucket: status " + std::to_string(status));
+}
+
 void S3FileStorage::EnsureBucketExists() const {
     const auto bucket_path = "/" + UriEncode(settings_.bucket);
     {
@@ -367,8 +388,7 @@ void S3FileStorage::EnsureBucketExists() const {
         if (status >= 200 && status < 300) return;
         if (status != 404) {
             throw tutorflow::common::ServiceError::Internal(
-                "failed to check s3 bucket: status " +
-                std::to_string(status));
+                "failed to check s3 bucket: status " + std::to_string(status));
         }
     }
 
@@ -456,6 +476,10 @@ std::string FileStorageComponent::Get(const std::string& storage_key) const {
 
 void FileStorageComponent::Delete(const std::string& storage_key) const {
     impl_->Delete(storage_key);
+}
+
+void FileStorageComponent::CheckReady() const {
+    impl_->CheckReady();
 }
 
 }  // namespace tutorflow::file

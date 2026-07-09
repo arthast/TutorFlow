@@ -27,18 +27,22 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
+        ready-handler:
+            path: /ready
+            method: GET
+            task_processor: main-task-processor
         testsuite-support: {}
         dns-client: {}
         secdist:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-consumer:
             group_id: realtime-domain-events
             topics:
-              - tutorflow.message.sent
-              - tutorflow.message.read
-              - tutorflow.notification.created
+              - tutorflow.chat.events
+              - tutorflow.notification.events
             topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1

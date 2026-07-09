@@ -29,6 +29,10 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
+        ready-handler:
+            path: /ready
+            method: GET
+            task_processor: main-task-processor
         grpc-client-common:
             blocking-task-processor: fs-task-processor
         grpc-client-middlewares-pipeline: {}
@@ -47,6 +51,7 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-producer:
             security_protocol: PLAINTEXT
             enable_idempotence: true

@@ -8,6 +8,7 @@
 
 #include <tutorflow/common/health_handler.hpp>
 
+#include "handlers/ready_handler.hpp"
 #include "kafka/realtime_event_consumer.hpp"
 #include "redis/redis_client.hpp"
 #include "ws/connection_registry.hpp"
@@ -22,6 +23,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::components::DefaultSecdistProvider>()
           .Append<userver::kafka::ConsumerComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::realtime::ReadyHandler>()
           .Append<tutorflow::realtime::ConnectionRegistry>()
           .Append<tutorflow::realtime::RedisClient>()
           .Append<tutorflow::realtime::RealtimeEventConsumer>()

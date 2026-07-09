@@ -16,6 +16,7 @@
 #include "gateway_settings.hpp"
 #include "handlers/health_handler.hpp"
 #include "handlers/proxy_handlers.hpp"
+#include "handlers/ready_handler.hpp"
 
 int main(int argc, char* argv[]) {
   const auto component_list =
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::gateway::GrpcChatClient>()
           .Append<tutorflow::gateway::GatewaySettings>()
           .Append<tutorflow::gateway::HealthHandler>()
+          .Append<tutorflow::gateway::ReadyHandler>()
           .Append<tutorflow::gateway::AuthRegisterHandler>()
           .Append<tutorflow::gateway::AuthLoginHandler>()
           .Append<tutorflow::gateway::AuthChangePasswordHandler>()

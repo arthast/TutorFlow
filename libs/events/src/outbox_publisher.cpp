@@ -1,5 +1,6 @@
 #include <tutorflow/events/outbox_publisher.hpp>
 
+#include <stdexcept>
 #include <utility>
 
 #include <userver/formats/json/serialize.hpp>
@@ -11,7 +12,16 @@ namespace tutorflow::events {
 namespace {
 namespace pg = userver::storages::postgres;
 
-constexpr std::string_view kTopicPrefix = "tutorflow.";
+constexpr std::string_view kLessonTopic = "tutorflow.lesson.events";
+constexpr std::string_view kAssignmentTopic = "tutorflow.assignment.events";
+constexpr std::string_view kFinanceTopic = "tutorflow.finance.events";
+constexpr std::string_view kChatTopic = "tutorflow.chat.events";
+constexpr std::string_view kNotificationTopic = "tutorflow.notification.events";
+
+bool HasPrefix(std::string_view value, std::string_view prefix) {
+  return value.size() >= prefix.size() &&
+         value.substr(0, prefix.size()) == prefix;
+}
 
 // Ключ advisory-лока лидера outbox-паблишера. Лок берётся в БД сервиса,
 // поэтому разные сервисы (разные БД) друг с другом не конкурируют.
@@ -20,7 +30,31 @@ constexpr std::string_view kLeaderLockKey = "tutorflow.outbox_publisher";
 }  // namespace
 
 std::string TopicForEventType(std::string_view event_type) {
-  return std::string{kTopicPrefix} + std::string{event_type};
+  if (HasPrefix(event_type, "lesson.")) {
+    return std::string{kLessonTopic};
+  }
+
+  if (HasPrefix(event_type, "assignment.") ||
+      event_type == "submission.uploaded") {
+    return std::string{kAssignmentTopic};
+  }
+
+  if (HasPrefix(event_type, "payment.") ||
+      event_type == "payment_receipt.uploaded" ||
+      event_type == "charge.created" || event_type == "balance.changed") {
+    return std::string{kFinanceTopic};
+  }
+
+  if (HasPrefix(event_type, "message.")) {
+    return std::string{kChatTopic};
+  }
+
+  if (event_type == "notification.created") {
+    return std::string{kNotificationTopic};
+  }
+
+  throw std::runtime_error{"unknown Kafka event type for topic routing: " +
+                           std::string{event_type}};
 }
 
 PostgresOutboxPublisher::PostgresOutboxPublisher(

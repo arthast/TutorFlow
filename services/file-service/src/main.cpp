@@ -14,6 +14,7 @@
 
 #include "domain/file_service.hpp"
 #include "handlers/file_handlers.hpp"
+#include "handlers/ready_handler.hpp"
 #include "repositories/file_repository.hpp"
 #include "storages/file_storage.hpp"
 
@@ -29,6 +30,7 @@ int main(int argc, char* argv[]) {
             .Append<userver::components::Secdist>()
             .Append<userver::components::DefaultSecdistProvider>()
             .Append<tutorflow::common::HealthHandler>()
+            .Append<tutorflow::file::ReadyHandler>()
             .Append<tutorflow::file::FileRepository>()
             .Append<tutorflow::clients::GrpcIdentityClient>()
             .Append<tutorflow::file::FileStorageComponent>()

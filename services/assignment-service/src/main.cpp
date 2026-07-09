@@ -17,6 +17,7 @@
 
 #include "domain/assignment_service.hpp"
 #include "grpc/assignment_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/assignment_repository.hpp"
 #include "workers/deadline_worker.hpp"
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::kafka::ProducerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::assignment::ReadyHandler>()
           .Append<tutorflow::assignment::AssignmentRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::assignment::AssignmentService>()
