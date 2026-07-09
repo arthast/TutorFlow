@@ -111,6 +111,24 @@ def test_receipt_balance_rules(teacher, student, lesson):
     assert rejected["status"] == "rejected"
     assert money(api.balance(student)) == 600.0
 
+    receipt_rejected_teacher = list_receipts(teacher["token"], "/payments/receipts?status=rejected")[0]
+
+    assert rejected["id"] in {
+        item["id"]
+        for item in list_receipts(
+            teacher["token"], "/payments/receipts?status=rejected"
+        )
+    } and receipt_rejected_teacher["comment"] == "bad receipt"
+
+    receipt_rejected_student = list_receipts(student["token"], "/payments/receipts?status=rejected")[0]
+
+    assert rejected["id"] in {
+        item["id"]
+        for item in list_receipts(
+            student["token"], "/payments/receipts?status=rejected"
+        )
+    } and receipt_rejected_student["comment"] == "bad receipt"
+
     status, body = api.post(
         f"/payments/receipts/{rejected_receipt['id']}/confirm",
         token=teacher["token"],
