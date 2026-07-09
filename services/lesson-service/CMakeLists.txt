@@ -3,6 +3,7 @@ add_executable(lesson-service
     src/main.cpp
     src/domain/lesson_service.cpp
     src/grpc/lesson_grpc_service.cpp
+    src/handlers/ready_handler.cpp
     src/outbox/outbox_publisher.cpp
     src/repositories/lesson_repository.cpp
 )

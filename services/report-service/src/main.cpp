@@ -14,6 +14,7 @@
 #include "consumers/domain_event_consumer.hpp"
 #include "domain/report_service.hpp"
 #include "grpc/report_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "repositories/report_repository.hpp"
 
 int main(int argc, char* argv[]) {
@@ -28,6 +29,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::kafka::ConsumerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::report::ReadyHandler>()
           .Append<tutorflow::report::ReportRepository>()
           .Append<tutorflow::report::ReportService>()
           .Append<tutorflow::report::ReportGrpcService>()

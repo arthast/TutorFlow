@@ -27,6 +27,10 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
+        ready-handler:
+            path: /ready
+            method: GET
+            task_processor: main-task-processor
         testsuite-support: {}
         dns-client: {}
         secdist:

@@ -16,6 +16,7 @@
 
 #include "domain/lesson_service.hpp"
 #include "grpc/lesson_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/lesson_repository.hpp"
 
@@ -33,6 +34,7 @@ int main(int argc, char *argv[]) {
           .Append<userver::kafka::ProducerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::lesson::ReadyHandler>()
           .Append<tutorflow::lesson::LessonRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::lesson::LessonService>()

@@ -290,6 +290,10 @@ void RedisClient::AddPeer(const std::string& user_id,
   Command({"EXPIRE", UserPeersKey(user_id), "86400"});
 }
 
+void RedisClient::Ping() const {
+  Command({"PING"});
+}
+
 void RedisClient::PubSubLoop() {
   while (running_) {
     try {

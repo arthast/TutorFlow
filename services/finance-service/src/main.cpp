@@ -18,6 +18,7 @@
 #include "consumers/lesson_completed_consumer.hpp"
 #include "domain/finance_service.hpp"
 #include "grpc/finance_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/finance_repository.hpp"
 
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]) {
           .Append<userver::kafka::ConsumerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::finance::ReadyHandler>()
           .Append<tutorflow::finance::FinanceRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::finance::FinanceService>()

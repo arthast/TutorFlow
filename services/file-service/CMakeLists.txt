@@ -8,6 +8,7 @@ add_executable(file-service
     src/storages/file_storage.cpp
     src/repositories/file_repository.cpp
     src/handlers/file_handlers.cpp
+    src/handlers/ready_handler.cpp
 )
 
 target_include_directories(file-service PRIVATE src)

@@ -12,6 +12,7 @@ add_executable(api-gateway
   src/gateway_settings.cpp
   src/handlers/health_handler.cpp
   src/handlers/proxy_handlers.cpp
+  src/handlers/ready_handler.cpp
 )
 
 target_include_directories(api-gateway PRIVATE src)

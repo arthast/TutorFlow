@@ -4,6 +4,7 @@ add_executable(report-service
     src/consumers/domain_event_consumer.cpp
     src/domain/report_service.cpp
     src/grpc/report_grpc_service.cpp
+    src/handlers/ready_handler.cpp
     src/repositories/report_repository.cpp
 )
 

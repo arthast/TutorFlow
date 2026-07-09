@@ -25,6 +25,8 @@ public:
     virtual std::string Get(const std::string& storage_key) const = 0;
 
     virtual void Delete(const std::string& storage_key) const = 0;
+
+    virtual void CheckReady() const = 0;
 };
 
 class LocalFileStorage final : public IFileStorage {
@@ -39,6 +41,8 @@ public:
     std::string Get(const std::string& storage_key) const override;
 
     void Delete(const std::string& storage_key) const override;
+
+    void CheckReady() const override;
 
 private:
     std::string StoragePath(const std::string& storage_key) const;
@@ -69,7 +73,10 @@ public:
 
     void Delete(const std::string& storage_key) const override;
 
+    void CheckReady() const override;
+
 private:
+    void CheckBucketExists() const;
     void EnsureBucketExists() const;
     std::string ObjectPath(const std::string& storage_key) const;
     std::string Url(std::string_view path) const;
@@ -98,6 +105,8 @@ public:
     std::string Get(const std::string& storage_key) const override;
 
     void Delete(const std::string& storage_key) const override;
+
+    void CheckReady() const override;
 
 private:
     std::unique_ptr<IFileStorage> impl_;

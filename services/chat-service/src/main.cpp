@@ -16,6 +16,7 @@
 
 #include "domain/chat_service.hpp"
 #include "grpc/chat_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/chat_repository.hpp"
 
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::kafka::ProducerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::chat::ReadyHandler>()
           .Append<tutorflow::chat::ChatRepository>()
           .Append<tutorflow::clients::GrpcIdentityClient>()
           .Append<tutorflow::chat::ChatService>()

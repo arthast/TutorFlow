@@ -5,6 +5,7 @@ add_executable(identity-service
     src/main.cpp
     src/domain/models.cpp
     src/domain/identity_service.cpp
+    src/handlers/ready_handler.cpp
     src/repositories/identity_repository.cpp
     src/grpc/identity_grpc_service.cpp
 )

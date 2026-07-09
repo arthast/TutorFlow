@@ -29,6 +29,10 @@ components_manager:
             path: /health
             method: GET
             task_processor: main-task-processor
+        ready-handler:
+            path: /ready
+            method: GET
+            task_processor: main-task-processor
         grpc-client-common:
             blocking-task-processor: fs-task-processor
         grpc-client-middlewares-pipeline: {}

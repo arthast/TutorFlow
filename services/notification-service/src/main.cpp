@@ -15,6 +15,7 @@
 #include "consumers/domain_event_consumer.hpp"
 #include "domain/notification_service.hpp"
 #include "grpc/notification_grpc_service.hpp"
+#include "handlers/ready_handler.hpp"
 #include "outbox/outbox_publisher.hpp"
 #include "repositories/notification_repository.hpp"
 
@@ -31,6 +32,7 @@ int main(int argc, char* argv[]) {
           .Append<userver::kafka::ProducerComponent>()
           .Append<userver::ugrpc::server::HealthComponent>()
           .Append<tutorflow::common::HealthHandler>()
+          .Append<tutorflow::notification::ReadyHandler>()
           .Append<tutorflow::notification::NotificationRepository>()
           .Append<tutorflow::notification::NotificationService>()
           .Append<tutorflow::notification::NotificationGrpcService>()

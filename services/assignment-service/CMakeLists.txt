@@ -3,6 +3,7 @@ add_executable(assignment-service
     src/main.cpp
     src/domain/assignment_service.cpp
     src/grpc/assignment_grpc_service.cpp
+    src/handlers/ready_handler.cpp
     src/outbox/outbox_publisher.cpp
     src/repositories/assignment_repository.cpp
     src/workers/deadline_worker.cpp

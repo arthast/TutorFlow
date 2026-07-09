@@ -33,6 +33,12 @@ Backend платформы «репетитор ↔ ученик»: распис
 Инфраструктура: PostgreSQL, Kafka (KRaft) + kafka-ui, Redis, MinIO (S3), one-shot
 `migrator`. Frontend — React + TypeScript + Vite.
 
+Операционные HTTP-пробы разведены по смыслу: `/health` — лёгкий liveness без
+обращений к внешним зависимостям; `/ready` — readiness для балансировщиков и
+compose/k8s, проверяющий только собственные критичные зависимости сервиса
+(своя БД, Redis у realtime, S3 bucket у file-service в S3-режиме). Kafka и
+чужие сервисы в `/ready` не входят: consumers/producers ретраятся сами.
+
 ## Транспорт (разведён по смыслу)
 
 ```
