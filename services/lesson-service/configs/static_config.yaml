@@ -51,6 +51,7 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-producer:
             security_protocol: PLAINTEXT
             enable_idempotence: true

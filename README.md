@@ -61,8 +61,10 @@ MinIO: object storage for uploaded files
 - У каждого сервиса своя БД; прямое чтение чужих БД запрещено.
 - Синхронные внутренние запросы идут по gRPC.
 - Файлы идут через `file-service`; остальные сервисы хранят только `file_id`.
-- Асинхронные факты идут через Kafka: `lesson.*`, `assignment.*`, `finance.*`,
-  `message.*`, `notification.*`.
+- Асинхронные факты идут через Kafka domain topics:
+  `tutorflow.lesson.events`, `tutorflow.assignment.events`,
+  `tutorflow.finance.events`, `tutorflow.chat.events`,
+  `tutorflow.notification.events`; конкретный факт хранится в `event_type`.
 - Финансы append-only: операции не редактируются, исправления делаются
   корректирующими транзакциями.
 

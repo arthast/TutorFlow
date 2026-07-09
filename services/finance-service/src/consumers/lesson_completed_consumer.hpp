@@ -1,11 +1,12 @@
 #pragma once
 
-// Kafka consumer финансовых последствий жизненного цикла занятия:
-//   tutorflow.lesson.completed  -> charge (5E), идемпотентно по lesson_id;
-//   tutorflow.lesson.cancelled  -> компенсирующая correction при
-//     previous_status='completed' (5L.4), идемпотентно по event_id;
-//   tutorflow.lesson.restored   -> восстанавливающая correction(+price),
-//     идемпотентно по event_id.
+// Kafka consumer финансовых последствий жизненного цикла занятия из
+// tutorflow.lesson.events:
+//   lesson.completed -> charge (5E), идемпотентно по lesson_id;
+//   lesson.cancelled -> компенсирующая correction при previous_status='completed'
+//     (5L.4), идемпотентно по event_id;
+//   lesson.restored  -> восстанавливающая correction(+price), идемпотентно по
+//     event_id.
 // Роутинг по event_type. Идемпотентность живёт в domain/DB (unique + inbox),
 // не здесь. Дубликат события — no-op.
 

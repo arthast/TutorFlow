@@ -48,25 +48,15 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-consumer:
             group_id: notification-domain-events
             topics:
-              - tutorflow.assignment.created
-              - tutorflow.submission.uploaded
-              - tutorflow.assignment.reviewed
-              - tutorflow.assignment.deadline_expired
-              - tutorflow.payment_receipt.uploaded
-              - tutorflow.payment.confirmed
-              - tutorflow.payment.rejected
-              - tutorflow.lesson.completed
-              - tutorflow.lesson.rescheduled
-              - tutorflow.lesson.scheduled
-              - tutorflow.lesson.cancelled
-              - tutorflow.lesson.restored
-              - tutorflow.balance.changed
-              - tutorflow.message.sent
-            # Топики создаются лениво (auto-create на первый publish); частый
-            # refresh подхватывает свежий топик без задержки (как в finance, 5L.4).
+              - tutorflow.lesson.events
+              - tutorflow.assignment.events
+              - tutorflow.finance.events
+              - tutorflow.chat.events
+            # 8.3: notification читает доменные topics, а тип события берёт из envelope.
             topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1

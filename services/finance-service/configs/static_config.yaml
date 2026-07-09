@@ -57,6 +57,7 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-producer:
             security_protocol: PLAINTEXT
             enable_idempotence: true
@@ -65,13 +66,8 @@ components_manager:
         kafka-consumer:
             group_id: finance-lesson-completed
             topics:
-              - tutorflow.lesson.completed
-              - tutorflow.lesson.cancelled
-              - tutorflow.lesson.restored
-            # Топики создаются лениво (auto-create на первый publish). С дефолтным
-            # refresh (5 мин) консьюмер не подхватывает только что созданный
-            # tutorflow.lesson.cancelled вовремя -> компенсация задерживается.
-            # Частый refresh подхватывает новый топик за пару секунд.
+              - tutorflow.lesson.events
+            # 8.3: все lesson.* события читаются из одного доменного topic.
             topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1

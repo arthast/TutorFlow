@@ -45,22 +45,13 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
+            environment-secrets-key: KAFKA_SECDIST_CONFIG
         kafka-consumer:
             group_id: report-domain-events
             topics:
-              - tutorflow.lesson.scheduled
-              - tutorflow.lesson.completed
-              - tutorflow.lesson.cancelled
-              - tutorflow.lesson.rescheduled
-              - tutorflow.lesson.restored
-              - tutorflow.assignment.created
-              - tutorflow.submission.uploaded
-              - tutorflow.assignment.reviewed
-              - tutorflow.assignment.deadline_expired
-              - tutorflow.balance.changed
-              - tutorflow.payment_receipt.uploaded
-              - tutorflow.payment.confirmed
-              - tutorflow.payment.rejected
+              - tutorflow.lesson.events
+              - tutorflow.assignment.events
+              - tutorflow.finance.events
             topic_metadata_refresh_interval: 3s
             auto_offset_reset: smallest
             max_batch_size: 1
