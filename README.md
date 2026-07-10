@@ -508,6 +508,10 @@ GATEWAY_URL=https://netwatch-arsen-demo.ru python3 scripts/smoke_mvp.py
 
 ## Deploy
 
+Локальный Kubernetes-деплой через kind/kustomize описан в
+[`docs/deploy.md`](docs/deploy.md#kubernetes-kind-local). Production при этом
+остаётся на Docker Compose + Caddy.
+
 CI/CD workflow:
 
 ```text

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  selector: {app.kubernetes.io/name: api-gateway}
+  ports:
+    - {name: http, port: 8080, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: api-gateway}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: api-gateway, app.kubernetes.io/part-of: tutorflow}
+    spec:
+      containers:
+        - name: api-gateway
+          image: ghcr.io/arthast/tutorflow-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8080}
+          env:
+            - name: JWT_SECRET
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: JWT_SECRET}}
+            - name: JWT_TTL_SECONDS
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: JWT_TTL_SECONDS}}
+            - name: GATEWAY_CORS_ORIGIN
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: GATEWAY_CORS_ORIGIN}}
+            - name: FILE_SERVICE_URL
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: FILE_SERVICE_URL}}
+          startupProbe: &startup
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe: &liveness
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe: &readiness
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources: &app_resources
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+

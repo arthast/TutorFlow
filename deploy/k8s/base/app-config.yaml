@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tutorflow-config
+data:
+  POSTGRES_USER: tutorflow
+  POSTGRES_DB: tutorflow
+  JWT_TTL_SECONDS: "86400"
+  GATEWAY_CORS_ORIGIN: http://localhost
+  FILE_SERVICE_URL: http://file-service.tutorflow.svc.cluster.local:8085
+  ASSIGNMENT_DEADLINE_WORKER_PERIOD_MS: "2000"
+  FILE_STORAGE_BACKEND: s3
+  FILE_STORAGE_DIR: /data/files
+  FILE_MAX_SIZE_BYTES: "10485760"
+  REDIS_URL: redis://redis:6379
+  REALTIME_PORT: "8089"
+  KAFKA_BROKERS: kafka:9092
+  KAFKA_TOPIC_PARTITIONS: "3"
+  KAFKA_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_TOPIC_MIN_INSYNC_REPLICAS: "1"

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: realtime-service
+spec:
+  selector: {app.kubernetes.io/name: realtime-service}
+  ports:
+    - {name: http, port: 8089, targetPort: http}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: realtime-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: realtime-service}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: realtime-service, app.kubernetes.io/part-of: tutorflow}
+    spec:
+      containers:
+        - name: realtime-service
+          image: ghcr.io/arthast/tutorflow-realtime-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8089}
+          env:
+            - name: REALTIME_PORT
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: REALTIME_PORT}}
+            - name: REDIS_URL
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: REDIS_URL}}
+            - name: JWT_SECRET
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: JWT_SECRET}}
+            - name: KAFKA_SECDIST_CONFIG
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: KAFKA_SECDIST_CONFIG}}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+

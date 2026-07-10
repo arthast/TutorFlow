@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tutorflow
+resources:
+  - namespace.yaml
+  - app-config.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - redis.yaml
+  - minio.yaml
+  - migrator.yaml
+  - kafka-init.yaml
+  - api-gateway.yaml
+  - identity-service.yaml
+  - lesson-service.yaml
+  - assignment-service.yaml
+  - finance-service.yaml
+  - file-service.yaml
+  - notification-service.yaml
+  - report-service.yaml
+  - chat-service.yaml
+  - realtime-service.yaml
+  - frontend.yaml
+  - ingress.yaml
+  - notification-hpa.yaml
+
