@@ -40,8 +40,11 @@ components_manager:
         grpc-client-factory: {}
         dns-client: {}
         testsuite-support: {}
-        chat-db:
-            dbconnection#env: CHAT_DATABASE_URL
+        chat-db-shard0:
+            dbconnection#env: CHAT_DATABASE_URL_SHARD0
+            blocking_task_processor: fs-task-processor
+        chat-db-shard1:
+            dbconnection#env: CHAT_DATABASE_URL_SHARD1
             blocking_task_processor: fs-task-processor
         identity-client:
             endpoint: dns:///identity-service:9081

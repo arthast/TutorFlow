@@ -59,7 +59,7 @@ services:
       - sh
       - -ec
       - |
-        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db; do
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db_shard0 chat:chat_db_shard1; do
           svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
           createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
           for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
@@ -378,7 +378,8 @@ services:
     image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-chat-service:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      CHAT_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chat_db
+      CHAT_DATABASE_URL_SHARD0: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chat_db_shard0
+      CHAT_DATABASE_URL_SHARD1: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chat_db_shard1
       KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string_view>
+#include <vector>
 
 #include <userver/components/component_context.hpp>
 #include <userver/components/component_fwd.hpp>
@@ -21,7 +23,8 @@ public:
   void OnAllComponentsLoaded() override;
 
 private:
-  tutorflow::events::PostgresOutboxPublisher publisher_;
+  std::vector<std::unique_ptr<tutorflow::events::PostgresOutboxPublisher>>
+      publishers_;
 };
 
 }  // namespace tutorflow::chat

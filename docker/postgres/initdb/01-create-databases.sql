@@ -28,3 +28,9 @@ SELECT 'CREATE DATABASE notification_db'
 
 SELECT 'CREATE DATABASE report_db'
  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'report_db')\gexec
+
+SELECT 'CREATE DATABASE chat_db_shard0'
+ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'chat_db_shard0')\gexec
+
+SELECT 'CREATE DATABASE chat_db_shard1'
+ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'chat_db_shard1')\gexec

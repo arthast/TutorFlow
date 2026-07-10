@@ -1,4 +1,4 @@
--- chat-service / chat_db — личная переписка teacher<->student (Этап 5J).
+-- chat-service / chat_db_shardN — личная переписка teacher<->student.
 -- Идемпотентно (IF NOT EXISTS). Один диалог на пару (UNIQUE).
 BEGIN;
 
@@ -6,7 +6,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
 
 -- Диалог строго между связанными teacher и student (пара проверяется в сервисе
 -- через identity CheckTeacherStudentAccess). UNIQUE(teacher_id, student_id)
--- делает CreateDialog идемпотентным (find-or-create).
+-- локально защищает пару от дубля на одном шарде. Глобальную уникальность
+-- пары между шардами обеспечивает детерминированный UUIDv5 dialogs.id.
 CREATE TABLE IF NOT EXISTS dialogs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     teacher_id      UUID NOT NULL,

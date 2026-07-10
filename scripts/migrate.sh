@@ -25,8 +25,8 @@ if [[ -f .env ]]; then
 fi
 : "${POSTGRES_USER:?POSTGRES_USER is not set (cp .env.example .env)}"
 
-# service -> database
-db_for() {
+# service -> one or more databases
+dbs_for() {
   case "$1" in
     identity)   echo "${IDENTITY_DB:-identity_db}" ;;
     lesson)     echo "${LESSON_DB:-lesson_db}" ;;
@@ -35,7 +35,7 @@ db_for() {
     file)       echo "${FILE_DB:-file_db}" ;;
     notification) echo "${NOTIFICATION_DB:-notification_db}" ;;
     report) echo "${REPORT_DB:-report_db}" ;;
-    chat) echo "${CHAT_DB:-chat_db}" ;;
+    chat) echo "${CHAT_DB_SHARD0:-chat_db_shard0} ${CHAT_DB_SHARD1:-chat_db_shard1}" ;;
     *) echo "" ;;
   esac
 }
@@ -47,9 +47,9 @@ $DC version >/dev/null 2>&1 || DC="docker-compose"
 
 apply_service() {
   local svc="$1"
-  local db
-  db="$(db_for "$svc")"
-  if [[ -z "$db" ]]; then
+  local dbs
+  dbs="$(dbs_for "$svc")"
+  if [[ -z "$dbs" ]]; then
     echo "!! unknown service: $svc (expected: ${ALL_SERVICES[*]})" >&2
     return 1
   fi
@@ -70,16 +70,19 @@ apply_service() {
 
   IFS=$'\n' files=($(sort <<<"${files[*]}")); unset IFS
 
-  # initdb scripts run only for a fresh postgres volume. Create newly added
-  # service databases here as well so existing dev volumes keep working.
-  $DC exec -T postgres \
-    createdb -U "$POSTGRES_USER" "$db" >/dev/null 2>&1 || true
-
-  echo "== $svc -> $db"
-  for f in "${files[@]}"; do
-    echo "   applying $(basename "$f")"
+  local db
+  for db in $dbs; do
+    # initdb scripts run only for a fresh postgres volume. Create newly added
+    # service databases here as well so existing dev volumes keep working.
     $DC exec -T postgres \
-      psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$db" < "$f"
+      createdb -U "$POSTGRES_USER" "$db" >/dev/null 2>&1 || true
+
+    echo "== $svc -> $db"
+    for f in "${files[@]}"; do
+      echo "   applying $(basename "$f")"
+      $DC exec -T postgres \
+        psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$db" < "$f"
+    done
   done
 }
 
