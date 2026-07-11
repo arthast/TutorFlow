@@ -1,5 +1,6 @@
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
+#include <userver/server/handlers/server_monitor.hpp>
 #include <userver/kafka/consumer_component.hpp>
 #include <userver/storages/secdist/component.hpp>
 #include <userver/storages/secdist/provider_component.hpp>
@@ -17,6 +18,7 @@
 int main(int argc, char* argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
+          .Append<userver::server::handlers::ServerMonitor>()
           .Append<userver::components::TestsuiteSupport>()
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::Secdist>()

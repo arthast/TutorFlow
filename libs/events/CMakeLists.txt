@@ -6,6 +6,7 @@ add_library(tutorflow_events STATIC
     src/event_envelope.cpp
     src/event_publisher.cpp
     src/event_consumer.cpp
+    src/outbox_statistics.cpp
     src/outbox_publisher.cpp
 )
 
@@ -21,3 +22,15 @@ target_link_libraries(tutorflow_events
 )
 
 target_compile_features(tutorflow_events PUBLIC cxx_std_20)
+
+add_executable(tutorflow-events-unit-tests
+    tests/outbox_statistics_test.cpp
+)
+
+target_link_libraries(tutorflow-events-unit-tests
+    PRIVATE
+        tutorflow_events
+        userver::utest
+)
+
+add_google_tests(tutorflow-events-unit-tests)

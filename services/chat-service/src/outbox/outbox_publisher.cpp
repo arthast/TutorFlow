@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include <userver/components/component_context.hpp>
+#include <userver/components/statistics_storage.hpp>
 #include <userver/kafka/producer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
 
@@ -26,6 +27,8 @@ OutboxPublisher::OutboxPublisher(
     : LoggableComponentBase(config, context) {
   const auto& producer =
       context.FindComponent<userver::kafka::ProducerComponent>().GetProducer();
+  auto& statistics_storage =
+      context.FindComponent<userver::components::StatisticsStorage>();
   publishers_.reserve(kDatabaseComponents.size());
   for (std::size_t i = 0; i < kDatabaseComponents.size(); ++i) {
     publishers_.push_back(
@@ -34,7 +37,8 @@ OutboxPublisher::OutboxPublisher(
                 .FindComponent<userver::components::Postgres>(
                     kDatabaseComponents[i])
                 .GetCluster(),
-            producer, std::string{kTaskNames[i]}, std::string{kProducerName}));
+            producer, std::string{kTaskNames[i]}, std::string{kProducerName},
+            statistics_storage));
   }
 }
 
