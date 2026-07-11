@@ -7,9 +7,8 @@
 #include <userver/components/component_context.hpp>
 #include <userver/components/component_fwd.hpp>
 #include <userver/components/loggable_component_base.hpp>
-#include <userver/storages/postgres/cluster.hpp>
-
 #include "domain/models.hpp"
+#include "repositories/shard_router.hpp"
 
 namespace tutorflow::chat {
 
@@ -41,7 +40,7 @@ class ChatRepository final : public userver::components::LoggableComponentBase {
   ChatRepository(const userver::components::ComponentConfig& config,
                  const userver::components::ComponentContext& context);
 
-  // find-or-create по UNIQUE(teacher_id, student_id); возвращает id диалога.
+  // UUIDv5 find-or-create; id вычисляется до запроса и сразу задаёт шард.
   std::string FindOrCreateDialogId(const std::string& teacher_id,
                                    const std::string& student_id) const;
 
@@ -68,7 +67,7 @@ class ChatRepository final : public userver::components::LoggableComponentBase {
                       const std::string& up_to_message_id) const;
 
  private:
-  userver::storages::postgres::ClusterPtr pg_;
+  ShardRouter shard_router_;
 };
 
 }  // namespace tutorflow::chat

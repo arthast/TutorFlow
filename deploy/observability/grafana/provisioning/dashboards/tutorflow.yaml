@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: TutorFlow
+    orgId: 1
+    folder: TutorFlow
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards

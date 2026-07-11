@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-init
+        app.kubernetes.io/part-of: tutorflow
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-init
+          image: apache/kafka:3.8.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: tutorflow-config
+                  key: KAFKA_BROKERS
+            - name: KAFKA_TOPIC_PARTITIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: tutorflow-config
+                  key: KAFKA_TOPIC_PARTITIONS
+            - name: KAFKA_TOPIC_REPLICATION_FACTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: tutorflow-config
+                  key: KAFKA_TOPIC_REPLICATION_FACTOR
+            - name: KAFKA_TOPIC_MIN_INSYNC_REPLICAS
+              valueFrom:
+                configMapKeyRef:
+                  name: tutorflow-config
+                  key: KAFKA_TOPIC_MIN_INSYNC_REPLICAS
+          command:
+            - sh
+            - -ec
+            - |
+              until /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$KAFKA_BROKERS" --list >/dev/null 2>&1; do
+                echo "waiting for Kafka at $KAFKA_BROKERS"
+                sleep 3
+              done
+
+              topics="tutorflow.lesson.events tutorflow.assignment.events tutorflow.finance.events tutorflow.chat.events tutorflow.notification.events"
+              for topic in $topics; do
+                /opt/kafka/bin/kafka-topics.sh \
+                  --bootstrap-server "$KAFKA_BROKERS" \
+                  --create --if-not-exists \
+                  --topic "$topic" \
+                  --partitions "$KAFKA_TOPIC_PARTITIONS" \
+                  --replication-factor "$KAFKA_TOPIC_REPLICATION_FACTOR" \
+                  --config "min.insync.replicas=$KAFKA_TOPIC_MIN_INSYNC_REPLICAS"
+
+                description=$(/opt/kafka/bin/kafka-topics.sh \
+                  --bootstrap-server "$KAFKA_BROKERS" \
+                  --describe --topic "$topic")
+                partitions=$(printf '%s\n' "$description" | awk -F'PartitionCount: ' '/Topic:/ {split($2, parts, " "); print parts[1]; exit}')
+                replicas=$(printf '%s\n' "$description" | awk -F'ReplicationFactor: ' '/Topic:/ {split($2, parts, " "); print parts[1]; exit}')
+                min_isr=$(printf '%s\n' "$description" | grep -o 'min\.insync\.replicas=[0-9][0-9]*' | head -n 1 | cut -d= -f2)
+                if [ "$partitions" != "$KAFKA_TOPIC_PARTITIONS" ] || \
+                   [ "$replicas" != "$KAFKA_TOPIC_REPLICATION_FACTOR" ] || \
+                   [ "$min_isr" != "$KAFKA_TOPIC_MIN_INSYNC_REPLICAS" ]; then
+                  echo "topic $topic has partitions=$partitions rf=$replicas min_isr=$min_isr" >&2
+                  exit 1
+                fi
+              done
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$KAFKA_BROKERS" --list
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+

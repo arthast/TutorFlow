@@ -11,6 +11,9 @@ components_manager:
             listener:
                 port: 8081
                 task_processor: main-task-processor
+            listener-monitor:
+                port: 18081
+                task_processor: main-task-processor
         grpc-server:
             port: 9081
             completion-queue-count: 2
@@ -30,6 +33,11 @@ components_manager:
             path: /ready
             method: GET
             task_processor: main-task-processor
+        handler-server-monitor:
+            path: /metrics
+            method: GET
+            task_processor: main-task-processor
+            format: prometheus
         http-client: {}
         http-client-core:
             fs-task-processor: fs-task-processor

@@ -8,11 +8,13 @@
 #include <string>
 #include <string_view>
 
+#include <userver/components/statistics_storage.hpp>
 #include <userver/kafka/producer.hpp>
 #include <userver/storages/postgres/cluster.hpp>
 #include <userver/utils/periodic_task.hpp>
 
 #include <tutorflow/events/event_publisher.hpp>
+#include <tutorflow/events/outbox_statistics.hpp>
 
 namespace tutorflow::events {
 
@@ -21,6 +23,8 @@ public:
   PostgresOutboxPublisher(userver::storages::postgres::ClusterPtr pg,
                           const userver::kafka::Producer& producer,
                           std::string task_name, std::string producer_name,
+                          userver::components::StatisticsStorage&
+                              statistics_storage,
                           std::chrono::milliseconds period =
                               std::chrono::seconds{1});
 
@@ -34,6 +38,7 @@ private:
   std::string task_name_;
   std::string producer_name_;
   std::chrono::milliseconds period_;
+  mutable OutboxStatistics statistics_;
   userver::utils::PeriodicTask task_;
 };
 

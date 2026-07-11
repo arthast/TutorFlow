@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+#include <vector>
 
 #include <userver/server/handlers/http_handler_base.hpp>
 #include <userver/storages/postgres/cluster.hpp>
@@ -19,7 +20,7 @@ class ReadyHandler final : public userver::server::handlers::HttpHandlerBase {
       userver::server::request::RequestContext& context) const override;
 
  private:
-  userver::storages::postgres::ClusterPtr pg_;
+  std::vector<userver::storages::postgres::ClusterPtr> clusters_;
 };
 
 }  // namespace tutorflow::chat

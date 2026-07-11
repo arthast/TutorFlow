@@ -1,6 +1,5 @@
 #include <tutorflow/events/outbox_publisher.hpp>
 
-#include <stdexcept>
 #include <utility>
 
 #include <userver/formats/json/serialize.hpp>
@@ -53,19 +52,22 @@ std::string TopicForEventType(std::string_view event_type) {
     return std::string{kNotificationTopic};
   }
 
-  throw std::runtime_error{"unknown Kafka event type for topic routing: " +
-                           std::string{event_type}};
+  LOG_ERROR() << "unknown event_type, using legacy topic: " << event_type;
+  return "tutorflow." + std::string{event_type};
 }
 
 PostgresOutboxPublisher::PostgresOutboxPublisher(
     userver::storages::postgres::ClusterPtr pg,
     const userver::kafka::Producer& producer, std::string task_name,
-    std::string producer_name, std::chrono::milliseconds period)
+    std::string producer_name,
+    userver::components::StatisticsStorage& statistics_storage,
+    std::chrono::milliseconds period)
     : pg_(std::move(pg)),
       publisher_(producer),
       task_name_(std::move(task_name)),
       producer_name_(std::move(producer_name)),
-      period_(period) {}
+      period_(period),
+      statistics_(statistics_storage.GetStorage(), producer_name_, task_name_) {}
 
 void PostgresOutboxPublisher::Start() {
   task_.Start(task_name_,
@@ -74,6 +76,8 @@ void PostgresOutboxPublisher::Start() {
 }
 
 void PostgresOutboxPublisher::PublishPending() const {
+  OutboxTickScope tick{statistics_};
+
   // Leader-lock: при нескольких репликах сервиса батч публикует ровно одна —
   // остальные молча пропускают tick. Без этого реплики публиковали бы дубли
   // и, что хуже, могли бы нарушить порядок событий одного агрегата
@@ -127,6 +131,7 @@ void PostgresOutboxPublisher::PublishPending() const {
         "UPDATE outbox_events SET status = 'published', "
         "published_at = now() WHERE id = $1::uuid AND status = 'pending'",
         id);
+    tick.EventPublished();
 
     LOG_INFO() << "[outbox] published event_id=" << id
                << " type=" << event.event_type << " topic=" << topic;

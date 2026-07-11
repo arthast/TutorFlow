@@ -1,5 +1,6 @@
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
+#include <userver/server/handlers/server_monitor.hpp>
 #include <userver/kafka/producer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
 #include <userver/storages/secdist/component.hpp>
@@ -23,12 +24,14 @@
 int main(int argc, char* argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
+          .Append<userver::server::handlers::ServerMonitor>()
           .AppendComponentList(userver::ugrpc::client::MinimalComponentList())
           .AppendComponentList(userver::ugrpc::server::MinimalComponentList())
           .Append<userver::ugrpc::client::ClientFactoryComponent>()
           .Append<userver::clients::dns::Component>()
           .Append<userver::components::TestsuiteSupport>()
-          .Append<userver::components::Postgres>("chat-db")
+          .Append<userver::components::Postgres>("chat-db-shard0")
+          .Append<userver::components::Postgres>("chat-db-shard1")
           .Append<userver::components::Secdist>()
           .Append<userver::components::DefaultSecdistProvider>()
           .Append<userver::kafka::ProducerComponent>()

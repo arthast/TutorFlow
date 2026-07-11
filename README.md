@@ -1,326 +1,363 @@
 # TutorFlow
 
-TutorFlow — учебная платформа для связки «преподаватель — ученик». MVP покрывает
-регистрацию и вход, учеников преподавателя, расписание и занятия, домашние задания,
-файлы, чеки об оплате с ручным подтверждением, финансовый журнал, dashboards,
-in-app уведомления, личный чат и realtime push.
+TutorFlow — учебная LMS-платформа для работы частного преподавателя с учениками.
+В одном приложении собраны расписание, занятия, домашние задания, файлы,
+финансовый учёт с ручной проверкой чеков, дашборды, уведомления, личный чат и
+realtime push.
 
-Проект сделан как **microservices** на **C++20 + userver**.
-Это один управляемый backend/frontend проект
-с чёткими границами сервисов, отдельными БД и контрактами.
+Проект написан как **microservices монорепозиторий**: 
+публичный API gateway и девять специализированных C++20/userver сервисов.
+Восемь из них доступны только внутри сети, а `realtime-service` публикует
+отдельный WebSocket endpoint. У сервисов свои границы данных, синхронные
+gRPC-контракты и асинхронные Kafka events.
 
-Production demo:
+**Production demo:** [https://netwatch-arsen-demo.ru](https://netwatch-arsen-demo.ru)
 
-- App: `https://netwatch-arsen-demo.ru`
+### Что может пользователь
 
-## Статус
+**Преподаватель:**
 
-Реализовано:
+- регистрируется и добавляет учеников;
+- задаёт почасовую ставку и доступные интервалы;
+- создаёт, переносит, завершает, отменяет и восстанавливает занятия;
+- выдаёт ДЗ, прикладывает файлы, проверяет решения и пишет комментарии;
+- видит баланс, журнал операций и чеки учеников;
+- вручную подтверждает или отклоняет чек;
+- использует дашборд, уведомления и личный чат.
 
-- Публичный REST API через `api-gateway`.
-- Публичный WebSocket push через `realtime-service`.
-- Внутренний gRPC между gateway и доменными сервисами.
-- Kafka events через transactional outbox + consumer inbox.
-- PostgreSQL с отдельной БД на каждый stateful service.
-- Redis для realtime presence/pub-sub.
-- MinIO/S3-compatible storage для файлов, с fallback на локальный storage.
-- CI: frontend build, prod compose config, pytest collection.
-- CD: сборка образов, публикация в GHCR, deploy на сервер.
+**Ученик:**
+
+- входит в созданную преподавателем учётную запись;
+- видит расписание и материалы занятий;
+- читает ДЗ, сдаёт текст и файлы, получает результат проверки;
+- загружает чек и отслеживает его статус;
+- видит баланс, операции, дашборд, уведомления и чат.
+
+### Масштаб реализации
+
+```text
+1 React/TypeScript SPA
+1 публичный REST gateway
+9 backend-сервисов: 8 внутренних + публичный realtime push
+9 логических PostgreSQL БД, включая 2 shard чата
+5 Kafka domain topics
+Redis + MinIO/S3 + Prometheus/Grafana
+Docker Compose production deploy + локальный Kubernetes/kind deploy
+```
+
+Всего запускается десять C++ процессов: gateway и девять сервисов
+`identity`, `lesson`, `assignment`, `finance`, `file`, `notification`,
+`report`, `chat`, `realtime`.
+
+### Короткий путь данных
+
+```text
+Browser
+  ├── REST/JSON ─────► api-gateway ──gRPC──► domain services
+  │                         └──HTTP multipart──► file-service
+  └── WebSocket ─────► realtime-service
+
+Domain transaction ─► PostgreSQL + outbox ─► Kafka
+Kafka ─► finance / notification / report / realtime
+realtime ─► Redis pub/sub ─► WebSocket connection
+```
 
 ## Архитектура
 
-```text
-Browser / Frontend
-  | REST/JSON, multipart upload
-  v
-api-gateway                         realtime-service
-public HTTPS REST                   public WSS /ws push only
-  |                                  ^
-  | gRPC                             | Kafka + Redis pub/sub
-  v                                  |
-identity-service      notification-service
-lesson-service        report-service
-assignment-service    chat-service
-finance-service
-  |
-  | HTTP multipart
-  v
-file-service
+```mermaid
+flowchart TB
+    browser["Browser"]
+    frontend["React + TypeScript frontend"]
+    gateway["api-gateway<br/>public REST :8080"]
+    realtime["realtime-service<br/>public WebSocket :8089"]
 
-PostgreSQL: separate database per service
-Kafka: domain events and side effects
-Redis: realtime fan-out/presence
-MinIO: object storage for uploaded files
+    identity["identity-service"]
+    lesson["lesson-service"]
+    assignment["assignment-service"]
+    finance["finance-service"]
+    files["file-service"]
+    notification["notification-service"]
+    report["report-service"]
+    chat["chat-service"]
+
+    postgres[("PostgreSQL<br/>database per service")]
+    kafka[("Kafka<br/>5 domain topics")]
+    redis[("Redis<br/>presence + pub/sub")]
+    minio[("MinIO / S3<br/>file objects")]
+
+    browser --> frontend
+    frontend -- "REST / JSON" --> gateway
+    frontend -- "WebSocket push" --> realtime
+
+    gateway -- "gRPC" --> identity
+    gateway -- "gRPC" --> lesson
+    gateway -- "gRPC" --> assignment
+    gateway -- "gRPC" --> finance
+    gateway -- "gRPC" --> notification
+    gateway -- "gRPC" --> report
+    gateway -- "gRPC" --> chat
+    gateway -- "HTTP multipart" --> files
+
+    lesson -. "access check" .-> identity
+    assignment -. "access check" .-> identity
+    finance -. "access check" .-> identity
+    files -. "access check" .-> identity
+    chat -. "access check" .-> identity
+
+    identity --> postgres
+    lesson --> postgres
+    assignment --> postgres
+    finance --> postgres
+    files --> postgres
+    notification --> postgres
+    report --> postgres
+    chat --> postgres
+    files --> minio
+
+    lesson -- "events" --> kafka
+    assignment -- "events" --> kafka
+    finance -- "consume + produce" --> kafka
+    chat -- "events" --> kafka
+    notification -- "consume + produce" --> kafka
+    report -- "consume" --> kafka
+    realtime -- "consume" --> kafka
+    realtime <--> redis
 ```
 
-Главные правила:
+### Что проект демонстрирует технически
 
-- Внешние доменные команды идут только через `api-gateway`.
-- `realtime-service` наружу открыт только для WebSocket push; он не является
-  source of truth и не выполняет доменные команды.
-- У каждого сервиса своя БД; прямое чтение чужих БД запрещено.
-- Синхронные внутренние запросы идут по gRPC.
-- Файлы идут через `file-service`; остальные сервисы хранят только `file_id`.
-- Асинхронные факты идут через Kafka domain topics:
-  `tutorflow.lesson.events`, `tutorflow.assignment.events`,
-  `tutorflow.finance.events`, `tutorflow.chat.events`,
-  `tutorflow.notification.events`; конкретный факт хранится в `event_type`.
-- Финансы append-only: операции не редактируются, исправления делаются
-  корректирующими транзакциями.
-
-## Транспорт
-
-| Транспорт | Где используется | Зачем |
+| Приём | Как реализован | Зачем и какой компромисс |
 |---|---|---|
-| REST/JSON | frontend -> `api-gateway` | публичный API для UI |
-| HTTP multipart | `api-gateway` -> `file-service` | upload/download файлов без gRPC-обвязки |
-| gRPC | gateway -> доменные сервисы, сервисы -> identity | синхронные внутренние команды и чтения |
-| Kafka | outbox/inbox между сервисами | факты, side effects, read-models, уведомления |
-| WebSocket | frontend -> `realtime-service` | push чата, read markers, presence, notifications |
-| Redis pub/sub | внутри `realtime-service` | fan-out между соединениями/инстансами |
+| Database per service | отдельная логическая PostgreSQL БД; прямые межсервисные JOIN запрещены | ясное владение данными ценой сетевых вызовов и eventual consistency |
+| gRPC внутри | protobuf API между gateway и сервисами, а также identity access-check | typed sync-контракт; требует code generation и согласования версий |
+| Event-driven side effects | пять Kafka topics, event type внутри envelope | слабая связанность consumers; результат команды может появиться не мгновенно |
+| Transactional outbox | domain row и event пишутся в одной DB transaction | событие не теряется между DB и Kafka; нужен publisher и очистка outbox |
+| Inbox и идемпотентность | `processed_events`, unique business keys и state upsert | безопасный at-least-once replay; каждый consumer обязан иметь свой guard |
+| Append-only finance | charge/payment/correction/refund не редактируются | аудит и компенсирующие операции; журнал сложнее обычного mutable balance |
+| CQRS/read models | report-service строит dashboard projections из Kafka | быстрое чтение; projection может кратковременно отставать |
+| Storage abstraction | `IFileStorage`: local или S3/MinIO, metadata отдельно | backend меняется без домена; DB и object storage не имеют общей transaction |
+| Шардинг чата | UUIDv5 dialog ID, FNV-1a routing, два shard, scatter-gather | демонстрирует горизонтальное разделение; смена числа shard требует resharding |
+| Реплики и Kafka groups | consumer group делит partitions, HPA 2–4 для notification в kind | горизонтальное чтение ограничено числом partitions |
+| Outbox leader lock | `pg_try_advisory_xact_lock` выбирает publisher среди реплик | сохраняет один активный publisher на DB; это не глобальный distributed lock |
+| Kafka failure profile | 3 KRaft brokers, RF=3, min ISR=2, idempotent producer/acks=all | переживает один broker; требует больше ресурсов и отдельный local overlay |
+| Health/readiness | `/health` лёгкий, `/ready` проверяет собственные критичные зависимости | оркестратор не рестартит живой процесс из-за временно недоступной DB |
+| Observability | userver metrics, Prometheus, kafka-exporter, Grafana | видны RPS, p95, errors, PG pool, lag и outbox; профиль локальный, не полный APM |
+| Kubernetes | kind + kustomize, probes, Jobs, HPA, Ingress | рабочий локальный demo; production пока остаётся на Compose |
 
-Правило выбора простое: если вызывающему нужен ответ прямо сейчас — gRPC. Если
-это факт «уже произошло» и на него должны реагировать другие сервисы — Kafka.
+
+Снаружи доступны только:
+
+- `api-gateway` для доменных REST-команд и чтений;
+- `realtime-service` для WebSocket push;
+- frontend и маршрутизирующий reverse proxy в production.
+
+HTTP-порты внутренних сервисов нужны для health/readiness/metrics и file
+multipart внутри сети
+
+## Как выбирается транспорт
+
+| Транспорт | Где | Почему |
+|---|---|---|
+| REST/JSON | frontend → gateway | понятный публичный API для браузера |
+| HTTP multipart | gateway → file-service | естественная передача файлов без protobuf wrapping |
+| gRPC | gateway → services; services → identity | ответ или access-check нужен прямо сейчас |
+| Kafka | доменные факты и side effects | producer не знает всех будущих consumers |
+| WebSocket | frontend ↔ realtime | server push без polling |
+| Redis pub/sub | между realtime replicas | доставить event в процесс с нужным connection |
 
 ## Сервисы
 
-| Сервис | Назначение | State |
-|---|---|---|
-| `api-gateway` | публичный REST facade: auth, routing, mapping, CORS, единый error envelope | stateless |
-| `identity-service` | пользователи, JWT, роли, teacher/student profiles, связи teacher-student | `identity_db` |
-| `lesson-service` | расписание, занятия, жизненный цикл lesson, материалы занятия | `lesson_db` |
-| `assignment-service` | ДЗ, submissions, review, comments, deadline worker | `assignment_db` |
-| `finance-service` | charges, receipts, payments, balance, corrections, finance events | `finance_db` |
-| `file-service` | metadata файлов, upload/download, local/S3 storage abstraction | `file_db` + local/MinIO |
-| `notification-service` | in-app уведомления из Kafka events, mark-as-read | `notification_db` |
-| `report-service` | read-models и dashboards для teacher/student | `report_db` |
-| `chat-service` | диалоги teacher-student, сообщения, вложения, read markers | `chat_db` |
-| `realtime-service` | WebSocket push для сообщений/уведомлений/presence | Redis + memory |
-| `frontend` | пользовательский UI teacher/student | stateless static SPA |
+| Сервис | Ответственность | Состояние | Подробности |
+|---|---|---|---|
+| `api-gateway` | публичный REST, JWT boundary, CORS, routing и mapping | stateless | [README](services/api-gateway/README.md) |
+| `identity-service` | users, roles, profiles, JWT, teacher-student access | `identity_db` | [README](services/identity-service/README.md) |
+| `lesson-service` | availability, lessons и lifecycle | `lesson_db` | [README](services/lesson-service/README.md) |
+| `assignment-service` | assignments, submissions, reviews, comments, deadlines | `assignment_db` | [README](services/assignment-service/README.md) |
+| `finance-service` | ledger, receipts, payments, balance, corrections | `finance_db` | [README](services/finance-service/README.md) |
+| `file-service` | file metadata и local/S3 storage | `file_db` + MinIO/volume | [README](services/file-service/README.md) |
+| `notification-service` | persistent in-app notifications из events | `notification_db` | [README](services/notification-service/README.md) |
+| `report-service` | dashboard read-models | `report_db` | [README](services/report-service/README.md) |
+| `chat-service` | dialogs, messages, attachments, read markers | `chat_db_shard0/1` | [README](services/chat-service/README.md) |
+| `realtime-service` | WebSocket connections, presence и push fan-out | Redis + process memory | [README](services/realtime-service/README.md) |
 
 ### api-gateway
 
-`api-gateway` — единственная публичная REST-точка для доменных операций. Он
-валидирует JWT локально, вычищает входящие `X-User-*`, выставляет доверенные
-`X-User-Id` / `X-User-Roles` и дальше вызывает внутренние сервисы.
-
-Внутри:
-
-- `handlers/` — health и proxy handlers для публичных endpoint'ов;
-- `clients/` — gRPC clients к identity/lesson/assignment/finance/notification/report/chat;
-- `cors.*` — CORS policy для frontend;
-- `gateway_settings.*` — runtime settings;
-- file upload/download проксируется в `file-service` по HTTP multipart.
-
-Gateway не содержит бизнес-логики: он не создаёт charge, не меняет статусы lessons
-и не читает чужие БД.
+Gateway валидирует JWT, удаляет недоверенные `X-User-*`, формирует trusted user
+context и вызывает typed clients. Он не владеет базой и не содержит бизнес-
+правил. Файлы — единственное исключение из внутреннего gRPC: multipart body
+проксируется в file-service по HTTP.
 
 ### identity-service
 
-`identity-service` отвечает за identity/auth домен:
-
-- регистрация и login;
-- password hashing;
-- выпуск JWT;
-- роли `teacher` / `student`;
-- профили преподавателей и учеников;
-- связь teacher-student;
-- `CheckTeacherStudentAccess` для остальных сервисов.
-
-Внутри:
-
-- `domain/` — правила регистрации, логина, смены пароля, связей;
-- `repositories/` — доступ только к `identity_db`;
-- `grpc/` — внутренний gRPC API для gateway и access checks.
-
-Это source of truth для пользователей и доступа teacher к student.
+Identity объединяет auth и profiles, хранит парольные hash и выпускает JWT.
+Он является каноническим владельцем связи teacher-student и предоставляет
+`CheckTeacherStudentAccess`, который используют остальные сервисы вместо
+чтения чужой БД.
 
 ### lesson-service
 
-`lesson-service` управляет расписанием и занятиями:
-
-- создание lessons;
-- завершение занятия;
-- отмена, перенос, восстановление;
-- хранение `file_id` материалов занятия;
-- outbox событий `lesson.scheduled`, `lesson.completed`, `lesson.cancelled`,
-  `lesson.restored`, `lesson.rescheduled`.
-
-Внутри:
-
-- `domain/` — state machine занятия и доменные проверки;
-- `repositories/` — `lesson_db`, lessons, slots, materials, outbox;
-- `grpc/` — команды и чтения для gateway;
-- `outbox/` — публикация lesson events в Kafka.
-
-Завершение занятия не создаёт charge напрямую. Сервис фиксирует lesson status и
-пишет событие в outbox, а `finance-service` создаёт charge асинхронно.
+Lesson хранит расписание и snapshot цены. PostgreSQL exclusion constraint
+атомарно запрещает пересекающиеся `scheduled` занятия teacher. Изменения
+lifecycle публикуются через outbox; charge напрямую не создаётся.
 
 ### assignment-service
 
-`assignment-service` отвечает за домашние задания:
-
-- создание assignment преподавателем;
-- просмотр заданий учеником;
-- submission с текстом и/или `file_id`;
-- review преподавателем;
-- comments;
-- deadline expiration.
-
-Внутри:
-
-- `domain/` — статусы assignment/submission и проверки прав;
-- `repositories/` — `assignment_db`;
-- `grpc/` — внутренний API для gateway;
-- `outbox/` — события `assignment.created`, `submission.uploaded`,
-  `assignment.reviewed`, `assignment.deadline_expired`;
-- `workers/` — deadline worker.
-
-Сами файлы решений не хранятся в assignment DB, только ссылки `file_id`.
+Assignment хранит условие, историю submissions, review и контекстные comments.
+Deadline worker переводит только `assigned/needs_fix` с прошедшим due date в
+`expired` и пишет event в той же транзакции.
 
 ### finance-service
 
-`finance-service` ведёт финансовую модель MVP:
-
-- charge за проведённое занятие;
-- загрузка payment receipt;
-- подтверждение/отклонение чека преподавателем;
-- append-only ledger;
-- ручные и автоматические corrections;
-- balance calculation;
-- finance events.
-
-Внутри:
-
-- `domain/` — правила charge/payment/correction/refund;
-- `repositories/` — `finance_db`, ledger, receipts, inbox/outbox;
-- `grpc/` — команды и чтения для gateway;
-- `consumers/` — Kafka consumers lesson events;
-- `outbox/` — публикация `charge.created`, `payment_receipt.uploaded`,
-  `payment.confirmed`, `payment.rejected`, `balance.changed`.
-
-Ключевое правило: загруженный чек сам по себе не меняет баланс. Баланс меняется
-только после подтверждения teacher.
+Finance владеет append-only ledger. Он создаёт charge из `lesson.completed`,
+меняет баланс после подтверждения receipt и выражает отмену/восстановление
+completed lesson компенсирующими corrections.
 
 ### file-service
 
-`file-service` отделяет metadata файлов от физического storage:
-
-- upload/download через HTTP multipart;
-- metadata в `file_db`;
-- проверка доступа через identity;
-- storage backend `local` или `s3`;
-- единый внешний API независимо от backend'а.
-
-Внутри:
-
-- `handlers/` — HTTP upload/download endpoints для gateway;
-- `domain/` — правила ownership/access;
-- `repositories/` — metadata в `file_db`;
-- `storages/` — `IFileStorage`, local storage и S3/MinIO storage.
-
-Другие сервисы не получают файл напрямую и не хранят blob'ы у себя.
+File-service отделяет metadata от bytes. `IFileStorage` переключает local и
+S3/MinIO backend; S3-запросы подписываются AWS SigV4 через userver HTTP client.
+Другие домены хранят только `file_id`.
 
 ### notification-service
 
-`notification-service` строит in-app уведомления из доменных событий:
-
-- слушает Kafka events lesson/assignment/finance/chat;
-- создаёт уведомления в `notification_db`;
-- отдаёт список уведомлений через gRPC;
-- поддерживает mark-as-read;
-- публикует `notification.created` для realtime push.
-
-Внутри:
-
-- `consumers/` — Kafka event consumer;
-- `domain/` — правила генерации уведомлений;
-- `repositories/` — notification storage;
-- `grpc/` — чтение и mark-as-read;
-- `outbox/` — notification events.
-
-Это read/notification projection, а не source of truth для домена.
+Notification превращает поддерживаемые events в persistent сообщения user,
+защищает consumer inbox и публикует `notification.created`. Поэтому offline
+пользователь не теряет уведомление.
 
 ### report-service
 
-`report-service` строит read-models для dashboards:
-
-- teacher dashboard;
-- student dashboard;
-- summary по student;
-- агрегаты по lessons/assignments/finance.
-
-Внутри:
-
-- `consumers/` — Kafka consumers lesson/assignment/finance events;
-- `domain/` — обновление read-models;
-- `repositories/` — `report_db`;
-- `grpc/` — dashboard API для gateway.
-
-Если read-model расходится с доменными сервисами, истина остаётся в source-of-truth
-сервисах. Report можно пересобрать/replay'нуть из событий.
+Report строит entity-state tables и агрегаты dashboard. Он использует upsert и
+recompute вместо хрупких счётчиков `+1/-1`; при расхождении источником истины
+остаётся доменный сервис.
 
 ### chat-service
 
-`chat-service` отвечает за личную переписку teacher-student:
-
-- диалоги;
-- сообщения;
-- attachments через `file_id`;
-- read markers;
-- события `message.sent` и `message.read`.
-
-Внутри:
-
-- `domain/` — доступ к диалогу, отправка, чтение;
-- `repositories/` — `chat_db`;
-- `grpc/` — команды/чтения для gateway;
-- `outbox/` — Kafka events для уведомлений и realtime.
-
-Отправка сообщения идёт через REST -> gateway -> gRPC -> chat-service. WebSocket
-только доставляет push о событии, но не является каналом записи.
+Chat хранит личные диалоги и сообщения. Детерминированный UUIDv5 одной пары
+даёт идемпотентный find-or-create и заранее определяет shard. Запрос списка
+делает scatter-gather по двум БД.
 
 ### realtime-service
 
-`realtime-service` держит публичные WebSocket-соединения:
+Realtime потребляет `message.*` и `notification.created`, использует Redis для
+межрепличного fan-out и отправляет события в локальные WebSocket connections.
+После reconnect клиент синхронизируется через REST.
 
-- endpoint `/ws?token=...`;
-- JWT validation;
-- connection registry;
-- presence;
-- Kafka consumer для `message.*` и `notification.created`;
-- Redis pub/sub fan-out;
-- отправка push-событий в открытые клиентские соединения.
+## Сквозные потоки
 
-Внутри:
+### 1. Вход и trusted user context
 
-- `ws/` — WebSocket handler и registry соединений;
-- `kafka/` — consumer событий;
-- `redis/` — pub/sub client;
-- память процесса — активные соединения.
+```text
+POST /auth/login
+  → gateway → identity gRPC Login
+  → password PBKDF2 verification
+  → JWT(sub, roles, iat, exp)
 
-Он намеренно stateless относительно домена: после reconnect клиент должен уметь
-добрать состояние через REST/gateway.
+Следующий запрос с Bearer token
+  → gateway локально проверяет JWT
+  → удаляет входящие X-User-*
+  → передаёт typed UserContext в gRPC
+  → domain service проверяет роль/ownership/access
+```
 
-### frontend
+Gateway подтверждает identity caller, а конечный сервис проверяет доменную
+авторизацию.
 
-Frontend — React + TypeScript + Vite SPA. Он работает только с публичными входами:
+### 2. Завершение занятия → начисление → dashboard → notification
 
-- REST API: `VITE_API_URL`;
-- WebSocket: `VITE_REALTIME_URL`.
+```text
+POST /lessons/{id}/complete
+  → gateway
+  → LessonService.CompleteLesson
+  → lesson_db:
+       lessons.status = completed
+       outbox += lesson.completed
+     [одна транзакция]
+  → Kafka tutorflow.lesson.events
+  ├── finance consumer:
+  │     charge + balance.changed + inbox/outbox
+  ├── report consumer:
+  │     report_lessons + dashboard aggregates
+  └── notification consumer:
+        notification + notification.created
+          → realtime → Redis → WebSocket
+```
 
-Внутри:
+HTTP-ответ не ждёт charge и возвращает `charge_status=pending`. Unique
+`lesson_id` для charge гарантирует, что replay не создаст второе начисление.
 
-- `src/api.ts` — REST client;
-- `src/auth.tsx` — auth context;
-- `src/realtime.tsx` — WebSocket lifecycle;
-- `src/chat.tsx` — chat state helpers;
-- `src/pages/` — teacher/student pages;
-- `src/ui.tsx` — reusable UI primitives.
+### 3. Чек и ручная оплата
 
-## Данные И Границы БД
+```text
+Student POST /files (receipt bytes)
+  → file-service → file_id
 
-В dev/prod используется один PostgreSQL контейнер, но разные базы:
+Student POST /payments/receipts
+  → finance receipt(status=pending_review)
+  → payment_receipt.uploaded
+  → teacher notification
+
+Teacher POST /payments/receipts/{id}/confirm
+  → receipt=confirmed + payment transaction
+  → payment.confirmed + balance.changed
+  → student notification + report update
+```
+
+При upload баланс не меняется. Reject не создаёт payment. Повторный confirm не
+создаёт вторую операцию благодаря unique `receipt_id` и проверке status.
+
+### 4. Домашнее задание
+
+```text
+Teacher creates assignment
+  → assignment + files + assignment.created
+  → student notification/report
+
+Student submits text/file_ids
+  → новая submission + submission.uploaded
+  → teacher notification/report
+
+Teacher reviews latest submission
+  → status reviewed/needs_fix/accepted
+  → assignment.reviewed
+  → student notification/report
+```
+
+Повторная сдача создаёт новую submission и сохраняет историю; старое решение не
+перезаписывается.
+
+### 5. Файл
+
+```text
+multipart → gateway auth → file-service
+  → storage.Put(storage_key, bytes)
+  → file_db.files metadata
+  ← file_id
+
+download → owner/teacher-student access check
+  → metadata → storage.Get(storage_key)
+```
+
+Если запись metadata падает после upload bytes, сервис пытается удалить object.
+
+### 6. Сообщение и realtime push
+
+```text
+POST /chats/{dialog}/messages
+  → gateway → chat gRPC
+  → shard(dialog_id): message + attachments + outbox
+  → message.sent
+  ├── notification-service → persistent notification
+  └── realtime-service
+        → unread cache + Redis user channel
+        → WebSocket recipient
+```
+
+Если recipient offline, WebSocket event не хранится, но message и notification
+остаются в своих БД. После reconnect frontend перечитывает состояние.
+
+## Данные и границы владения
+
+В dev/prod используется один PostgreSQL instance, но разные логические базы:
 
 ```text
 identity_db
@@ -330,200 +367,301 @@ finance_db
 file_db
 notification_db
 report_db
-chat_db
+chat_db_shard0
+chat_db_shard1
 ```
 
-Сервис подключается только к своей БД. Межсервисные связи хранятся как stable ids
-(`user_id`, `student_id`, `lesson_id`, `file_id`) и проверяются через service API,
-а не JOIN'ами между БД.
+- сервис подключается только к своей БД;
+- foreign key существует только внутри одной service DB;
+- `user_id`, `lesson_id`, `file_id` между сервисами — stable identifiers;
+- чужие данные читаются через API/event, а не через SQL JOIN;
+- миграции находятся в `migrations/<service>/`;
+- one-shot `migrator` применяет схемы при Compose/Kubernetes startup.
 
-Миграции лежат в `migrations/<service>/`. В compose их применяет one-shot
-`migrator`; локально можно запустить `./scripts/migrate.sh all`.
+## Kafka и событийная модель
 
-## Событийная Модель
+### Topics
 
-Сервисы публикуют события через outbox:
-
-1. Доменная операция и запись в `outbox_events` происходят в одной DB transaction.
-2. Publisher читает outbox и отправляет event в Kafka.
-3. Consumer принимает event, пишет `consumer_inbox`/idempotency marker и обновляет
-   своё состояние.
-4. Повторная доставка Kafka не должна создавать дубли.
-
-Примеры:
+Используется пять доменных topics:
 
 ```text
-lesson.completed -> finance-service -> charge.created -> report/notification
-payment.confirmed -> balance.changed -> report
-message.sent -> notification-service + realtime-service
-notification.created -> realtime-service -> WebSocket client
+tutorflow.lesson.events
+tutorflow.assignment.events
+tutorflow.finance.events
+tutorflow.chat.events
+tutorflow.notification.events
 ```
 
-Контракты событий: `docs/event-contracts/`.
+Конкретный факт находится в `event_type` общего envelope. Kafka key выбирается
+по aggregate (`lesson_id`, `assignment_id`, `receipt_id`, `dialog_id`,
+`user_id`), чтобы события одной сущности шли в одну partition.
 
-## Auth И Ошибки
-
-JWT выпускает `identity-service`, а валидирует на внешнем периметре `api-gateway`.
-Внутренние сервисы получают доверенные headers от gateway и делают доменные проверки.
-
-Единый формат ошибок:
+### Event envelope
 
 ```json
-{"error":{"code":"string_code","message":"human readable","details":null}}
+{
+  "event_id": "uuid",
+  "event_type": "lesson.completed",
+  "event_version": 1,
+  "occurred_at": "2026-07-11T12:00:00Z",
+  "producer": "lesson-service",
+  "payload": {}
+}
 ```
 
-Коды и envelope helpers лежат в `libs/common`.
+### Transactional outbox
 
-## Общие Библиотеки
+1. domain data и `outbox_events(pending)` записываются одной DB transaction;
+2. periodic publisher читает pending rows;
+3. Kafka producer отправляет envelope;
+4. row помечается `published`;
+5. при ошибке row остаётся pending и будет повторена.
+
+Гарантия получается **at least once**, а не exactly once: producer может
+отправить event, упасть до отметки `published` и отправить повторно.
+
+### Consumer inbox и идемпотентность
+
+Каждый consumer обязан безопасно принять дубль:
+
+- finance charge: inbox + unique charge по `lesson_id`;
+- finance payment: unique payment по `receipt_id`;
+- lifecycle correction: `processed_events`, correction и outbox одним SQL;
+- notification: inbox + `UNIQUE(user_id, source_event_id)`;
+- report: inbox + entity upsert + aggregate recompute;
+- deadline worker: status transition делает строку непригодной для повторного
+  expire.
+
+Kafka не заменяет DB constraints: обе защиты дополняют друг друга.
+
+### Outbox при нескольких репликах
+
+Если запустить несколько экземпляров domain service, у каждого будет свой
+periodic publisher. Shared outbox helper берёт
+`pg_try_advisory_xact_lock`; batch читает и публикует только одна реплика.
+
+## Финансовая модель
 
 ```text
-libs/common   errors, auth context, JWT, request context, HTTP helpers
-libs/proto    protobuf/gRPC contracts and userver codegen
-libs/clients  shared gRPC client helpers
-libs/events   Kafka envelope, publisher, consumer, outbox helpers
+balance = charge - payment + correction - refund
 ```
 
-`libs/common` не содержит DTO и доменных сущностей сервисов.
+Пример lifecycle одного занятия:
 
-## Структура Репозитория
+```text
+complete          +3000 charge       balance +3000
+cancel completed  -3000 correction   net 0
+restore completed +3000 correction   net +3000
+```
+
+Исходный charge не удаляется. Аудитор видит всю историю причин изменения.
+
+`balance.changed` переносит абсолютное значение после операции. Report-service
+не пересчитывает деньги из набора событий и не становится вторым ledger.
+
+## Шардирование чата
+
+### Placement
+
+Dialog ID детерминирован:
+
+```text
+UUIDv5(namespace, lower(teacher_id) + ":" + lower(student_id))
+```
+
+Shard выбирается вручную:
+
+```text
+FNV-1a(dialog_id bytes) % 2
+```
+
+В одном shard лежат dialog, messages, attachments, read markers и outbox.
+Горячие операции одного dialog не требуют распределённой transaction.
+
+### Scatter-gather
+
+`ListDialogsForUser` выполняется на обоих shard, результаты объединяются,
+дедуплицируются и сортируются по `last_message_at`. Это приемлемо при двух shard
+и небольшом списке диалогов, но не масштабируется линейно до сотен shard.
+
+## Масштабирование Kafka
+
+Обычный dev/prod Compose использует один KRaft broker для экономии ресурсов.
+Локальный overlay [`docker-compose.scale.yml`](docker-compose.scale.yml)
+поднимает три broker:
+
+- 5 topics × 3 partitions;
+- replication factor 3;
+- `min.insync.replicas=2`;
+- idempotent producer;
+- `acks=all`;
+- consumer groups для распределения partitions.
+
+Переключение между single- и multi-broker режимом требует удаления **локальных**
+volumes: KRaft metadata разных controller quorum несовместимы.
+
+## Health, readiness и self-healing
+
+- `/health` отвечает, если процесс и listener живы;
+- `/ready` проверяет только собственные критичные зависимости;
+- DB-backed service проверяет свою PostgreSQL DB;
+- realtime проверяет Redis;
+- file-service в S3-режиме проверяет DB и bucket;
+- Kafka и чужие сервисы не входят в readiness: clients/consumers ретраят сами.
+
+Это разделение важно для Kubernetes: потеря DB выводит pod из балансировки, но
+liveness не заставляет бесконечно рестартить исправный процесс.
+
+Monitor listener каждого C++ сервиса находится на `HTTP port + 10000`, например
+gateway metrics — `18080`. Эти порты остаются внутри сети.
+
+## Observability
+
+Опциональный профиль добавляет:
+
+- Prometheus;
+- kafka-exporter;
+- provisioned Grafana dashboard `TutorFlow Overview`.
+
+```bash
+docker compose --profile observability up -d
+open http://localhost:${GRAFANA_PORT:-3000}/d/tutorflow-overview/tutorflow-overview
+```
+
+Dashboard показывает:
+
+- request rate по сервисам;
+- HTTP handler p95 latency;
+- 4xx/5xx rate;
+- активные/свободные PostgreSQL connections;
+- Kafka consumer-group lag;
+- длительность outbox tick;
+- outbox publish rate.
+
+Профиль локальный и не меняет default/production stack. Остановка без удаления
+данных:
+
+```bash
+docker compose --profile observability down
+docker compose up -d
+```
+
+## Kubernetes
+
+[`deploy/k8s/`](deploy/k8s/) — второй рабочий локальный путь развёртывания:
+
+- kind cluster;
+- kustomize base + local overlay;
+- Deployments/Services для приложений;
+- StatefulSets/PVC для инфраструктуры;
+- migrator и kafka-init Jobs;
+- ingress-nginx;
+- liveness/readiness probes;
+- HPA notification-service;
+- metrics-server.
+
+Production demo остаётся на Docker Compose + Caddy. Kind нужен для проверки
+оркестрации без перегрузки небольшого production VM.
+
+```bash
+./deploy/k8s/kind-up.sh
+kubectl get pods,svc,ingress,hpa -n tutorflow
+GATEWAY_URL=http://localhost python3 scripts/smoke_mvp.py
+```
+
+## Структура репозитория
 
 ```text
 services/
-  api-gateway/
-  identity-service/
-  lesson-service/
-  assignment-service/
-  finance-service/
-  file-service/
-  notification-service/
-  report-service/
-  chat-service/
-  realtime-service/
+  api-gateway/            public REST facade
+  identity-service/       auth, users, access
+  lesson-service/         schedule and lifecycle
+  assignment-service/     homework workflow
+  finance-service/        ledger and receipts
+  file-service/           metadata + object storage
+  notification-service/   in-app projection
+  report-service/         dashboard read models
+  chat-service/           sharded dialogs/messages
+  realtime-service/       WebSocket push
+
 libs/
-  common/
-  clients/
-  proto/
-  events/
-migrations/
-frontend/
-scripts/
-deploy/
-docker/postgres/initdb/
-docs/
+  common/                 errors, auth context, JWT, HTTP helpers
+  proto/                  protobuf contracts + generated gRPC targets
+  clients/                reusable internal gRPC clients
+  events/                 envelope, producer/consumer, outbox helpers/metrics
+
+migrations/               SQL grouped by owner service
+frontend/                 React/Vite SPA
+tests/                    gateway-facing pytest integration suite
+scripts/                  migrations and end-to-end smoke
+deploy/                   Caddy, observability and Kubernetes
+docs/                     contracts, events, ADR, runbooks and roadmaps
 ```
 
-Типовая структура C++ сервиса:
+## Типовая структура C++ сервиса
 
 ```text
-src/
-  handlers/       HTTP handlers where needed
-  grpc/           gRPC service implementation
-  domain/         business rules and models
-  repositories/   own database access
-  clients/        outgoing service clients, if local to service
-  consumers/      Kafka consumers
-  outbox/         event publishing workers
-  workers/        background workers
-  storages/       storage adapters where relevant
+main.cpp
+  → registers userver components
+
+grpc/*_grpc_service.cpp или handlers/*.cpp
+  → transport parsing/mapping
+
+domain/*_service.cpp
+  → roles, validation, domain rules
+
+repositories/*_repository.cpp
+  → SQL и атомарные state transitions
+
+outbox/ | consumers/ | workers/
+  → asynchronous side effects
 ```
 
-Не у каждого сервиса есть все папки. Например, `realtime-service` использует
-`ws/`, `kafka/`, `redis/`, а `file-service` использует `storages/`.
+Не каждый сервис имеет все папки. File использует `storages/`, realtime —
+`ws/`, `kafka/`, `redis/`, gateway — `clients/` и HTTP handlers.
 
-## Локальный Запуск
+## Общие библиотеки
+
+| Библиотека | Содержание |
+|---|---|
+| `tutorflow_common` | error envelope, auth context, JWT, shared HTTP helpers |
+| `tutorflow_proto` | protobuf definitions и userver gRPC codegen |
+| `tutorflow_grpc_clients` | переиспользуемый identity client и client base |
+| `tutorflow_events` | envelope, Kafka adapters, outbox publisher и statistics |
+
+`libs/common` не содержит domain DTO и не даёт сервисам универсальную обёртку
+для доступа к чужим данным.
+
+## CI/CD
+
+Текущий CI выполняет:
+
+- `npm ci` + frontend build;
+- `pytest --collect-only` — проверку импорта и inventory Python tests;
+- `docker compose -f docker-compose.prod.yml config`.
+
+Ту же структурную проверку production Compose можно выполнить локально без
+запуска контейнеров:
 
 ```bash
-cp .env.example .env
-COMPOSE_PARALLEL_LIMIT=1 docker compose build
-docker compose up -d
-curl http://localhost:8080/health
+docker compose --env-file deploy/.env.prod.example \
+  -f docker-compose.prod.yml config >/dev/null
 ```
 
-Миграции применяются автоматически через `migrator`. Ручной прогон:
+Важно: CI сейчас **не поднимает полный C++/Kafka/PostgreSQL stack и не выполняет
+integration pytest**. Полный runtime smoke остаётся отдельной проверкой.
 
-```bash
-./scripts/migrate.sh all
-```
-
-Сброс dev-окружения:
-
-```bash
-docker compose down -v
-```
-
-Frontend отдельно:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-По умолчанию:
-
-- frontend: `http://localhost:5173`
-- gateway: `http://localhost:8080`
-- realtime: `ws://localhost:8089/ws`
-
-## Проверки
-
-Smoke через внешний gateway:
-
-```bash
-python3 scripts/smoke_mvp.py
-```
-
-Pytest:
-
-```bash
-python3 -m pytest tests
-```
-
-Frontend build:
-
-```bash
-cd frontend
-npx vite build
-```
-
-Production compose config:
-
-```bash
-docker compose --env-file deploy/.env.prod.example -f docker-compose.prod.yml config
-```
-
-Smoke против production demo:
-
-```bash
-GATEWAY_URL=https://netwatch-arsen-demo.ru python3 scripts/smoke_mvp.py
-```
-
-## Deploy
-
-CI/CD workflow:
+Manual Deploy workflow:
 
 ```text
-push/manual dispatch
-  -> GitHub Actions
-  -> build Docker images
-  -> push to GHCR
-  -> SSH to server
-  -> docker compose pull
-  -> docker compose up -d
+GitHub Actions
+  → build 11 images (frontend + 10 C++ processes)
+  → push commit SHA/latest to GHCR
+  → upload compose/deploy/migrations bundle
+  → SSH /opt/tutorflow
+  → docker compose pull
+  → docker compose up -d --remove-orphans
 ```
 
-На сервере проект живёт в `/opt/tutorflow`. Production compose использует:
-
-- `docker-compose.prod.yml`;
-- `/opt/tutorflow/.env`;
-- `deploy/Caddyfile`;
-- GHCR images tagged by commit SHA.
-
-Caddy routing:
-
-```text
-/ws*                         -> realtime-service:8089
-/auth, /lessons, /files, ... -> api-gateway:8080
-/*                           -> frontend:80
-www                          -> redirect to apex domain
-```
+Production использует Docker Compose + Caddy. Rollback выполняется на известный
+image tag, а данные PostgreSQL/MinIO требуют отдельной backup/restore стратегии.

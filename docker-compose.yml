@@ -49,7 +49,7 @@ services:
       - sh
       - -ec
       - |
-        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db; do
+        for svc_db in identity:identity_db lesson:lesson_db assignment:assignment_db finance:finance_db file:file_db notification:notification_db report:report_db chat:chat_db_shard0 chat:chat_db_shard1; do
           svc="$${svc_db%%:*}"; db="$${svc_db##*:}"
           createdb -h postgres -U "$$POSTGRES_USER" "$$db" 2>/dev/null || true
           for f in $$(ls /migrations/"$$svc"/*.sql 2>/dev/null | sort); do
@@ -104,6 +104,9 @@ services:
       KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
       KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS:-3}
       KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}
+      # Explicitly pin the effective topic policy. The scale overlay raises this
+      # to 2 together with RF=3; a single broker must keep it at 1.
+      KAFKA_TOPIC_MIN_INSYNC_REPLICAS: ${KAFKA_TOPIC_MIN_INSYNC_REPLICAS:-1}
     depends_on:
       kafka:
         condition: service_healthy
@@ -118,7 +121,8 @@ services:
             --if-not-exists \
             --topic "$$topic" \
             --partitions "$$KAFKA_TOPIC_PARTITIONS" \
-            --replication-factor "$$KAFKA_TOPIC_REPLICATION_FACTOR"
+            --replication-factor "$$KAFKA_TOPIC_REPLICATION_FACTOR" \
+            --config "min.insync.replicas=$$KAFKA_TOPIC_MIN_INSYNC_REPLICAS"
 
           partitions=$$(/opt/kafka/bin/kafka-topics.sh \
             --bootstrap-server "$$KAFKA_BROKERS" \
@@ -130,9 +134,16 @@ services:
             --describe \
             --topic "$$topic" \
             | awk -F'ReplicationFactor: ' '/Topic:/ {split($$2, parts, " "); print parts[1]; exit}')
+          min_isr=$$(/opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server "$$KAFKA_BROKERS" \
+            --describe \
+            --topic "$$topic" \
+            | grep -o 'min\.insync\.replicas=[0-9][0-9]*' \
+            | head -n 1 \
+            | cut -d= -f2)
 
-          if [ "$$partitions" != "$$KAFKA_TOPIC_PARTITIONS" ] || [ "$$replicas" != "$$KAFKA_TOPIC_REPLICATION_FACTOR" ]; then
-            echo "topic $$topic has partitions=$$partitions rf=$$replicas, expected partitions=$$KAFKA_TOPIC_PARTITIONS rf=$$KAFKA_TOPIC_REPLICATION_FACTOR" >&2
+          if [ "$$partitions" != "$$KAFKA_TOPIC_PARTITIONS" ] || [ "$$replicas" != "$$KAFKA_TOPIC_REPLICATION_FACTOR" ] || [ "$$min_isr" != "$$KAFKA_TOPIC_MIN_INSYNC_REPLICAS" ]; then
+            echo "topic $$topic has partitions=$$partitions rf=$$replicas min_isr=$$min_isr, expected partitions=$$KAFKA_TOPIC_PARTITIONS rf=$$KAFKA_TOPIC_REPLICATION_FACTOR min_isr=$$KAFKA_TOPIC_MIN_INSYNC_REPLICAS" >&2
             exit 1
           fi
         done
@@ -440,7 +451,8 @@ services:
         USERVER_IMAGE: *userver-image
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
-      CHAT_DATABASE_URL: ${CHAT_DATABASE_URL}
+      CHAT_DATABASE_URL_SHARD0: ${CHAT_DATABASE_URL_SHARD0}
+      CHAT_DATABASE_URL_SHARD1: ${CHAT_DATABASE_URL_SHARD1}
       KAFKA_SECDIST_CONFIG: *kafka-secdist-config
     depends_on:
       postgres:
@@ -487,6 +499,60 @@ services:
       start_period: 10s
     networks: [tutorflow]
 
+  # Dev-only observability profile (Этап 8.7). Monitor-порты сервисов доступны
+  # только внутри tutorflow network; наружу публикуется только Grafana.
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=6h
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks: [tutorflow]
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles: ["observability"]
+    command: ["--kafka.server=kafka:9092"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks: [tutorflow]
+
+  grafana:
+    image: grafana/grafana:13.0.2
+    profiles: ["observability"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_USERS_DEFAULT_THEME: light
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks: [tutorflow]
+
 networks:
   tutorflow:
     driver: bridge
@@ -497,3 +563,5 @@ volumes:
   kafkadata:
   miniodata:
   redisdata:
+  prometheusdata:
+  grafanadata:

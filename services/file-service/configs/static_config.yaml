@@ -11,6 +11,9 @@ components_manager:
             listener:
                 port: 8085
                 task_processor: main-task-processor
+            listener-monitor:
+                port: 18085
+                task_processor: main-task-processor
         logging:
             loggers:
                 default:
@@ -25,6 +28,11 @@ components_manager:
             path: /ready
             method: GET
             task_processor: main-task-processor
+        handler-server-monitor:
+            path: /metrics
+            method: GET
+            task_processor: main-task-processor
+            format: prometheus
         http-client: {}
         http-client-core:
             fs-task-processor: fs-task-processor

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+spec:
+  selector: {app.kubernetes.io/name: identity-service}
+  ports:
+    - {name: http, port: 8081, targetPort: http}
+    - {name: grpc, port: 9081, targetPort: grpc}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: identity-service}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: identity-service, app.kubernetes.io/part-of: tutorflow}
+    spec:
+      containers:
+        - name: identity-service
+          image: ghcr.io/arthast/tutorflow-identity-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8081}
+            - {name: grpc, containerPort: 9081}
+          env:
+            - name: IDENTITY_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: IDENTITY_DATABASE_URL}}
+            - name: JWT_SECRET
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: JWT_SECRET}}
+            - name: JWT_TTL_SECONDS
+              valueFrom: {configMapKeyRef: {name: tutorflow-config, key: JWT_TTL_SECONDS}}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+

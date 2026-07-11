@@ -4,7 +4,9 @@ add_executable(chat-service
     src/domain/chat_service.cpp
     src/grpc/chat_grpc_service.cpp
     src/handlers/ready_handler.cpp
+    src/repositories/dialog_merge.cpp
     src/repositories/chat_repository.cpp
+    src/repositories/shard_router.cpp
     src/outbox/outbox_publisher.cpp
 )
 
@@ -20,3 +22,20 @@ target_link_libraries(chat-service
         userver::kafka
         userver::postgresql
 )
+
+add_executable(chat-sharding-unit-tests
+    tests/shard_router_test.cpp
+    tests/dialog_merge_test.cpp
+    src/repositories/dialog_merge.cpp
+    src/repositories/shard_router.cpp
+)
+
+target_include_directories(chat-sharding-unit-tests PRIVATE src)
+
+target_link_libraries(chat-sharding-unit-tests
+    PRIVATE
+        userver::postgresql
+        userver::universal-utest
+)
+
+add_google_tests(chat-sharding-unit-tests)

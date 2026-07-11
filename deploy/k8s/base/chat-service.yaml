@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-service
+spec:
+  selector: {app.kubernetes.io/name: chat-service}
+  ports:
+    - {name: http, port: 8088, targetPort: http}
+    - {name: grpc, port: 9088, targetPort: grpc}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: chat-service}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: chat-service, app.kubernetes.io/part-of: tutorflow}
+    spec:
+      containers:
+        - name: chat-service
+          image: ghcr.io/arthast/tutorflow-chat-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8088}
+            - {name: grpc, containerPort: 9088}
+          env:
+            - name: CHAT_DATABASE_URL_SHARD0
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: CHAT_DATABASE_URL_SHARD0}}
+            - name: CHAT_DATABASE_URL_SHARD1
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: CHAT_DATABASE_URL_SHARD1}}
+            - name: KAFKA_SECDIST_CONFIG
+              valueFrom: {secretKeyRef: {name: tutorflow-secrets, key: KAFKA_SECDIST_CONFIG}}
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+

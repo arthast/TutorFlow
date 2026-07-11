@@ -1,0 +1,66 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tutorflow
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 12m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: realtime-service
+                port: {number: 8089}
+          - path: /health
+            pathType: Exact
+            backend: &gateway
+              service:
+                name: api-gateway
+                port: {number: 8080}
+          - path: /auth
+            pathType: Prefix
+            backend: *gateway
+          - path: /me
+            pathType: Prefix
+            backend: *gateway
+          - path: /users
+            pathType: Prefix
+            backend: *gateway
+          - path: /students
+            pathType: Prefix
+            backend: *gateway
+          - path: /lessons
+            pathType: Prefix
+            backend: *gateway
+          - path: /assignments
+            pathType: Prefix
+            backend: *gateway
+          - path: /payments
+            pathType: Prefix
+            backend: *gateway
+          - path: /notifications
+            pathType: Prefix
+            backend: *gateway
+          - path: /dashboard
+            pathType: Prefix
+            backend: *gateway
+          - path: /files
+            pathType: Prefix
+            backend: *gateway
+          - path: /chats
+            pathType: Prefix
+            backend: *gateway
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: {number: 80}
+

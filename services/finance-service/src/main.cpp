@@ -1,5 +1,6 @@
 #include <userver/clients/dns/component.hpp>
 #include <userver/components/minimal_server_component_list.hpp>
+#include <userver/server/handlers/server_monitor.hpp>
 #include <userver/kafka/consumer_component.hpp>
 #include <userver/kafka/producer_component.hpp>
 #include <userver/storages/postgres/component.hpp>
@@ -25,6 +26,7 @@
 int main(int argc, char *argv[]) {
   const auto component_list =
       userver::components::MinimalServerComponentList()
+          .Append<userver::server::handlers::ServerMonitor>()
           .AppendComponentList(userver::ugrpc::client::MinimalComponentList())
           .AppendComponentList(userver::ugrpc::server::MinimalComponentList())
           .Append<userver::ugrpc::client::ClientFactoryComponent>()

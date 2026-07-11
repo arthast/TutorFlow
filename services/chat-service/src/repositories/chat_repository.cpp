@@ -14,6 +14,8 @@
 
 #include <tutorflow/common/errors.hpp>
 
+#include "repositories/dialog_merge.hpp"
+
 namespace tutorflow::chat {
 namespace {
 namespace pg = userver::storages::postgres;
@@ -44,7 +46,9 @@ SELECT
   d.teacher_id::text AS teacher_id,
   d.student_id::text AS student_id,
   to_char(d.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+  (extract(epoch FROM d.created_at) * 1000000)::bigint AS created_at_order,
   COALESCE(to_char(d.last_message_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') AS last_message_at,
+  COALESCE((extract(epoch FROM d.last_message_at) * 1000000)::bigint, 0) AS last_message_at_order,
   (SELECT count(*) FROM messages m
      WHERE m.dialog_id = d.id
        AND m.sender_id <> $1::uuid
@@ -117,41 +121,67 @@ Dialog RowToDialog(const pg::Row& row) {
   return dialog;
 }
 
+ShardDialog RowToShardDialog(const pg::Row& row) {
+  return ShardDialog{
+      .dialog = RowToDialog(row),
+      .created_at_order = row["created_at_order"].As<std::int64_t>(),
+      .last_message_at_order =
+          row["last_message_at_order"].As<std::int64_t>(),
+  };
+}
+
 }  // namespace
 
 ChatRepository::ChatRepository(
     const userver::components::ComponentConfig& config,
     const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
-      pg_(context.FindComponent<userver::components::Postgres>("chat-db")
-              .GetCluster()) {}
+      shard_router_({
+          context.FindComponent<userver::components::Postgres>(
+                     "chat-db-shard0")
+              .GetCluster(),
+          context.FindComponent<userver::components::Postgres>(
+                     "chat-db-shard1")
+              .GetCluster(),
+      }) {}
 
 std::string ChatRepository::FindOrCreateDialogId(
     const std::string& teacher_id, const std::string& student_id) const {
-  const auto result = pg_->Execute(
+  const auto dialog_id = MakeDialogId(teacher_id, student_id);
+  const auto& cluster = shard_router_.ClusterFor(dialog_id);
+  const auto result = cluster->Execute(
       kMaster,
       "WITH ins AS ("
-      "  INSERT INTO dialogs (teacher_id, student_id) "
-      "  VALUES ($1::uuid, $2::uuid) "
-      "  ON CONFLICT (teacher_id, student_id) DO NOTHING "
+      "  INSERT INTO dialogs (id, teacher_id, student_id) "
+      "  VALUES ($1::uuid, $2::uuid, $3::uuid) "
+      "  ON CONFLICT (id) DO NOTHING "
       "  RETURNING id"
       ") "
       "SELECT id::text AS id FROM ins "
       "UNION ALL "
       "SELECT id::text AS id FROM dialogs "
-      "  WHERE teacher_id = $1::uuid AND student_id = $2::uuid "
-      "    AND NOT EXISTS (SELECT 1 FROM ins) "
+      "  WHERE id = $1::uuid AND NOT EXISTS (SELECT 1 FROM ins) "
       "LIMIT 1",
-      teacher_id, student_id);
+      dialog_id, teacher_id, student_id);
   if (result.IsEmpty()) {
-    throw tutorflow::common::ServiceError::Internal("dialog was not created");
+    // При конкурентном ON CONFLICT DO NOTHING statement snapshot может не
+    // видеть строку победившей транзакции. Новый statement получает свежий
+    // snapshot после завершения ожидания unique constraint.
+    const auto existing = cluster->Execute(
+        kMaster, "SELECT id::text AS id FROM dialogs WHERE id = $1::uuid",
+        dialog_id);
+    if (existing.IsEmpty()) {
+      throw tutorflow::common::ServiceError::Internal(
+          "dialog was not created");
+    }
+    return existing[0]["id"].As<std::string>();
   }
   return result[0]["id"].As<std::string>();
 }
 
 std::optional<DialogParticipants> ChatRepository::FindDialog(
     const std::string& dialog_id) const {
-  const auto result = pg_->Execute(
+  const auto result = shard_router_.ClusterFor(dialog_id)->Execute(
       kSlave,
       "SELECT id::text AS id, teacher_id::text AS teacher_id, "
       "       student_id::text AS student_id "
@@ -167,33 +197,36 @@ std::optional<DialogParticipants> ChatRepository::FindDialog(
 
 std::optional<Dialog> ChatRepository::GetDialogForUser(
     const std::string& dialog_id, const std::string& user_id) const {
-  const auto result =
-      pg_->Execute(kSlave, std::string{kDialogSelect} + " WHERE d.id = $2::uuid",
-                   user_id, dialog_id);
+  const auto result = shard_router_.ClusterFor(dialog_id)->Execute(
+      kSlave, std::string{kDialogSelect} + " WHERE d.id = $2::uuid", user_id,
+      dialog_id);
   if (result.IsEmpty()) return std::nullopt;
-  return RowToDialog(result[0]);
+  return RowToShardDialog(result[0]).dialog;
 }
 
 std::vector<Dialog> ChatRepository::ListDialogsForUser(
     const std::string& user_id) const {
-  const auto result = pg_->Execute(
-      kSlave,
-      std::string{kDialogSelect} +
-          " WHERE d.teacher_id = $1::uuid OR d.student_id = $1::uuid "
-          "ORDER BY d.last_message_at DESC NULLS LAST, d.created_at DESC",
-      user_id);
-  std::vector<Dialog> dialogs;
-  dialogs.reserve(result.Size());
-  for (const auto& row : result) dialogs.push_back(RowToDialog(row));
-  return dialogs;
+  std::vector<ShardDialog> dialogs;
+  for (const auto& cluster : shard_router_.All()) {
+    const auto result = cluster->Execute(
+        kSlave,
+        std::string{kDialogSelect} +
+            " WHERE d.teacher_id = $1::uuid OR d.student_id = $1::uuid "
+            "ORDER BY d.last_message_at DESC NULLS LAST, d.created_at DESC",
+        user_id);
+    dialogs.reserve(dialogs.size() + result.Size());
+    for (const auto& row : result) dialogs.push_back(RowToShardDialog(row));
+  }
+  return MergeDialogs(std::move(dialogs));
 }
 
 Message ChatRepository::SendMessage(const SendMessageParams& params) const {
   // Одна транзакция: message + attachments + dialogs.last_message_at +
   // message.sent в outbox. Явная транзакция (а не один CTE), чтобы не зависеть
   // от array-параметров для произвольного числа вложений.
-  auto trx = pg_->Begin("chat-send-message",
-                        userver::storages::postgres::Transaction::RW);
+  auto trx = shard_router_.ClusterFor(params.dialog_id)
+                 ->Begin("chat-send-message",
+                         userver::storages::postgres::Transaction::RW);
 
   const auto inserted = trx.Execute(
       "INSERT INTO messages (dialog_id, sender_id, text) "
@@ -244,7 +277,7 @@ Message ChatRepository::SendMessage(const SendMessageParams& params) const {
 std::vector<Message> ChatRepository::ListMessages(
     const std::string& dialog_id, const std::optional<std::string>& before,
     int limit) const {
-  const auto result = pg_->Execute(
+  const auto result = shard_router_.ClusterFor(dialog_id)->Execute(
       kSlave,
       std::string{kMessageSelect} +
           " WHERE m.dialog_id = $1::uuid "
@@ -263,7 +296,7 @@ std::vector<Message> ChatRepository::ListMessages(
 
 bool ChatRepository::MessageInDialog(const std::string& dialog_id,
                                      const std::string& message_id) const {
-  const auto result = pg_->Execute(
+  const auto result = shard_router_.ClusterFor(dialog_id)->Execute(
       kSlave,
       "SELECT 1 FROM messages WHERE id = $1::uuid AND dialog_id = $2::uuid",
       message_id, dialog_id);
@@ -273,7 +306,7 @@ bool ChatRepository::MessageInDialog(const std::string& dialog_id,
 ReadMarker ChatRepository::MarkRead(const std::string& dialog_id,
                                     const std::string& user_id,
                                     const std::string& up_to_message_id) const {
-  const auto result = pg_->Execute(
+  const auto result = shard_router_.ClusterFor(dialog_id)->Execute(
       kMaster,
       "WITH target AS ("
       "  SELECT id, created_at FROM messages "
