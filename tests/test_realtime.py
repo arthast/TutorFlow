@@ -13,6 +13,9 @@ except Exception:  # pragma: no cover - environment dependency gate
     websocket = None
 
 REALTIME_URL = os.environ.get("REALTIME_URL", "ws://localhost:8089/ws").rstrip("/")
+REALTIME_REPLICA_URL = os.environ.get(
+    "REALTIME_REPLICA_URL", "ws://localhost:8090/ws"
+).rstrip("/")
 
 
 @pytest.fixture
@@ -22,11 +25,15 @@ def ws_module():
     return websocket
 
 
-def ws_connect(token):
+def ws_connect_at(url, token):
     return websocket.create_connection(
-        f"{REALTIME_URL}?token={token}",
+        f"{url}?token={token}",
         timeout=10,
     )
+
+
+def ws_connect(token):
+    return ws_connect_at(REALTIME_URL, token)
 
 
 def recv_type(ws, event_type, timeout=15.0):
@@ -65,6 +72,34 @@ def recv_types(ws, event_types, timeout=45.0):
     if expected:
         raise AssertionError({"expected": sorted(expected), "last": last})
     return events
+
+
+def recv_matching(ws, predicate, timeout=15.0):
+    deadline = time.monotonic() + timeout
+    last = []
+    while time.monotonic() < deadline:
+        ws.settimeout(min(1.0, max(0.1, deadline - time.monotonic())))
+        try:
+            raw = ws.recv()
+        except websocket.WebSocketTimeoutException:
+            continue
+        event = json.loads(raw)
+        last.append(event)
+        if predicate(event):
+            return event
+    raise AssertionError({"expected": "matching event", "last": last})
+
+
+def assert_no_matching_event(ws, predicate, timeout=2.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        ws.settimeout(min(0.5, max(0.1, deadline - time.monotonic())))
+        try:
+            raw = ws.recv()
+        except websocket.WebSocketTimeoutException:
+            continue
+        event = json.loads(raw)
+        assert not predicate(event), event
 
 
 def test_ws_rejects_missing_or_bad_token(ws_module):
@@ -109,3 +144,32 @@ def test_ws_chat_message_read_and_notification(ws_module, teacher, student):
     finally:
         student_ws.close()
         teacher_ws.close()
+
+
+def test_ws_replicas_receive_one_copy_of_the_same_event(
+    ws_module, teacher, student
+):
+    dialog = open_dialog(teacher["token"], student["user_id"])
+    primary = ws_connect_at(REALTIME_URL, student["token"])
+    replica = ws_connect_at(REALTIME_REPLICA_URL, student["token"])
+    try:
+        status, message = api.post(
+            f"/chats/{dialog['id']}/messages",
+            token=teacher["token"],
+            body={"text": "Cross replica delivery"},
+        )
+        assert status == 201, message
+
+        predicate = lambda event: (
+            event.get("type") == "chat.message"
+            and event.get("payload", {}).get("message_id") == message["id"]
+        )
+        first = recv_matching(primary, predicate)
+        second = recv_matching(replica, predicate)
+        assert first["payload"]["message_id"] == message["id"]
+        assert second["payload"]["message_id"] == message["id"]
+        assert_no_matching_event(primary, predicate)
+        assert_no_matching_event(replica, predicate)
+    finally:
+        primary.close()
+        replica.close()
