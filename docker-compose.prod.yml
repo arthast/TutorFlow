@@ -4,6 +4,8 @@ x-image-prefix: &image-prefix ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}
 x-image-tag: &image-tag ${IMAGE_TAG:-latest}
 x-kafka-secdist-config: &kafka-secdist-config >-
   {"kafka_settings":{"kafka-producer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"},"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}}}
+x-realtime-secdist-config: &realtime-secdist-config >-
+  {"kafka_settings":{"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}},"redis_settings":{"realtime-redis":{"password":"${REDIS_PASSWORD:-}","sentinels":[{"host":"${REDIS_HOST:-redis}","port":${REDIS_PORT:-6379}}],"shards":[{"name":"realtime-master"}]}}}
 
 services:
   caddy:
@@ -401,9 +403,8 @@ services:
     restart: unless-stopped
     environment:
       REALTIME_PORT: 8089
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET}
-      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
+      REALTIME_SECDIST_CONFIG: *realtime-secdist-config
     depends_on:
       redis:
         condition: service_healthy

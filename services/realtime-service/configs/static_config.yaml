@@ -45,7 +45,7 @@ components_manager:
             provider: default-secdist-provider
         default-secdist-provider:
             config: /app/configs/secdist.json
-            environment-secrets-key: KAFKA_SECDIST_CONFIG
+            environment-secrets-key: REALTIME_SECDIST_CONFIG
         kafka-consumer:
             group_id: realtime-domain-events
             topics:
@@ -64,6 +64,7 @@ components_manager:
             subscribe_groups:
               - config_name: realtime-redis
                 db: realtime-subscriptions
+                sharding_strategy: RedisStandalone
             thread_pools:
                 redis_thread_pool_size: 2
                 sentinel_thread_pool_size: 1

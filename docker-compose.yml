@@ -11,6 +11,8 @@ name: tutorflow
 
 x-kafka-secdist-config: &kafka-secdist-config >-
   {"kafka_settings":{"kafka-producer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"},"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}}}
+x-realtime-secdist-config: &realtime-secdist-config >-
+  {"kafka_settings":{"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}},"redis_settings":{"realtime-redis":{"password":"${REDIS_PASSWORD:-}","sentinels":[{"host":"${REDIS_HOST:-redis}","port":${REDIS_PORT:-6379}}],"shards":[{"name":"realtime-master"}]}}}
 
 services:
   postgres:
@@ -159,7 +161,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_BROKERS:-kafka:9092}
       DYNAMIC_CONFIG_ENABLED: "true"
     ports:
-      - "${KAFKA_UI_PORT:-8090}:8080"
+      - "${KAFKA_UI_PORT:-8091}:8080"
     depends_on:
       kafka:
         condition: service_healthy
@@ -472,6 +474,7 @@ services:
   # Публичный порт 8089 — исключение из "наружу только gateway"; доменные
   # команды по-прежнему идут только через gateway REST.
   realtime-service:
+    image: tutorflow-realtime-service
     build:
       context: .
       dockerfile: docker/service.Dockerfile
@@ -480,11 +483,33 @@ services:
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       REALTIME_PORT: ${REALTIME_PORT:-8089}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET}
-      KAFKA_SECDIST_CONFIG: *kafka-secdist-config
+      REALTIME_SECDIST_CONFIG: *realtime-secdist-config
     ports:
       - "${REALTIME_PORT:-8089}:8089"
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8089/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks: [tutorflow]
+
+  # Вторая dev-реплика того же realtime image. Отдельный host-порт делает
+  # cross-instance delivery через Redis Pub/Sub видимым и проверяемым.
+  realtime-service-replica:
+    image: tutorflow-realtime-service
+    environment:
+      REALTIME_PORT: 8089
+      JWT_SECRET: ${JWT_SECRET}
+      REALTIME_SECDIST_CONFIG: *realtime-secdist-config
+    ports:
+      - "${REALTIME_REPLICA_PORT:-8090}:8089"
     depends_on:
       redis:
         condition: service_healthy
