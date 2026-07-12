@@ -56,8 +56,21 @@ components_manager:
             max_batch_size: 1
             security_protocol: PLAINTEXT
         realtime-connections: {}
+        realtime-redis-driver:
+            groups:
+              - config_name: realtime-redis
+                db: realtime-commands
+                sharding_strategy: RedisStandalone
+            subscribe_groups:
+              - config_name: realtime-redis
+                db: realtime-subscriptions
+            thread_pools:
+                redis_thread_pool_size: 2
+                sentinel_thread_pool_size: 1
         realtime-redis:
-            url#env: REDIS_URL
+            driver-component: realtime-redis-driver
+            command-client: realtime-commands
+            subscribe-client: realtime-subscriptions
             presence-ttl-seconds: 45
         realtime-event-consumer: {}
         realtime-ws-handler:

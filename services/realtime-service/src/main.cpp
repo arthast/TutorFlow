@@ -2,6 +2,7 @@
 #include <userver/components/minimal_server_component_list.hpp>
 #include <userver/server/handlers/server_monitor.hpp>
 #include <userver/kafka/consumer_component.hpp>
+#include <userver/storages/redis/component.hpp>
 #include <userver/storages/secdist/component.hpp>
 #include <userver/storages/secdist/provider_component.hpp>
 #include <userver/testsuite/testsuite_support.hpp>
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
           .Append<tutorflow::common::HealthHandler>()
           .Append<tutorflow::realtime::ReadyHandler>()
           .Append<tutorflow::realtime::ConnectionRegistry>()
+          .Append<userver::components::Redis>("realtime-redis-driver")
           .Append<tutorflow::realtime::RedisClient>()
           .Append<tutorflow::realtime::RealtimeEventConsumer>()
           .Append<tutorflow::realtime::RealtimeWebSocketHandler>();

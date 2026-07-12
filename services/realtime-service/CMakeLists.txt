@@ -16,5 +16,5 @@ target_link_libraries(realtime-service
         tutorflow_events
         userver::core
         userver::kafka
-        hiredis
+        userver::redis
 )
