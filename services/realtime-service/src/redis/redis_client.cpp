@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <unistd.h>
@@ -41,6 +42,27 @@ std::string DialogParticipantsKey(const std::string& dialog_id) {
 std::string UserPeersKey(const std::string& user_id) {
   return "rt:user_peers:" + user_id;
 }
+
+constexpr std::string_view kRefreshPresenceScript = R"(
+local now = redis.call('TIME')
+local now_ms = now[1] * 1000 + math.floor(now[2] / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now_ms)
+local was_empty = redis.call('ZCARD', KEYS[1]) == 0
+redis.call('ZADD', KEYS[1], now_ms + tonumber(ARGV[2]), ARGV[1])
+redis.call('PEXPIRE', KEYS[1], tonumber(ARGV[2]) * 2)
+if was_empty then return 1 else return 0 end
+)";
+
+constexpr std::string_view kClearPresenceScript = R"(
+local had_entries = redis.call('ZCARD', KEYS[1]) > 0
+local now = redis.call('TIME')
+local now_ms = now[1] * 1000 + math.floor(now[2] / 1000)
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', now_ms)
+redis.call('ZREM', KEYS[1], ARGV[1])
+local remaining = redis.call('ZCARD', KEYS[1])
+if remaining == 0 then redis.call('DEL', KEYS[1]) end
+if had_entries and remaining == 0 then return 1 else return 0 end
+)";
 
 std::string PresenceMessage(const std::string& user_id, bool online) {
   namespace json = userver::formats::json;
@@ -137,16 +159,23 @@ properties:
 )");
 }
 
-void RedisClient::RefreshPresence(const std::string& user_id) const {
-  client_
-      ->Setex(PresenceKey(user_id),
-              std::chrono::seconds{presence_ttl_seconds_}, "1",
-              command_control_)
-      .Get();
+bool RedisClient::RefreshPresence(const std::string& user_id,
+                                  const std::string& connection_id) const {
+  const auto lease_ms = std::to_string(presence_ttl_seconds_ * 1000);
+  return client_
+             ->Eval<std::int64_t>(std::string{kRefreshPresenceScript},
+                                  {PresenceKey(user_id)},
+                                  {connection_id, lease_ms}, command_control_)
+             .Get() == 1;
 }
 
-void RedisClient::ClearPresence(const std::string& user_id) const {
-  client_->Del(PresenceKey(user_id), command_control_).Get();
+bool RedisClient::ClearPresence(const std::string& user_id,
+                                const std::string& connection_id) const {
+  return client_
+             ->Eval<std::int64_t>(std::string{kClearPresenceScript},
+                                  {PresenceKey(user_id)}, {connection_id},
+                                  command_control_)
+             .Get() == 1;
 }
 
 void RedisClient::PublishPresence(const std::string& user_id,

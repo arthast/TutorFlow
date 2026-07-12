@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include <userver/utils/uuid4.hpp>
+
 namespace tutorflow::realtime {
 
 ConnectionRegistry::ConnectionRegistry(
@@ -12,6 +14,7 @@ ConnectionRegistry::ConnectionRegistry(
 std::shared_ptr<ConnectionState> ConnectionRegistry::Add(
     std::string user_id, std::vector<std::string> roles) {
   auto state = std::make_shared<ConnectionState>();
+  state->connection_id = userver::utils::generators::GenerateUuid();
   state->user_id = std::move(user_id);
   state->roles = std::move(roles);
   std::lock_guard lock(mutex_);

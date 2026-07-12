@@ -173,3 +173,59 @@ def test_ws_replicas_receive_one_copy_of_the_same_event(
     finally:
         primary.close()
         replica.close()
+
+
+def test_presence_stays_online_until_last_replica_disconnects(
+    ws_module, teacher, student
+):
+    dialog = open_dialog(teacher["token"], student["user_id"])
+
+    seed_socket = ws_connect(student["token"])
+    try:
+        status, seed_message = api.post(
+            f"/chats/{dialog['id']}/messages",
+            token=teacher["token"],
+            body={"text": "Seed realtime peer cache"},
+        )
+        assert status == 201, seed_message
+        recv_matching(
+            seed_socket,
+            lambda event: (
+                event.get("type") == "chat.message"
+                and event.get("payload", {}).get("message_id")
+                == seed_message["id"]
+            ),
+        )
+    finally:
+        seed_socket.close()
+
+    time.sleep(0.5)
+    observer = ws_connect(teacher["token"])
+    student_primary = ws_connect_at(REALTIME_URL, student["token"])
+    student_replica = None
+    online = lambda event: (
+        event.get("type") == "presence"
+        and event.get("payload", {}).get("user_id") == student["user_id"]
+        and event.get("payload", {}).get("online") is True
+    )
+    offline = lambda event: (
+        event.get("type") == "presence"
+        and event.get("payload", {}).get("user_id") == student["user_id"]
+        and event.get("payload", {}).get("online") is False
+    )
+    try:
+        recv_matching(observer, online)
+
+        student_replica = ws_connect_at(REALTIME_REPLICA_URL, student["token"])
+        assert_no_matching_event(observer, online)
+
+        student_primary.close()
+        assert_no_matching_event(observer, offline)
+
+        student_replica.close()
+        recv_matching(observer, offline)
+    finally:
+        student_primary.close()
+        if student_replica is not None:
+            student_replica.close()
+        observer.close()

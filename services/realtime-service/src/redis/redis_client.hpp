@@ -29,8 +29,10 @@ public:
 
   void OnAllComponentsLoaded() override;
 
-  void RefreshPresence(const std::string& user_id) const;
-  void ClearPresence(const std::string& user_id) const;
+  bool RefreshPresence(const std::string& user_id,
+                       const std::string& connection_id) const;
+  bool ClearPresence(const std::string& user_id,
+                     const std::string& connection_id) const;
   void PublishPresence(const std::string& user_id, bool online) const;
   void PublishToUser(const std::string& user_id, const std::string& message) const;
   long long IncrementUnread(const std::string& user_id,

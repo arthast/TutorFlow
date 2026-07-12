@@ -13,6 +13,7 @@
 #include <userver/logging/log.hpp>
 #include <userver/server/http/http_request.hpp>
 #include <userver/server/request/request_context.hpp>
+#include <userver/utils/fast_scope_guard.hpp>
 #include <userver/websocket/message.hpp>
 #include <userver/yaml_config/merge_schemas.hpp>
 
@@ -89,9 +90,23 @@ void RealtimeWebSocketHandler::Handle(
   const auto& claims =
       context.GetData<tutorflow::common::jwt::Claims>(kClaimsKey);
   auto connection = registry_.Add(claims.sub, claims.roles);
+  auto cleanup = userver::utils::FastScopeGuard([this, &connection]() noexcept {
+    registry_.Remove(connection);
+    try {
+      if (redis_.ClearPresence(connection->user_id,
+                               connection->connection_id)) {
+        redis_.PublishPresence(connection->user_id, false);
+      }
+    } catch (const std::exception& ex) {
+      LOG_WARNING() << "[realtime] connection cleanup Redis failure user_id="
+                    << connection->user_id << " reason=" << ex.what();
+    }
+  });
 
-  redis_.RefreshPresence(connection->user_id);
-  redis_.PublishPresence(connection->user_id, true);
+  if (redis_.RefreshPresence(connection->user_id,
+                             connection->connection_id)) {
+    redis_.PublishPresence(connection->user_id, true);
+  }
 
   try {
     auto last_ping_at = std::chrono::steady_clock::now();
@@ -112,13 +127,13 @@ void RealtimeWebSocketHandler::Handle(
       userver::websocket::Message incoming;
       while (websocket.TryRecv(incoming)) {
         if (incoming.close_status) {
-          registry_.Remove(connection);
-          redis_.ClearPresence(connection->user_id);
-          redis_.PublishPresence(connection->user_id, false);
           return;
         }
         if (incoming.is_text && IsClientPing(incoming.data)) {
-          redis_.RefreshPresence(connection->user_id);
+          if (redis_.RefreshPresence(connection->user_id,
+                                     connection->connection_id)) {
+            redis_.PublishPresence(connection->user_id, true);
+          }
           websocket.SendText(JsonMessage("pong"));
         }
       }
@@ -139,9 +154,6 @@ void RealtimeWebSocketHandler::Handle(
                << " reason=" << ex.what();
   }
 
-  registry_.Remove(connection);
-  redis_.ClearPresence(connection->user_id);
-  redis_.PublishPresence(connection->user_id, false);
 }
 
 }  // namespace tutorflow::realtime
