@@ -30,44 +30,54 @@ jobs:
               VITE_API_URL=https://netwatch-arsen-demo.ru
               VITE_REALTIME_URL=wss://netwatch-arsen-demo.ru/ws
           - image: tutorflow-api-gateway
-            dockerfile: services/api-gateway/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=api-gateway
               BUILD_JOBS=2
           - image: tutorflow-identity-service
-            dockerfile: services/identity-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=identity-service
               BUILD_JOBS=2
           - image: tutorflow-lesson-service
-            dockerfile: services/lesson-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=lesson-service
               BUILD_JOBS=2
           - image: tutorflow-assignment-service
-            dockerfile: services/assignment-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=assignment-service
               BUILD_JOBS=2
           - image: tutorflow-finance-service
-            dockerfile: services/finance-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=finance-service
               BUILD_JOBS=2
           - image: tutorflow-file-service
-            dockerfile: services/file-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=file-service
               BUILD_JOBS=2
           - image: tutorflow-notification-service
-            dockerfile: services/notification-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=notification-service
               BUILD_JOBS=2
           - image: tutorflow-report-service
-            dockerfile: services/report-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=report-service
               BUILD_JOBS=2
           - image: tutorflow-chat-service
-            dockerfile: services/chat-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=chat-service
               BUILD_JOBS=2
           - image: tutorflow-realtime-service
-            dockerfile: services/realtime-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=realtime-service
               BUILD_JOBS=2
     steps:
       - uses: actions/checkout@v4

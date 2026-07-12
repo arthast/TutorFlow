@@ -9,7 +9,6 @@
 #   curl http://localhost:${GATEWAY_PORT:-8080}/health
 name: tutorflow
 
-x-userver-image: &userver-image ${USERVER_IMAGE:-ghcr.io/userver-framework/ubuntu-22.04-userver:latest}
 x-kafka-secdist-config: &kafka-secdist-config >-
   {"kafka_settings":{"kafka-producer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"},"kafka-consumer":{"brokers":"${KAFKA_BROKERS:-kafka:9092}"}}}
 
@@ -199,9 +198,9 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: services/api-gateway/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: api-gateway
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -245,9 +244,9 @@ services:
   identity-service:
     build:
       context: .
-      dockerfile: services/identity-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: identity-service
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -274,9 +273,9 @@ services:
   lesson-service:
     build:
       context: .
-      dockerfile: services/lesson-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: lesson-service
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -302,9 +301,9 @@ services:
   assignment-service:
     build:
       context: .
-      dockerfile: services/assignment-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: assignment-service
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -332,9 +331,9 @@ services:
   finance-service:
     build:
       context: .
-      dockerfile: services/finance-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: finance-service
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -360,9 +359,9 @@ services:
   file-service:
     build:
       context: .
-      dockerfile: services/file-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: file-service
         # Безопасный дефолт параллелизма компиляции (тяжёлые userver/C++ TU
         # при -j nproc на машине с ~8 ГБ RAM ловят OOM). Переопредели под
         # свою память: BUILD_JOBS=12 docker compose build.
@@ -394,9 +393,9 @@ services:
   notification-service:
     build:
       context: .
-      dockerfile: services/notification-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: notification-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       NOTIFICATION_DATABASE_URL: ${NOTIFICATION_DATABASE_URL}
@@ -419,9 +418,9 @@ services:
   report-service:
     build:
       context: .
-      dockerfile: services/report-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: report-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       REPORT_DATABASE_URL: ${REPORT_DATABASE_URL}
@@ -446,9 +445,9 @@ services:
   chat-service:
     build:
       context: .
-      dockerfile: services/chat-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: chat-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       CHAT_DATABASE_URL_SHARD0: ${CHAT_DATABASE_URL_SHARD0}
@@ -475,9 +474,9 @@ services:
   realtime-service:
     build:
       context: .
-      dockerfile: services/realtime-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
-        USERVER_IMAGE: *userver-image
+        SERVICE: realtime-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
     environment:
       REALTIME_PORT: ${REALTIME_PORT:-8089}

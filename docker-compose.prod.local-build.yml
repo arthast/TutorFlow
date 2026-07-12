@@ -10,69 +10,79 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: services/api-gateway/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: api-gateway
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   identity-service:
     build:
       context: .
-      dockerfile: services/identity-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: identity-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   lesson-service:
     build:
       context: .
-      dockerfile: services/lesson-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: lesson-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   assignment-service:
     build:
       context: .
-      dockerfile: services/assignment-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: assignment-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   finance-service:
     build:
       context: .
-      dockerfile: services/finance-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: finance-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   file-service:
     build:
       context: .
-      dockerfile: services/file-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: file-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   notification-service:
     build:
       context: .
-      dockerfile: services/notification-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: notification-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   report-service:
     build:
       context: .
-      dockerfile: services/report-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: report-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   chat-service:
     build:
       context: .
-      dockerfile: services/chat-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: chat-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
 
   realtime-service:
     build:
       context: .
-      dockerfile: services/realtime-service/Dockerfile
+      dockerfile: docker/service.Dockerfile
       args:
+        SERVICE: realtime-service
         BUILD_JOBS: ${BUILD_JOBS:-2}
