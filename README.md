@@ -36,7 +36,6 @@ gRPC-контракты и асинхронные Kafka events.
 ### Масштаб реализации
 
 ```text
-1 React/TypeScript SPA
 1 публичный REST gateway
 9 backend-сервисов: 8 внутренних + публичный realtime push
 9 логических PostgreSQL БД, включая 2 shard чата
@@ -64,86 +63,9 @@ realtime ─► Redis pub/sub ─► WebSocket connection
 
 ## Архитектура
 
-```mermaid
-flowchart TB
-    browser["Browser"]
-    frontend["React + TypeScript frontend"]
-    gateway["api-gateway<br/>public REST :8080"]
-    realtime["realtime-service<br/>public WebSocket :8089"]
-
-    identity["identity-service"]
-    lesson["lesson-service"]
-    assignment["assignment-service"]
-    finance["finance-service"]
-    files["file-service"]
-    notification["notification-service"]
-    report["report-service"]
-    chat["chat-service"]
-
-    postgres[("PostgreSQL<br/>database per service")]
-    kafka[("Kafka<br/>5 domain topics")]
-    redis[("Redis<br/>presence + pub/sub")]
-    minio[("MinIO / S3<br/>file objects")]
-
-    browser --> frontend
-    frontend -- "REST / JSON" --> gateway
-    frontend -- "WebSocket push" --> realtime
-
-    gateway -- "gRPC" --> identity
-    gateway -- "gRPC" --> lesson
-    gateway -- "gRPC" --> assignment
-    gateway -- "gRPC" --> finance
-    gateway -- "gRPC" --> notification
-    gateway -- "gRPC" --> report
-    gateway -- "gRPC" --> chat
-    gateway -- "HTTP multipart" --> files
-
-    lesson -. "access check" .-> identity
-    assignment -. "access check" .-> identity
-    finance -. "access check" .-> identity
-    files -. "access check" .-> identity
-    chat -. "access check" .-> identity
-
-    identity --> postgres
-    lesson --> postgres
-    assignment --> postgres
-    finance --> postgres
-    files --> postgres
-    notification --> postgres
-    report --> postgres
-    chat --> postgres
-    files --> minio
-
-    lesson -- "events" --> kafka
-    assignment -- "events" --> kafka
-    finance -- "consume + produce" --> kafka
-    chat -- "events" --> kafka
-    notification -- "consume + produce" --> kafka
-    report -- "consume" --> kafka
-    realtime -- "consume" --> kafka
-    realtime <--> redis
-```
-
-### Что проект демонстрирует технически
-
-| Приём | Как реализован | Зачем и какой компромисс |
-|---|---|---|
-| Database per service | отдельная логическая PostgreSQL БД; прямые межсервисные JOIN запрещены | ясное владение данными ценой сетевых вызовов и eventual consistency |
-| gRPC внутри | protobuf API между gateway и сервисами, а также identity access-check | typed sync-контракт; требует code generation и согласования версий |
-| Event-driven side effects | пять Kafka topics, event type внутри envelope | слабая связанность consumers; результат команды может появиться не мгновенно |
-| Transactional outbox | domain row и event пишутся в одной DB transaction | событие не теряется между DB и Kafka; нужен publisher и очистка outbox |
-| Inbox и идемпотентность | `processed_events`, unique business keys и state upsert | безопасный at-least-once replay; каждый consumer обязан иметь свой guard |
-| Append-only finance | charge/payment/correction/refund не редактируются | аудит и компенсирующие операции; журнал сложнее обычного mutable balance |
-| CQRS/read models | report-service строит dashboard projections из Kafka | быстрое чтение; projection может кратковременно отставать |
-| Storage abstraction | `IFileStorage`: local или S3/MinIO, metadata отдельно | backend меняется без домена; DB и object storage не имеют общей transaction |
-| Шардинг чата | UUIDv5 dialog ID, FNV-1a routing, два shard, scatter-gather | демонстрирует горизонтальное разделение; смена числа shard требует resharding |
-| Реплики и Kafka groups | consumer group делит partitions, HPA 2–4 для notification в kind | горизонтальное чтение ограничено числом partitions |
-| Outbox leader lock | `pg_try_advisory_xact_lock` выбирает publisher среди реплик | сохраняет один активный publisher на DB; это не глобальный distributed lock |
-| Kafka failure profile | 3 KRaft brokers, RF=3, min ISR=2, idempotent producer/acks=all | переживает один broker; требует больше ресурсов и отдельный local overlay |
-| Health/readiness | `/health` лёгкий, `/ready` проверяет собственные критичные зависимости | оркестратор не рестартит живой процесс из-за временно недоступной DB |
-| Observability | userver metrics, Prometheus, kafka-exporter, Grafana | видны RPS, p95, errors, PG pool, lag и outbox; профиль локальный, не полный APM |
-| Kubernetes | kind + kustomize, probes, Jobs, HPA, Ingress | рабочий локальный demo; production пока остаётся на Compose |
-
+<p align="center">
+  <img src="frontend/arch.png" alt="Схема архитектуры" width="75%">
+</p>
 
 Снаружи доступны только:
 
@@ -634,11 +556,23 @@ outbox/ | consumers/ | workers/
 
 ## CI/CD
 
-Текущий CI выполняет:
+CI разделён на три независимых workflow. Обычный `git push` ничего не запускает,
+поэтому отправка промежуточных изменений не приводит к долгой сборке всего
+микросервисного стека.
 
+### Быстрые проверки Pull Request
+
+`.github/workflows/ci.yml` автоматически запускается только для Pull Request и
+выполняет короткие структурные проверки:
+
+- `actionlint` — синтаксис и GitHub Actions expressions во всех workflow;
 - `npm ci` + frontend build;
-- `pytest --collect-only` — проверку импорта и inventory Python tests;
+- `pytest --collect-only` — проверку импорта и обнаружения Python-тестов без
+  обращения к запущенным сервисам;
 - `docker compose -f docker-compose.prod.yml config`.
+
+При отправке нового коммита в тот же Pull Request незавершённый предыдущий
+быстрый прогон отменяется.
 
 Ту же структурную проверку production Compose можно выполнить локально без
 запуска контейнеров:
@@ -648,20 +582,52 @@ docker compose --env-file deploy/.env.prod.example \
   -f docker-compose.prod.yml config >/dev/null
 ```
 
-Важно: CI сейчас **не поднимает полный C++/Kafka/PostgreSQL stack и не выполняет
-integration pytest**. Полный runtime smoke остаётся отдельной проверкой.
+### Полные тесты — ручной запуск
 
-Manual Deploy workflow:
+`.github/workflows/tests.yml` (`Manual Tests`) запускается вручную:
+
+Workflow проверяет, что checkout совпадает с `head_sha` запуска, а затем
+последовательно выполняет:
+
+1. C++ unit-тесты `tutorflow-events-unit-tests` и
+   `chat-sharding-unit-tests` внутри закреплённого userver-образа;
+2. сборку и запуск полного Docker Compose-стека;
+3. ожидание `GET http://localhost:8080/health`;
+4. все gateway-facing интеграционные тесты: `python -m pytest -q tests`;
+5. сквозной MVP smoke: `python scripts/smoke_mvp.py`;
+6. остановку контейнеров и удаление созданных CI volumes.
+
+При ошибке workflow прикладывает artifact `compose-diagnostics-*` со статусом и
+логами контейнеров. Максимальная длительность прогона ограничена двумя часами.
+
+### Deploy — ручной и только после тестов
+
+`.github/workflows/deploy.yml` (`Deploy`) также запускается только через
+**workflow_dispatch**. Единственный обязательный input — полный 40-символьный
+`commit_sha`.
+
+Перед сборкой deploy workflow:
+
+1. проверяет формат SHA и делает checkout именно этого коммита;
+2. через GitHub Actions API ищет успешный запуск `Manual Tests`;
+3. требует точного совпадения `head_sha` тестового запуска и `commit_sha`;
+4. блокирует деплой, если такого успешного запуска нет.
+
+После успешной проверки:
 
 ```text
-GitHub Actions
+Manual Tests для commit SHA (success)
+  → Deploy с тем же полным commit SHA
+  → проверка test gate
   → build 11 images (frontend + 10 C++ processes)
-  → push commit SHA/latest to GHCR
-  → upload compose/deploy/migrations bundle
-  → SSH /opt/tutorflow
-  → docker compose pull
-  → docker compose up -d --remove-orphans
+  → push images с тегом commit SHA в GHCR
+  → upload compose/deploy/migrations именно из этого commit SHA
+  → SSH: docker compose pull/up
+  → публичная проверка https://<domain>/health
 ```
 
-Production использует Docker Compose + Caddy. Rollback выполняется на известный
-image tag, а данные PostgreSQL/MinIO требуют отдельной backup/restore стратегии.
+Свободный `image_tag` и публикация `latest` не используются: протестированный
+исходный код, Docker-образы, Compose-файл и миграции всегда относятся к одному
+коммиту. Production использует Docker Compose + Caddy. Для rollback нужно
+повторно запустить deploy с SHA ранее протестированного коммита; данные
+PostgreSQL/MinIO требуют отдельной backup/restore стратегии.

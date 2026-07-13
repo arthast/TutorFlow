@@ -3,5 +3,21 @@
     "kafka-consumer": {
       "brokers": "kafka:9092"
     }
+  },
+  "redis_settings": {
+    "realtime-redis": {
+      "password": "",
+      "sentinels": [
+        {
+          "host": "redis",
+          "port": 6379
+        }
+      ],
+      "shards": [
+        {
+          "name": "realtime-master"
+        }
+      ]
+    }
   }
 }

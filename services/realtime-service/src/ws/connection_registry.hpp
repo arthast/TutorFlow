@@ -16,6 +16,7 @@
 namespace tutorflow::realtime {
 
 struct ConnectionState {
+  std::string connection_id;
   std::string user_id;
   std::vector<std::string> roles;
   std::mutex mutex;

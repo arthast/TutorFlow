@@ -19,7 +19,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/userver/CMakeLists.txt")
     add_subdirectory(third_party/userver)
 else()
     message(STATUS "tutorflow: userver via find_package")
-    find_package(userver REQUIRED COMPONENTS core grpc postgresql kafka)
+    find_package(userver REQUIRED COMPONENTS core grpc postgresql kafka redis)
 endif()
 
 # --- общий каркас ------------------------------------------------------------

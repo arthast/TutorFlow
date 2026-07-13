@@ -1,13 +1,28 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - feat/deploy
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
+  workflows:
+    name: GitHub Actions validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run actionlint
+        run: |
+          docker run --rm \
+            --volume "$PWD:/repo:ro" \
+            --workdir /repo \
+            rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9
+
   frontend:
     name: Frontend build
     runs-on: ubuntu-latest
@@ -33,7 +48,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -r requirements-dev.txt websocket-client
+      - run: python -m pip install -r requirements-dev.txt
       - run: python -m pytest --collect-only -q tests
 
   compose:
@@ -53,4 +68,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose -f docker-compose.prod.yml config >/tmp/tutorflow-prod.yml
-

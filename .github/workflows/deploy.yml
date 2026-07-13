@@ -3,12 +3,13 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: "Image tag to deploy. Empty means current commit SHA."
-        required: false
-        default: ""
+      commit_sha:
+        description: "Full 40-character commit SHA that passed Manual Tests"
+        required: true
+        type: string
 
 permissions:
+  actions: read
   contents: read
   packages: write
 
@@ -17,9 +18,78 @@ env:
   PROD_DOMAIN: netwatch-arsen-demo.ru
 
 jobs:
+  validate:
+    name: Validate tested commit
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.input.outputs.commit_sha }}
+    steps:
+      - name: Validate commit SHA input
+        id: input
+        shell: bash
+        env:
+          COMMIT_SHA_INPUT: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$COMMIT_SHA_INPUT" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "commit_sha must be a full 40-character hexadecimal SHA" >&2
+            exit 1
+          fi
+          commit_sha="$(printf '%s' "$COMMIT_SHA_INPUT" | tr '[:upper:]' '[:lower:]')"
+          echo "commit_sha=$commit_sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.input.outputs.commit_sha }}
+          fetch-depth: 1
+
+      - name: Verify checked-out commit
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$EXPECTED_SHA"
+
+      - name: Require successful Manual Tests run
+        uses: actions/github-script@v7
+        env:
+          COMMIT_SHA: ${{ steps.input.outputs.commit_sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const commitSha = process.env.COMMIT_SHA;
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'tests.yml',
+              event: 'workflow_dispatch',
+              status: 'completed',
+              head_sha: commitSha,
+              per_page: 100,
+            });
+            const successfulRun = data.workflow_runs.find(
+              (run) => run.head_sha.toLowerCase() === commitSha
+                && run.conclusion === 'success',
+            );
+            if (!successfulRun) {
+              core.setFailed(
+                `Commit ${commitSha} has no successful Manual Tests run. `
+                + 'Run the Manual Tests workflow for this exact commit first.',
+              );
+              return;
+            }
+            await core.summary
+              .addHeading('Deployment test gate')
+              .addRaw(`Commit \`${commitSha}\` passed Manual Tests.\n\n`)
+              .addLink(`Workflow run #${successfulRun.run_number}`, successfulRun.html_url)
+              .write();
+
   build-and-push:
     name: Build and push images
     runs-on: ubuntu-latest
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -30,47 +100,59 @@ jobs:
               VITE_API_URL=https://netwatch-arsen-demo.ru
               VITE_REALTIME_URL=wss://netwatch-arsen-demo.ru/ws
           - image: tutorflow-api-gateway
-            dockerfile: services/api-gateway/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=api-gateway
               BUILD_JOBS=2
           - image: tutorflow-identity-service
-            dockerfile: services/identity-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=identity-service
               BUILD_JOBS=2
           - image: tutorflow-lesson-service
-            dockerfile: services/lesson-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=lesson-service
               BUILD_JOBS=2
           - image: tutorflow-assignment-service
-            dockerfile: services/assignment-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=assignment-service
               BUILD_JOBS=2
           - image: tutorflow-finance-service
-            dockerfile: services/finance-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=finance-service
               BUILD_JOBS=2
           - image: tutorflow-file-service
-            dockerfile: services/file-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=file-service
               BUILD_JOBS=2
           - image: tutorflow-notification-service
-            dockerfile: services/notification-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=notification-service
               BUILD_JOBS=2
           - image: tutorflow-report-service
-            dockerfile: services/report-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=report-service
               BUILD_JOBS=2
           - image: tutorflow-chat-service
-            dockerfile: services/chat-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=chat-service
               BUILD_JOBS=2
           - image: tutorflow-realtime-service
-            dockerfile: services/realtime-service/Dockerfile
+            dockerfile: docker/service.Dockerfile
             build_args: |
+              SERVICE=realtime-service
               BUILD_JOBS=2
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -84,17 +166,20 @@ jobs:
           push: true
           build-args: ${{ matrix.build_args }}
           tags: |
-            ${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}:${{ github.sha }}
-            ${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}:latest
+            ${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}:${{ needs.validate.outputs.commit_sha }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs:
+      - validate
+      - build-and-push
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.commit_sha }}
       - name: Prepare SSH
         run: |
           install -m 700 -d ~/.ssh
@@ -122,9 +207,8 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           GHCR_PASSWORD: ${{ secrets.GHCR_TOKEN || github.token }}
-          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
+          IMAGE_TAG: ${{ needs.validate.outputs.commit_sha }}
         run: |
-          IMAGE_TAG="${IMAGE_TAG_INPUT:-${GITHUB_SHA}}"
           printf '%s' "$GHCR_PASSWORD" | ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
@@ -139,3 +223,10 @@ jobs:
             "cd /opt/tutorflow && COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd /opt/tutorflow && docker compose --env-file .env -f docker-compose.prod.yml ps && docker image prune -f"
+      - name: Verify public production health
+        run: |
+          curl --fail --show-error --silent \
+            --retry 18 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            "https://${PROD_DOMAIN}/health" >/dev/null
