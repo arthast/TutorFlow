@@ -154,13 +154,14 @@ std::string ChatRepository::FindOrCreateDialogId(
       "WITH ins AS ("
       "  INSERT INTO dialogs (id, teacher_id, student_id) "
       "  VALUES ($1::uuid, $2::uuid, $3::uuid) "
-      "  ON CONFLICT (id) DO NOTHING "
+      "  ON CONFLICT DO NOTHING "
       "  RETURNING id"
       ") "
       "SELECT id::text AS id FROM ins "
       "UNION ALL "
       "SELECT id::text AS id FROM dialogs "
-      "  WHERE id = $1::uuid AND NOT EXISTS (SELECT 1 FROM ins) "
+      "  WHERE teacher_id = $2::uuid AND student_id = $3::uuid "
+      "    AND NOT EXISTS (SELECT 1 FROM ins) "
       "LIMIT 1",
       dialog_id, teacher_id, student_id);
   if (result.IsEmpty()) {
@@ -168,8 +169,10 @@ std::string ChatRepository::FindOrCreateDialogId(
     // видеть строку победившей транзакции. Новый statement получает свежий
     // snapshot после завершения ожидания unique constraint.
     const auto existing = cluster->Execute(
-        kMaster, "SELECT id::text AS id FROM dialogs WHERE id = $1::uuid",
-        dialog_id);
+        kMaster,
+        "SELECT id::text AS id FROM dialogs "
+        "WHERE teacher_id = $1::uuid AND student_id = $2::uuid",
+        teacher_id, student_id);
     if (existing.IsEmpty()) {
       throw tutorflow::common::ServiceError::Internal(
           "dialog was not created");

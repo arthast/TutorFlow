@@ -634,11 +634,23 @@ outbox/ | consumers/ | workers/
 
 ## CI/CD
 
-Текущий CI выполняет:
+CI разделён на три независимых workflow. Обычный `git push` ничего не запускает,
+поэтому отправка промежуточных изменений не приводит к долгой сборке всего
+микросервисного стека.
 
+### Быстрые проверки Pull Request
+
+`.github/workflows/ci.yml` автоматически запускается только для Pull Request и
+выполняет короткие структурные проверки:
+
+- `actionlint` — синтаксис и GitHub Actions expressions во всех workflow;
 - `npm ci` + frontend build;
-- `pytest --collect-only` — проверку импорта и inventory Python tests;
+- `pytest --collect-only` — проверку импорта и обнаружения Python-тестов без
+  обращения к запущенным сервисам;
 - `docker compose -f docker-compose.prod.yml config`.
+
+При отправке нового коммита в тот же Pull Request незавершённый предыдущий
+быстрый прогон отменяется.
 
 Ту же структурную проверку production Compose можно выполнить локально без
 запуска контейнеров:
@@ -648,20 +660,72 @@ docker compose --env-file deploy/.env.prod.example \
   -f docker-compose.prod.yml config >/dev/null
 ```
 
-Важно: CI сейчас **не поднимает полный C++/Kafka/PostgreSQL stack и не выполняет
-integration pytest**. Полный runtime smoke остаётся отдельной проверкой.
+### Полные тесты — ручной запуск
 
-Manual Deploy workflow:
+`.github/workflows/tests.yml` (`Manual Tests`) запускается вручную:
 
-```text
-GitHub Actions
-  → build 11 images (frontend + 10 C++ processes)
-  → push commit SHA/latest to GHCR
-  → upload compose/deploy/migrations bundle
-  → SSH /opt/tutorflow
-  → docker compose pull
-  → docker compose up -d --remove-orphans
+1. открыть в GitHub вкладку **Actions → Manual Tests**;
+2. нажать **Run workflow**;
+3. стандартным селектором **Use workflow from** выбрать нужную ветку или ref;
+4. дождаться зелёного результата и взять полный commit SHA из summary запуска.
+
+Workflow проверяет, что checkout совпадает с `head_sha` запуска, а затем
+последовательно выполняет:
+
+1. C++ unit-тесты `tutorflow-events-unit-tests` и
+   `chat-sharding-unit-tests` внутри закреплённого userver-образа;
+2. сборку и запуск полного Docker Compose-стека;
+3. ожидание `GET http://localhost:8080/health`;
+4. все gateway-facing интеграционные тесты: `python -m pytest -q tests`;
+5. сквозной MVP smoke: `python scripts/smoke_mvp.py`;
+6. остановку контейнеров и удаление созданных CI volumes.
+
+При ошибке workflow прикладывает artifact `compose-diagnostics-*` со статусом и
+логами контейнеров. Максимальная длительность прогона ограничена двумя часами.
+
+Локальный эквивалент runtime-части:
+
+```bash
+cp .env.example .env
+COMPOSE_PARALLEL_LIMIT=2 docker compose up -d --build
+curl --fail http://localhost:8080/health
+python -m pytest -q tests
+python scripts/smoke_mvp.py
+docker compose down -v --remove-orphans
 ```
 
-Production использует Docker Compose + Caddy. Rollback выполняется на известный
-image tag, а данные PostgreSQL/MinIO требуют отдельной backup/restore стратегии.
+`scripts/smoke_realtime_redis_reconnect.py` намеренно не входит в стандартный
+CI-прогон: он останавливает Redis для проверки восстановления соединения и
+остаётся отдельным ручным resilience-тестом.
+
+### Deploy — ручной и только после тестов
+
+`.github/workflows/deploy.yml` (`Deploy`) также запускается только через
+**workflow_dispatch**. Единственный обязательный input — полный 40-символьный
+`commit_sha`.
+
+Перед сборкой deploy workflow:
+
+1. проверяет формат SHA и делает checkout именно этого коммита;
+2. через GitHub Actions API ищет успешный запуск `Manual Tests`;
+3. требует точного совпадения `head_sha` тестового запуска и `commit_sha`;
+4. блокирует деплой, если такого успешного запуска нет.
+
+После успешной проверки:
+
+```text
+Manual Tests для commit SHA (success)
+  → Deploy с тем же полным commit SHA
+  → проверка test gate
+  → build 11 images (frontend + 10 C++ processes)
+  → push images с тегом commit SHA в GHCR
+  → upload compose/deploy/migrations именно из этого commit SHA
+  → SSH: docker compose pull/up
+  → публичная проверка https://<domain>/health
+```
+
+Свободный `image_tag` и публикация `latest` не используются: протестированный
+исходный код, Docker-образы, Compose-файл и миграции всегда относятся к одному
+коммиту. Production использует Docker Compose + Caddy. Для rollback нужно
+повторно запустить deploy с SHA ранее протестированного коммита; данные
+PostgreSQL/MinIO требуют отдельной backup/restore стратегии.
