@@ -1,6 +1,5 @@
 #pragma once
 
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -13,15 +12,15 @@
 #include <userver/components/component_fwd.hpp>
 #include <userver/components/loggable_component_base.hpp>
 
+#include "ws/outbound_queue.hpp"
+
 namespace tutorflow::realtime {
 
 struct ConnectionState {
   std::string connection_id;
   std::string user_id;
   std::vector<std::string> roles;
-  std::mutex mutex;
-  std::deque<std::string> outbound;
-  bool closed{false};
+  OutboundQueue outbound;
 };
 
 class ConnectionRegistry final

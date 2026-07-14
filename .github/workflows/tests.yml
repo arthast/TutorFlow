@@ -63,6 +63,7 @@ jobs:
               cmake -S /src -B /tmp/tutorflow-build -DCMAKE_BUILD_TYPE=Release
               cmake --build /tmp/tutorflow-build \
                 --target tutorflow-events-unit-tests chat-sharding-unit-tests \
+                  realtime-connection-queue-unit-tests \
                 -j 2
               ctest --test-dir /tmp/tutorflow-build --output-on-failure -j 2
             '
