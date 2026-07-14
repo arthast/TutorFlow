@@ -137,8 +137,9 @@ completed lesson компенсирующими corrections.
 ### file-service
 
 File-service отделяет metadata от bytes. `IFileStorage` переключает local и
-S3/MinIO backend; S3-запросы подписываются AWS SigV4 через userver HTTP client.
-Другие домены хранят только `file_id`.
+S3/MinIO backend. S3 transport реализован `userver::s3api`, а небольшой
+TutorFlow authenticator добавляет AWS SigV4. Bucket создаётся инфраструктурным
+init-процессом; другие домены хранят только `file_id`.
 
 ### notification-service
 
@@ -260,6 +261,8 @@ download → owner/teacher-student access check
 ```
 
 Если запись metadata падает после upload bytes, сервис пытается удалить object.
+В S3-режиме Compose/Kubernetes сначала идемпотентно создаёт bucket через
+`minio-init`, а затем запускает file-service.
 
 ### 6. Сообщение и realtime push
 
@@ -428,7 +431,7 @@ volumes: KRaft metadata разных controller quorum несовместимы.
 - `/ready` проверяет только собственные критичные зависимости;
 - DB-backed service проверяет свою PostgreSQL DB;
 - realtime проверяет Redis;
-- file-service в S3-режиме проверяет DB и bucket;
+- file-service в S3-режиме проверяет DB и уже созданный инфраструктурой bucket;
 - Kafka и чужие сервисы не входят в readiness: clients/consumers ретраят сами.
 
 Это разделение важно для Kubernetes: потеря DB выводит pod из балансировки, но

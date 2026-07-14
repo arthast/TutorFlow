@@ -20,6 +20,8 @@ jobs:
       GATEWAY_URL: http://localhost:8080
       REALTIME_URL: ws://localhost:8089/ws
       REALTIME_REPLICA_URL: ws://localhost:8090/ws
+      FILE_STORAGE_BACKEND: s3
+      FILE_S3_ADDRESSING_STYLE: path
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +65,7 @@ jobs:
               cmake -S /src -B /tmp/tutorflow-build -DCMAKE_BUILD_TYPE=Release
               cmake --build /tmp/tutorflow-build \
                 --target tutorflow-events-unit-tests chat-sharding-unit-tests \
-                  realtime-connection-queue-unit-tests \
+                  realtime-connection-queue-unit-tests file-s3-unit-tests \
                 -j 2
               ctest --test-dir /tmp/tutorflow-build --output-on-failure -j 2
             '

@@ -186,6 +186,24 @@ services:
       retries: 20
     networks: [tutorflow]
 
+  minio-init:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        mc alias set tutorflow http://minio:9000
+        "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+        mc mb --ignore-existing "tutorflow/$${FILE_S3_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      FILE_S3_BUCKET: ${FILE_S3_BUCKET:-tutorflow-files}
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks: [tutorflow]
+
   api-gateway:
     image: ${TUTORFLOW_IMAGE_NAMESPACE:-ghcr.io/arthast}/tutorflow-api-gateway:${IMAGE_TAG:-latest}
     restart: unless-stopped
@@ -316,7 +334,7 @@ services:
       FILE_STORAGE_DIR: ${FILE_STORAGE_DIR:-/data/files}
       FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
       FILE_SECDIST_CONFIG: >-
-        {"s3_file_storage":{"endpoint":"${FILE_S3_ENDPOINT:-http://minio:9000}","access_key":"${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}","secret_key":"${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}","bucket":"${FILE_S3_BUCKET:-tutorflow-files}","region":"${FILE_S3_REGION:-us-east-1}"}}
+        {"s3_file_storage":{"endpoint":"${FILE_S3_ENDPOINT:-http://minio:9000}","access_key":"${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}","secret_key":"${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}","bucket":"${FILE_S3_BUCKET:-tutorflow-files}","region":"${FILE_S3_REGION:-us-east-1}","addressing_style":"${FILE_S3_ADDRESSING_STYLE:-path}"}}
     volumes:
       - filestorage:/data/files
     depends_on:
@@ -324,8 +342,8 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8085/ready >/dev/null || exit 1"]
       interval: 5s

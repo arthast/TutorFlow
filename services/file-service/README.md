@@ -19,7 +19,7 @@ S3-compatible storage.
 - purpose: `assignment_attachment`, `submission_file`, `payment_receipt`,
   `lesson_material`, `chat_message`;
 - storage backend `local` или `s3` без изменения внешнего API;
-- автоматическое создание S3 bucket при старте, если он отсутствует.
+- идемпотентное создание S3 bucket инфраструктурным `minio-init`.
 
 Удаление публичным API и версионирование файлов не реализованы.
 
@@ -80,11 +80,22 @@ CheckReady()
 Реализации:
 
 - `LocalFileStorage` — файл в `FILE_STORAGE_DIR`;
-- `S3FileStorage` — HTTP-запросы к MinIO/S3 с ручной AWS Signature Version 4.
+- `S3FileStorage` — небольшой adapter над `userver::s3api::Client`.
 
-AWS SDK не добавлен: используемый поднабор S3 небольшой, поэтому реализация
-опирается на userver HTTP client. Компромисс — меньше зависимостей, но SigV4 и
-совместимость S3 приходится поддерживать в проекте самостоятельно.
+Userver выполняет object-запросы, timeout и retry. В проекте остаётся только
+`SigV4Authenticator`: встроенный `AccessKey` в userver 3.1 использует старую
+Signature Version 2, поэтому для MinIO и современного AWS-compatible storage
+нужна своя небольшая реализация Signature Version 4.
+
+Поддерживаются два способа адресации:
+
+- `path` — `http://minio:9000/bucket/key`, дефолт для MinIO;
+- `virtual` — `https://bucket.s3.example.com/key` для провайдеров с bucket в DNS.
+
+Bucket не создаётся приложением. Compose запускает одноразовый `minio-init`, а
+Kubernetes — init container перед file-service. Presigned URL и S3 multipart
+upload намеренно не реализованы: клиент по-прежнему работает только через
+gateway и file-service.
 
 ## Атомарность upload
 
@@ -118,7 +129,9 @@ src/main.cpp
   ├── handlers/file_handlers.*      HTTP parsing и response
   ├── domain/file_service.*         validation и access rules
   ├── repositories/file_repository.* metadata SQL
-  ├── storages/file_storage.*       local/S3 adapters
+  ├── storages/file_storage.*       interface, local backend, component wiring
+  ├── storages/s3_file_storage.*    adapter над userver::s3api
+  ├── storages/s3_sigv4_*           AWS Signature Version 4
   └── handlers/ready_handler.*
 ```
 
@@ -133,6 +146,7 @@ src/main.cpp
 | `FILE_S3_ENDPOINT` | адрес MinIO/S3 |
 | `FILE_S3_BUCKET` | bucket, обычно `tutorflow-files` |
 | `FILE_S3_REGION` | регион для SigV4 |
+| `FILE_S3_ADDRESSING_STYLE` | `path` для MinIO или `virtual` для DNS bucket |
 | `MINIO_ROOT_USER/PASSWORD` | dev/demo credentials через secdist |
 
 Gateway и file handler допускают HTTP body до 12 MiB, оставляя запас над
@@ -148,9 +162,9 @@ Gateway и file handler допускают HTTP body до 12 MiB, оставля
 ## Как проверить
 
 ```bash
-docker compose build file-service api-gateway
-docker compose up -d minio file-service api-gateway
+FILE_STORAGE_BACKEND=s3 docker compose up -d --build
 curl http://localhost:8080/health
+python3 -m pytest tests/test_file_s3_standardization.py -q
 python3 -m pytest tests/test_access.py tests/test_finance.py tests/test_chat.py -v
 ```
 
@@ -158,6 +172,8 @@ python3 -m pytest tests/test_access.py tests/test_finance.py tests/test_chat.py 
 
 - [file handlers](src/handlers/file_handlers.cpp);
 - [domain service](src/domain/file_service.cpp);
-- [storage implementations](src/storages/file_storage.cpp);
+- [storage component](src/storages/file_storage.cpp);
+- [S3 adapter](src/storages/s3_file_storage.cpp);
+- [SigV4 authenticator](src/storages/s3_sigv4_authenticator.cpp);
 - [миграции](../../migrations/file/);
 - [внутренний OpenAPI](../../docs/api-contracts/file.openapi.yaml).

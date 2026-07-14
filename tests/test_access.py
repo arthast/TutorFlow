@@ -140,8 +140,11 @@ def test_file_symmetric_download_access(teacher, student):
     file_id = meta["id"]
 
     # owner (teacher) downloads own file
-    status, _ = api.get(f"/files/{file_id}/download", token=teacher["token"])
+    status, body = api.get(
+        f"/files/{file_id}/download", token=teacher["token"]
+    )
     assert status == 200
+    assert body == "lesson material"
 
     # linked student downloads the teacher's file
     status, _ = api.get(f"/files/{file_id}/download", token=student["token"])
