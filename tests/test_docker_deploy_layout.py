@@ -32,6 +32,20 @@ def test_production_compose_includes_mandatory_operations_services() -> None:
     assert production.count("logging: *production-logging") >= 21
 
 
+def test_production_grafana_has_enough_memory_for_dashboard_queries() -> None:
+    production = read(PRODUCTION)
+    grafana = production.split("\n  grafana:\n", 1)[1].split("\nnetworks:", 1)[0]
+
+    assert "mem_limit: 512m" in grafana
+
+
+def test_production_grafana_healthcheck_has_its_own_timeout() -> None:
+    production = read(PRODUCTION)
+    grafana = production.split("\n  grafana:\n", 1)[1].split("\nnetworks:", 1)[0]
+
+    assert "wget -T 3 -qO-" in grafana
+
+
 def test_active_automation_uses_only_new_production_path() -> None:
     active_files = (
         ROOT / ".github/workflows/ci.yml",

@@ -512,7 +512,7 @@ services:
       - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafanadata:/var/lib/grafana
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -T 3 -qO- http://localhost:3000/api/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -520,7 +520,7 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
-    mem_limit: 256m
+    mem_limit: 512m
     cpus: "0.50"
     logging: *production-logging
     networks: [tutorflow]
