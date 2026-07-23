@@ -1,5 +1,5 @@
--- lesson-service / lesson_db — transactional outbox (Этап 5E-1).
--- Owner: Agent B. Идемпотентно (IF NOT EXISTS).
+-- lesson-service / lesson_db — transactional outbox
+-- Идемпотентно (IF NOT EXISTS).
 -- Outbox: в одной транзакции с complete-занятия пишется строка события;
 -- отдельный publisher шлёт её в Kafka и помечает published (at-least-once).
 BEGIN;

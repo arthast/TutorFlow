@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Применение SQL-миграций в dev (PLAN §11).
+# Применение SQL-миграций в dev
 #
 #   ./scripts/migrate.sh all                 # все сервисы
 #   ./scripts/migrate.sh identity            # один сервис
@@ -10,7 +10,6 @@
 # через работающий контейнер postgres (docker compose exec). Порт postgres
 # наружу не публикуется, поэтому ходим внутрь контейнера.
 #
-# Правило (PLAN §11): агент трогает только свою migrations/<service>/.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

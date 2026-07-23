@@ -1,4 +1,4 @@
--- assignment-service / assignment_db — первичная схема (PLAN §8.3).
+-- assignment-service / assignment_db — первичная схема
 -- Owner: Agent B. Идемпотентно (IF NOT EXISTS).
 -- Файлы живут в file-service; здесь хранится только file_id (без FK на чужую БД).
 BEGIN;
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS submission_files (
     UNIQUE (submission_id, file_id)
 );
 
--- Комментарии живут здесь же (НЕ chat-service) (PLAN §8.3).
+-- Комментарии живут здесь же (НЕ chat-service)
 CREATE TABLE IF NOT EXISTS assignment_comments (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     assignment_id UUID NOT NULL REFERENCES assignments (id) ON DELETE CASCADE,

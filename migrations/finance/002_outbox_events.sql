@@ -1,4 +1,4 @@
--- finance-service / finance_db — transactional outbox (Этап 5F).
+-- finance-service / finance_db — transactional outbox
 -- Идемпотентно (IF NOT EXISTS).
 BEGIN;
 

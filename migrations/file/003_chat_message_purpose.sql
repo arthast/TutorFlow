@@ -1,4 +1,4 @@
--- file-service / file_db — добавить purpose='chat_message' (roadmap 5J).
+-- file-service / file_db — добавить purpose='chat_message'
 -- chat-service хранит file_id вложений; доступ на скачивание уже покрыт
 -- симметричным teacher<->student доступом file-service. Идемпотентно.
 BEGIN;

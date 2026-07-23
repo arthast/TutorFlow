@@ -2,7 +2,7 @@
 -- (correctness-фикс). БД-гарант против double-booking и гонки двух конкурентных
 -- create/reschedule: атомарность даёт сам constraint, code-level проверки
 -- недостаточно.
--- Owner: Agent B. Идемпотентно: ADD CONSTRAINT не поддерживает IF NOT EXISTS,
+-- Идемпотентно: ADD CONSTRAINT не поддерживает IF NOT EXISTS,
 -- поэтому наличие проверяем вручную по pg_constraint в DO-блоке.
 BEGIN;
 

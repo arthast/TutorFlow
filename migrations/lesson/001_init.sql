@@ -1,12 +1,12 @@
--- lesson-service / lesson_db — первичная схема (PLAN §8.2).
--- Owner: Agent B. Идемпотентно (IF NOT EXISTS).
--- Границы БД (PLAN §16, AGENTS): teacher_id/student_id живут в identity_db,
+-- lesson-service / lesson_db — первичная схема
+-- Идемпотентно (IF NOT EXISTS).
+-- Границы БД: teacher_id/student_id живут в identity_db,
 -- поэтому здесь они БЕЗ внешних ключей — только колонки + индексы.
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
 
--- Слоты доступности. Статусы: open | booked (PLAN §8.2).
+-- Слоты доступности. Статусы: open | booked
 CREATE TABLE IF NOT EXISTS availability_slots (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     teacher_id UUID NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS availability_slots (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Занятия. Статусы: scheduled | completed | cancelled (PLAN §8.2).
+-- Занятия. Статусы: scheduled | completed | cancelled
 -- price — снимок цены, фиксируется при создании занятия.
 CREATE TABLE IF NOT EXISTS lessons (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
