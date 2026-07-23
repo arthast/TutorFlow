@@ -5,6 +5,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PRODUCTION = ROOT / "deploy/compose/production.yml"
 LOCAL_BUILD = ROOT / "deploy/compose/production.local-build.yml"
 KAFKA_CLUSTER = ROOT / "deploy/compose/local.kafka-cluster.yml"
+LOKI_CONFIG = ROOT / "deploy/observability/loki.yml"
+ALLOY_CONFIG = ROOT / "deploy/observability/alloy/config.alloy"
 
 
 def read(path: Path) -> str:
@@ -20,6 +22,52 @@ def test_compose_variants_live_under_deploy_compose() -> None:
     assert PRODUCTION.is_file()
     assert LOCAL_BUILD.is_file()
     assert KAFKA_CLUSTER.is_file()
+
+
+def test_production_loki_has_bounded_filesystem_retention() -> None:
+    loki = read(LOKI_CONFIG)
+
+    assert "store: tsdb" in loki
+    assert "object_store: filesystem" in loki
+    assert "schema: v13" in loki
+    assert "period: 24h" in loki
+    assert "retention_enabled: true" in loki
+    assert "retention_period: 72h" in loki
+    assert "delete_request_store: filesystem" in loki
+
+
+def test_production_alloy_collects_only_tutorflow_prod() -> None:
+    alloy = read(ALLOY_CONFIG)
+
+    assert 'host             = "unix:///var/run/docker.sock"' in alloy
+    assert 'values = ["com.docker.compose.project=tutorflow-prod"]' in alloy
+    assert (
+        "__meta_docker_container_label_com_docker_compose_service"
+        in alloy
+    )
+    assert "__meta_docker_container_log_stream" in alloy
+    assert 'target_label  = "service"' in alloy
+    assert 'target_label  = "container"' in alloy
+    assert 'target_label  = "stream"' in alloy
+    assert 'labels        = { environment = "production" }' in alloy
+    assert 'url                 = "http://loki:3100/loki/api/v1/push"' in alloy
+
+
+def test_production_alloy_does_not_index_high_cardinality_ids() -> None:
+    alloy = read(ALLOY_CONFIG)
+
+    for field in (
+        "request_id",
+        "user_id",
+        "lesson_id",
+        "dialog_id",
+        "message_id",
+        "event_id",
+        "trace_id",
+        "span_id",
+    ):
+        assert f'target_label  = "{field}"' not in alloy
+        assert f'{field} = ""' not in alloy
 
 
 def test_production_compose_includes_mandatory_operations_services() -> None:
