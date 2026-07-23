@@ -86,3 +86,15 @@ jobs:
             -f docker-compose.yml \
             -f deploy/compose/local.kafka-cluster.yml \
             config >/tmp/tutorflow-local-kafka-cluster.yml
+      - name: Validate production logging configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/deploy/observability/loki.yml:/etc/loki/config.yml:ro" \
+            grafana/loki:3.7.3 \
+            -config.file=/etc/loki/config.yml \
+            -verify-config
+          docker run --rm \
+            -v "$PWD/deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
+            grafana/alloy:v1.18.0 \
+            validate /etc/alloy/config.alloy
+          jq empty deploy/observability/grafana/dashboards/tutorflow-logs.json

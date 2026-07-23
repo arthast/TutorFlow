@@ -208,8 +208,24 @@ def test_deploy_prunes_old_releases_only_after_public_health() -> None:
     remember = workflow.index("retain-images.sh remember")
     start = workflow.index("Compose pull and up")
     health = workflow.index("Verify public production health")
+    logging_health = workflow.index("Verify production logging stack")
     prune = workflow.index("retain-images.sh prune")
 
-    assert remember < start < health < prune
+    assert remember < start < health < logging_health < prune
+    assert "http://loki:3100/ready" in workflow
+    assert "http://alloy:12345/-/ready" in workflow
     assert "docker system prune" not in workflow
     assert "docker image prune -a" not in workflow
+
+
+def test_ci_validates_production_logging_configuration() -> None:
+    workflow = read(ROOT / ".github/workflows/ci.yml")
+
+    assert "grafana/loki:3.7.3" in workflow
+    assert "grafana/alloy:v1.18.0" in workflow
+    assert "-verify-config" in workflow
+    assert "validate /etc/alloy/config.alloy" in workflow
+    assert (
+        "jq empty deploy/observability/grafana/dashboards/tutorflow-logs.json"
+        in workflow
+    )

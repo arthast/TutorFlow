@@ -242,6 +242,19 @@ jobs:
             --retry-delay 10 \
             --retry-all-errors \
             "https://${PROD_DOMAIN}/health" >/dev/null
+      - name: Verify production logging stack
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd /opt/tutorflow && \
+             docker compose --project-directory . --env-file .env \
+               -f deploy/compose/production.yml \
+               exec -T prometheus wget -qO- http://loki:3100/ready && \
+             docker compose --project-directory . --env-file .env \
+               -f deploy/compose/production.yml \
+               exec -T prometheus wget -qO- http://alloy:12345/-/ready"
       - name: Retain current and previous image releases
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
