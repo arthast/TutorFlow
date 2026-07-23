@@ -322,6 +322,28 @@ def test_deploy_replaces_remote_deploy_tree_and_keeps_one_previous_tree() -> Non
     assert "alloydata" not in workflow
 
 
+def test_deploy_recreates_bind_mount_consumers_after_bundle_swap() -> None:
+    workflow = read(ROOT / ".github/workflows/deploy.yml")
+    normal_up_command = (
+        "up -d --remove-orphans"
+    )
+    targeted_recreate_command = (
+        "up -d --no-deps --force-recreate caddy prometheus grafana"
+    )
+
+    activate = workflow.index("mv deploy.new deploy")
+    normal_up = workflow.index(normal_up_command)
+    targeted_recreate = workflow.index(targeted_recreate_command)
+    public_health = workflow.index("Verify public production health")
+    logging_health = workflow.index("Verify production logging stack")
+
+    assert activate < normal_up < targeted_recreate < public_health < logging_health
+    assert workflow.count("--force-recreate") == 1
+    assert "up -d --force-recreate" not in workflow
+    assert "down -v" not in workflow
+    assert "docker volume rm" not in workflow
+
+
 def test_deploy_cleans_up_logging_provisioning_on_rollback() -> None:
     workflow = read(ROOT / ".github/workflows/deploy.yml")
 

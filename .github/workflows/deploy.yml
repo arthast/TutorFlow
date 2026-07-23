@@ -248,7 +248,9 @@ jobs:
              done; \
              exit 1"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd /opt/tutorflow && COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --project-directory . --env-file .env -f deploy/compose/production.yml up -d --remove-orphans"
+            "cd /opt/tutorflow && \
+             COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --project-directory . --env-file .env -f deploy/compose/production.yml up -d --remove-orphans && \
+             COMPOSE_PARALLEL_LIMIT=2 IMAGE_TAG='$IMAGE_TAG' TUTORFLOW_IMAGE_NAMESPACE='${IMAGE_NAMESPACE}' docker compose --project-directory . --env-file .env -f deploy/compose/production.yml up -d --no-deps --force-recreate caddy prometheus grafana"
       - name: Verify public production health
         run: |
           curl --fail --show-error --silent \
