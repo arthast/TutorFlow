@@ -46,7 +46,7 @@ def test_realtime_has_no_manual_hiredis_or_pubsub_thread() -> None:
 
 def test_realtime_compose_has_two_replicas_and_structured_secdist() -> None:
     compose = read("docker-compose.yml")
-    prod = read("docker-compose.prod.yml")
+    prod = read("deploy/compose/production.yml")
     env = read(".env.example")
 
     assert "realtime-service-replica:" in compose

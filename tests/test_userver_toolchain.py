@@ -51,7 +51,7 @@ def test_dev_compose_uses_shared_dockerfile_for_every_service() -> None:
 
 
 def test_prod_local_build_uses_shared_dockerfile_for_every_service() -> None:
-    compose = read("docker-compose.prod.local-build.yml")
+    compose = read("deploy/compose/production.local-build.yml")
     assert compose.count(f"dockerfile: {SHARED_DOCKERFILE}") == len(SERVICES)
     for service in SERVICES:
         assert f"SERVICE: {service}" in compose

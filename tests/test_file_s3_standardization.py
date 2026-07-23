@@ -26,7 +26,7 @@ def test_file_service_uses_userver_s3api() -> None:
 
 def test_s3_addressing_style_is_explicit() -> None:
     env = read(".env.example")
-    compose = read("docker-compose.yml") + read("docker-compose.prod.yml")
+    compose = read("docker-compose.yml") + read("deploy/compose/production.yml")
     kind = read("deploy/k8s/kind-up.sh")
 
     assert "FILE_S3_ADDRESSING_STYLE=path" in env
@@ -36,7 +36,7 @@ def test_s3_addressing_style_is_explicit() -> None:
 
 def test_bucket_is_created_by_infrastructure() -> None:
     dev = read("docker-compose.yml")
-    prod = read("docker-compose.prod.yml")
+    prod = read("deploy/compose/production.yml")
     k8s = read("deploy/k8s/base/file-service.yaml")
     kind = read("deploy/k8s/kind-up.sh")
 
