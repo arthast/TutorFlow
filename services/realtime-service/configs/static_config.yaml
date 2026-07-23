@@ -72,7 +72,7 @@ components_manager:
             driver-component: realtime-redis-driver
             command-client: realtime-commands
             subscribe-client: realtime-subscriptions
-            presence-ttl-seconds: 45
+            presence-ttl-seconds: 15
         realtime-event-consumer: {}
         realtime-ws-handler:
             path: /ws

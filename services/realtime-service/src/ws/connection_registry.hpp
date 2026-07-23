@@ -34,7 +34,7 @@ public:
   std::shared_ptr<ConnectionState> Add(std::string user_id,
                                        std::vector<std::string> roles);
   void Remove(const std::shared_ptr<ConnectionState>& connection);
-  void SendToUser(std::string_view user_id, std::string message) const;
+  void SendToUser(std::string_view user_id, const std::string& message) const;
 
 private:
   mutable std::mutex mutex_;

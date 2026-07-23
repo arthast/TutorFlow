@@ -1,4 +1,4 @@
-#pragma once
+с#pragma once
 
 #include <string_view>
 

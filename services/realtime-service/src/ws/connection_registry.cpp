@@ -34,7 +34,7 @@ void ConnectionRegistry::Remove(
 }
 
 void ConnectionRegistry::SendToUser(std::string_view user_id,
-                                    std::string message) const {
+                                    const std::string& message) const {
   std::vector<std::shared_ptr<ConnectionState>> connections;
   {
     std::lock_guard lock(mutex_);

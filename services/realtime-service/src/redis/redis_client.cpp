@@ -109,7 +109,7 @@ std::pair<std::string, std::string> ParseRedisEnvelope(
 RedisClient::RedisClient(const userver::components::ComponentConfig& config,
                          const userver::components::ComponentContext& context)
     : LoggableComponentBase(config, context),
-      presence_ttl_seconds_(config["presence-ttl-seconds"].As<int>(45)),
+      presence_ttl_seconds_(config["presence-ttl-seconds"].As<int>(15)),
       instance_id_(MakeInstanceId()),
       registry_(context.FindComponent<ConnectionRegistry>()) {
   const auto driver_name =
@@ -155,7 +155,7 @@ properties:
     presence-ttl-seconds:
         type: integer
         description: presence key TTL in seconds
-        defaultDescription: '45'
+        defaultDescription: '15'
 )");
 }
 
@@ -245,7 +245,7 @@ void RedisClient::Ping() const {
 void RedisClient::OnPubSubMessage(const std::string& channel,
                                   const std::string& payload) const {
   constexpr std::string_view prefix = "rt:user:";
-  if (channel.rfind(prefix, 0) != 0) return;
+  if (!channel.starts_with("rt:user:")) return;
 
   const auto [origin, message] = ParseRedisEnvelope(payload);
   if (origin == instance_id_) return;
