@@ -278,8 +278,126 @@ jobs:
                 ! -f deploy/observability/grafana/provisioning/dashboards/tutorflow.yaml ||
                 ! -f deploy/observability/grafana/dashboards/tutorflow-logs.json ||
                 ! -f deploy/observability/grafana/provisioning/datasources/loki.yaml ]]; then
+            grafana_ready=0
+            for attempt in $(seq 1 12); do
+              if "${compose[@]}" exec -T grafana \
+                curl --fail --silent --show-error \
+                  --connect-timeout 2 \
+                  --max-time 5 \
+                  http://localhost:3000/api/health >/dev/null; then
+                grafana_ready=1
+                break
+              fi
+              if ((attempt < 12)); then
+                sleep 5
+              fi
+            done
+            if ((grafana_ready == 0)); then
+              echo "Grafana did not become ready for rollback cleanup" >&2
+              exit 1
+            fi
+
             echo "logging provisioning is absent; deleting stale Grafana resources"
+            alert_tombstone="deploy/observability/grafana/provisioning/alerting/.tutorflow-logging-rollback-delete.yaml"
+            datasource_tombstone="deploy/observability/grafana/provisioning/datasources/.tutorflow-logging-rollback-delete.yaml"
+            cleanup_grafana_tombstones() {
+              rm -f -- "$alert_tombstone"
+              rm -f -- "$datasource_tombstone"
+            }
+            trap cleanup_grafana_tombstones EXIT
+            mkdir -p -- "$(dirname -- "$alert_tombstone")"
+            mkdir -p -- "$(dirname -- "$datasource_tombstone")"
+            rm -f -- "$alert_tombstone"
+            rm -f -- "$datasource_tombstone"
+            cat > "$alert_tombstone" <<'GRAFANA_ALERT_DELETE'
+          apiVersion: 1
+
+          deleteRules:
+            - orgId: 1
+              uid: tutorflow-log-error-burst
+            - orgId: 1
+              uid: tutorflow-logging-stack-down
+          GRAFANA_ALERT_DELETE
+
+            cat > "$datasource_tombstone" <<'GRAFANA_DATASOURCE_DELETE'
+          apiVersion: 1
+
+          deleteDatasources:
+            - name: Loki
+              orgId: 1
+          GRAFANA_DATASOURCE_DELETE
+
             "${compose[@]}" exec -T grafana sh -ec '
+              status="$(
+                curl --silent --show-error \
+                  --connect-timeout 2 \
+                  --max-time 5 \
+                  --output /tmp/grafana-reload-response \
+                  --write-out "%{http_code}" \
+                  --user "${GF_SECURITY_ADMIN_USER:?}:${GF_SECURITY_ADMIN_PASSWORD:?}" \
+                  --request POST \
+                  http://localhost:3000/api/admin/provisioning/alerting/reload
+              )"
+              case "$status" in
+                2??)
+                  ;;
+                *)
+                  cat /tmp/grafana-reload-response >&2
+                  echo "unexpected HTTP status ${status} reloading Grafana alert provisioning" >&2
+                  exit 1
+                  ;;
+              esac
+              rm -f /tmp/grafana-reload-response
+            '
+
+            "${compose[@]}" exec -T grafana sh -ec '
+              status="$(
+                curl --silent --show-error \
+                  --connect-timeout 2 \
+                  --max-time 5 \
+                  --output /tmp/grafana-reload-response \
+                  --write-out "%{http_code}" \
+                  --user "${GF_SECURITY_ADMIN_USER:?}:${GF_SECURITY_ADMIN_PASSWORD:?}" \
+                  --request POST \
+                  http://localhost:3000/api/admin/provisioning/datasources/reload
+              )"
+              case "$status" in
+                2??)
+                  ;;
+                *)
+                  cat /tmp/grafana-reload-response >&2
+                  echo "unexpected HTTP status ${status} reloading Grafana datasource provisioning" >&2
+                  exit 1
+                  ;;
+              esac
+              rm -f /tmp/grafana-reload-response
+            '
+            rm -f -- "$alert_tombstone"
+            rm -f -- "$datasource_tombstone"
+            trap - EXIT
+
+            "${compose[@]}" exec -T grafana sh -ec '
+              verify_absent() {
+                path="$1"
+                uid="$2"
+                status="$(
+                  curl --silent --show-error \
+                    --connect-timeout 2 \
+                    --max-time 5 \
+                    --output /tmp/grafana-delete-response \
+                    --write-out "%{http_code}" \
+                    --user "${GF_SECURITY_ADMIN_USER:?}:${GF_SECURITY_ADMIN_PASSWORD:?}" \
+                    --request GET \
+                    "http://localhost:3000${path}${uid}"
+                )"
+                if test "$status" = "404"; then
+                  return
+                fi
+                cat /tmp/grafana-delete-response >&2
+                echo "unexpected HTTP status ${status} verifying deletion of Grafana UID ${uid}" >&2
+                exit 1
+              }
+
               delete_resource() {
                 path="$1"
                 uid="$2"
@@ -304,10 +422,10 @@ jobs:
                 esac
               }
 
-              delete_resource "/api/v1/provisioning/alert-rules/" "tutorflow-log-error-burst"
-              delete_resource "/api/v1/provisioning/alert-rules/" "tutorflow-logging-stack-down"
+              verify_absent "/api/v1/provisioning/alert-rules/" "tutorflow-log-error-burst"
+              verify_absent "/api/v1/provisioning/alert-rules/" "tutorflow-logging-stack-down"
+              verify_absent "/api/datasources/uid/" "tutorflow-loki"
               delete_resource "/api/dashboards/uid/" "tutorflow-logs"
-              delete_resource "/api/datasources/uid/" "tutorflow-loki"
               rm -f /tmp/grafana-delete-response
             '
           fi

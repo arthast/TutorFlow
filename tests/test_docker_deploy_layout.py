@@ -355,14 +355,108 @@ def test_deploy_cleans_up_logging_provisioning_on_rollback() -> None:
         "tutorflow-loki",
     ):
         assert workflow.count(f'"{uid}"') == 1
+    assert (
+        "alert_tombstone="
+        '"deploy/observability/grafana/provisioning/alerting/'
+        '.tutorflow-logging-rollback-delete.yaml"'
+    ) in workflow
+    assert (
+        "datasource_tombstone="
+        '"deploy/observability/grafana/provisioning/datasources/'
+        '.tutorflow-logging-rollback-delete.yaml"'
+    ) in workflow
+    assert "cleanup_grafana_tombstones()" in workflow
+    assert 'rm -f -- "$alert_tombstone"' in workflow
+    assert 'rm -f -- "$datasource_tombstone"' in workflow
+    assert "trap cleanup_grafana_tombstones EXIT" in workflow
+    assert "trap - EXIT" in workflow
+    assert "deleteRules:" in workflow
+    assert "uid: tutorflow-log-error-burst" in workflow
+    assert "uid: tutorflow-logging-stack-down" in workflow
+    assert "deleteDatasources:" in workflow
+    assert "name: Loki" in workflow
+    assert "/api/admin/provisioning/alerting/reload" in workflow
+    assert "/api/admin/provisioning/datasources/reload" in workflow
+    assert (
+        workflow.count(
+            'verify_absent "/api/v1/provisioning/alert-rules/"'
+        )
+        == 2
+    )
+    assert (
+        'delete_resource "/api/v1/provisioning/alert-rules/"'
+        not in workflow
+    )
+    assert workflow.count('delete_resource "/api/dashboards/uid/"') == 1
+    assert workflow.count('verify_absent "/api/datasources/uid/"') == 1
+    assert 'delete_resource "/api/datasources/uid/"' not in workflow
     assert "/api/v1/provisioning/alert-rules/" in workflow
     assert "/api/dashboards/uid/" in workflow
     assert "/api/datasources/uid/" in workflow
     assert "2??|404" in workflow
+    assert 'test "$status" = "404"' in workflow
+    assert "verifying deletion of Grafana UID" in workflow
     assert "unexpected HTTP status" in workflow
     assert "--connect-timeout 2" in workflow
     assert "--max-time 5" in workflow
     assert "skipping Loki/Alloy readiness" in workflow
+
+    tombstone = workflow.index("alert_tombstone=")
+    trap = workflow.index("trap cleanup_grafana_tombstones EXIT", tombstone)
+    write = workflow.index('cat > "$alert_tombstone"', trap)
+    reload_alerting = workflow.index(
+        "/api/admin/provisioning/alerting/reload", write
+    )
+    write_datasource = workflow.index(
+        'cat > "$datasource_tombstone"', write
+    )
+    reload_datasource = workflow.index(
+        "/api/admin/provisioning/datasources/reload", reload_alerting
+    )
+    clear_trap = workflow.index("trap - EXIT", reload_datasource)
+    verify_alerts = workflow.index(
+        'verify_absent "/api/v1/provisioning/alert-rules/"',
+        clear_trap,
+    )
+    verify_datasource = workflow.index(
+        'verify_absent "/api/datasources/uid/"',
+        verify_alerts,
+    )
+    between_reload_and_clear = workflow[reload_datasource:clear_trap]
+
+    assert (
+        tombstone
+        < trap
+        < write
+        < write_datasource
+        < reload_alerting
+        < reload_datasource
+        < clear_trap
+        < verify_alerts
+        < verify_datasource
+    )
+    assert 'rm -f -- "$alert_tombstone"' in between_reload_and_clear
+    assert 'rm -f -- "$datasource_tombstone"' in between_reload_and_clear
+
+
+def test_deploy_waits_for_grafana_before_rollback_cleanup() -> None:
+    workflow = read(ROOT / ".github/workflows/deploy.yml")
+
+    force_recreate = workflow.index(
+        "up -d --no-deps --force-recreate caddy prometheus grafana"
+    )
+    grafana_wait = workflow.index("grafana_ready=0")
+    cleanup = workflow.index("alert_tombstone=")
+    wait_block = workflow[grafana_wait:cleanup]
+
+    assert force_recreate < grafana_wait < cleanup
+    assert "for attempt in $(seq 1 12)" in wait_block
+    assert "--connect-timeout 2" in wait_block
+    assert "--max-time 5" in wait_block
+    assert "http://localhost:3000/api/health" in wait_block
+    assert "sleep 5" in wait_block
+    assert "Grafana did not become ready for rollback cleanup" in wait_block
+    assert "exit 1" in wait_block
 
 
 def test_ci_validates_production_logging_configuration() -> None:
