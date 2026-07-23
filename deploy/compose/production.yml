@@ -495,6 +495,51 @@ services:
     logging: *production-logging
     networks: [tutorflow]
 
+  loki:
+    image: grafana/loki:3.7.3
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/config.yml
+    volumes:
+      - ./deploy/observability/loki.yml:/etc/loki/config.yml:ro
+      - lokidata:/loki
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-config.file=/etc/loki/config.yml", "-verify-config"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    mem_limit: 512m
+    cpus: "0.50"
+    logging: *production-logging
+    networks: [tutorflow]
+
+  alloy:
+    image: grafana/alloy:v1.18.0
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloydata:/var/lib/alloy/data
+    healthcheck:
+      test: ["CMD", "/bin/alloy", "validate", "/etc/alloy/config.alloy"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      loki:
+        condition: service_started
+    mem_limit: 256m
+    cpus: "0.25"
+    logging: *production-logging
+    networks: [tutorflow]
+
   grafana:
     image: grafana/grafana:13.0.2
     restart: unless-stopped
@@ -539,3 +584,5 @@ volumes:
   caddy_config:
   prometheusdata:
   grafanadata:
+  lokidata:
+  alloydata:

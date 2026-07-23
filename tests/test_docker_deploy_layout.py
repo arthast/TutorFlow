@@ -74,10 +74,45 @@ def test_production_compose_includes_mandatory_operations_services() -> None:
     production = read(PRODUCTION)
     assert "  prometheus:" in production
     assert "  kafka-exporter:" in production
+    assert "  loki:" in production
+    assert "  alloy:" in production
     assert "  grafana:" in production
     assert 'max-size: "10m"' in production
     assert 'max-file: "3"' in production
-    assert production.count("logging: *production-logging") >= 21
+    assert production.count("logging: *production-logging") >= 23
+
+
+def test_production_logging_stack_is_internal_and_resource_bounded() -> None:
+    production = read(PRODUCTION)
+    loki = production.split("\n  loki:\n", 1)[1].split("\n  alloy:\n", 1)[0]
+    alloy = production.split("\n  alloy:\n", 1)[1].split("\n  grafana:\n", 1)[0]
+
+    assert "image: grafana/loki:3.7.3" in loki
+    assert "mem_limit: 512m" in loki
+    assert 'cpus: "0.50"' in loki
+    assert "ports:" not in loki
+    assert "lokidata:/loki" in loki
+
+    assert "image: grafana/alloy:v1.18.0" in alloy
+    assert "mem_limit: 256m" in alloy
+    assert 'cpus: "0.25"' in alloy
+    assert "ports:" not in alloy
+    assert "/var/run/docker.sock:/var/run/docker.sock:ro" in alloy
+    assert "alloydata:/var/lib/alloy/data" in alloy
+
+    volumes = production.split("\nvolumes:\n", 1)[1]
+    assert "\n  lokidata:" in volumes
+    assert "\n  alloydata:" in volumes
+
+
+def test_prometheus_scrapes_loki_and_alloy() -> None:
+    prometheus = read(ROOT / "deploy/observability/prometheus.yml")
+
+    assert "- job_name: logging-stack" in prometheus
+    assert "targets: [loki:3100]" in prometheus
+    assert "service: loki" in prometheus
+    assert "targets: [alloy:12345]" in prometheus
+    assert "service: alloy" in prometheus
 
 
 def test_production_grafana_has_enough_memory_for_dashboard_queries() -> None:
