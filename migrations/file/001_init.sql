@@ -1,5 +1,4 @@
--- file-service / file_db — первичная схема (PLAN §8.5).
--- Owner: Agent A. Идемпотентно (IF NOT EXISTS).
+-- file-service / file_db — первичная схема
 -- В MVP бинарь лежит в локальном томе (FILE_STORAGE_DIR); в БД — метаданные.
 BEGIN;
 

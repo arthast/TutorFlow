@@ -1,5 +1,5 @@
--- file-service / file_db — добавить purpose='lesson_material' (roadmap 3.6.0).
--- Owner: Agent A. Идемпотентно (DROP IF EXISTS + пересоздание constraint).
+-- file-service / file_db — добавить purpose='lesson_material'
+-- Идемпотентно (DROP IF EXISTS + пересоздание constraint).
 -- Контракт file.openapi.yaml уже включает lesson_material в enum purpose.
 BEGIN;
 

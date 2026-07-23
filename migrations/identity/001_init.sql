@@ -1,5 +1,5 @@
--- identity-service / identity_db — первичная схема (PLAN §8.1).
--- Owner: Agent A. Идемпотентно (IF NOT EXISTS).
+-- identity-service / identity_db — первичная схема
+-- Идемпотентно (IF NOT EXISTS).
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS student_profiles (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Связь teacher<->student. Статусы: invited | active | archived (PLAN §8.1).
+-- Связь teacher<->student. Статусы: invited | active | archived
 CREATE TABLE IF NOT EXISTS teacher_student_links (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     teacher_id  UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,

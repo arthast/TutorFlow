@@ -1,11 +1,11 @@
--- finance-service / finance_db — первичная схема (PLAN §8.4).
--- Owner: Agent B. Идемпотентно (IF NOT EXISTS).
+-- finance-service / finance_db — первичная схема
+-- Идемпотентно (IF NOT EXISTS).
 -- Модель: append-only журнал операций + чеки. Операции не редактируем.
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
 
--- Тип операции: charge | payment | correction | refund (PLAN §8.4).
+-- Тип операции: charge | payment | correction | refund
 -- balance = sum(charge) - sum(payment) + sum(correction) - sum(refund).
 CREATE TABLE IF NOT EXISTS financial_transactions (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS financial_transactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Идемпотентность charge: один charge на занятие (PLAN §8.4, §10).
+-- Идемпотентность charge: один charge на занятие
 -- Частичный уникальный индекс — только для type='charge'.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_charge_lesson
     ON financial_transactions (lesson_id)
@@ -35,7 +35,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_receipt
 CREATE INDEX IF NOT EXISTS idx_ft_student ON financial_transactions (student_id);
 CREATE INDEX IF NOT EXISTS idx_ft_teacher ON financial_transactions (teacher_id);
 
--- Чеки оплаты. Статус: pending_review | confirmed | rejected (PLAN §8.4).
+-- Чеки оплаты. Статус: pending_review | confirmed | rejected
 -- Загрузка чека баланс НЕ меняет; payment создаётся только при confirm.
 CREATE TABLE IF NOT EXISTS payment_receipts (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),

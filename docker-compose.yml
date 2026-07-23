@@ -1,4 +1,4 @@
-# TutorFlow — dev-стек (PLAN §4, §12).
+# TutorFlow — dev-стек
 # Один контейнер postgres + сервисы. Наружу публикуются api-gateway и
 # realtime-service (осознанное исключение для stateful WebSocket).
 # Все внутренние сервисы доступны лишь по docker-сети (по имени сервиса).
@@ -33,7 +33,7 @@ services:
     networks: [tutorflow]
     # Порт наружу НЕ публикуем — только docker-сеть.
 
-  # One-shot миграции (PLAN §11). Ждёт postgres healthy, применяет
+  # One-shot миграции Ждёт postgres healthy, применяет
   # migrations/<svc>/*.sql по возрастанию в соответствующие БД и завершается
   # (exit 0). Прикладные сервисы стартуют только после успешного завершения,
   # поэтому к моменту старта publisher/consumer таблицы уже есть.
@@ -64,7 +64,7 @@ services:
         condition: service_healthy
     networks: [tutorflow]
 
-  # Kafka broker (Этап 5D). KRaft-режим (без zookeeper), одна нода
+  # Kafka broker. KRaft-режим (без zookeeper), одна нода
   # broker+controller. Внутренний listener kafka:9092, наружу НЕ публикуем.
   # lesson/finance зависят от kafka (depends_on healthy): lesson публикует
   # lesson.completed, finance консьюмит и создаёт charge (Этап 5E).
@@ -96,7 +96,7 @@ services:
       start_period: 20s
     networks: [tutorflow]
 
-  # One-shot Kafka topic provisioning (Этап 8.3). Topics intentionally group
+  # One-shot Kafka topic provisioning. Topics intentionally group
   # events by domain; concrete event type remains in the envelope.
   kafka-init:
     image: apache/kafka:3.8.1
@@ -179,7 +179,7 @@ services:
       retries: 12
     networks: [tutorflow]
 
-  # Object storage for file-service (Этап 5I). S3 API stays internal on the
+  # Object storage for file-service. S3 API stays internal on the
   # docker network; file upload/download still goes through api-gateway ->
   # file-service over HTTP multipart.
   minio:
@@ -195,6 +195,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks: [tutorflow]
+
+  minio-init:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        mc alias set tutorflow http://minio:9000
+        "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+        mc mb --ignore-existing "tutorflow/$${FILE_S3_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-tutorflow}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-tutorflow_minio_password}
+      FILE_S3_BUCKET: ${FILE_S3_BUCKET:-tutorflow-files}
+    depends_on:
+      minio:
+        condition: service_healthy
     networks: [tutorflow]
 
   api-gateway:
@@ -374,7 +391,7 @@ services:
       FILE_STORAGE_DIR: ${FILE_STORAGE_DIR:-/data/files}
       FILE_MAX_SIZE_BYTES: ${FILE_MAX_SIZE_BYTES:-10485760}
       FILE_SECDIST_CONFIG: >-
-        {"s3_file_storage":{"endpoint":"${FILE_S3_ENDPOINT:-http://minio:9000}","access_key":"${MINIO_ROOT_USER:-tutorflow}","secret_key":"${MINIO_ROOT_PASSWORD:-tutorflow_minio_password}","bucket":"${FILE_S3_BUCKET:-tutorflow-files}","region":"${FILE_S3_REGION:-us-east-1}"}}
+        {"s3_file_storage":{"endpoint":"${FILE_S3_ENDPOINT:-http://minio:9000}","access_key":"${MINIO_ROOT_USER:-tutorflow}","secret_key":"${MINIO_ROOT_PASSWORD:-tutorflow_minio_password}","bucket":"${FILE_S3_BUCKET:-tutorflow-files}","region":"${FILE_S3_REGION:-us-east-1}","addressing_style":"${FILE_S3_ADDRESSING_STYLE:-path}"}}
     volumes:
       - filestorage:/data/files
     depends_on:
@@ -382,8 +399,8 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8085/ready >/dev/null || exit 1"]
       interval: 5s

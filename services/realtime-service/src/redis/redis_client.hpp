@@ -50,7 +50,7 @@ private:
   void OnPubSubMessage(const std::string& channel,
                        const std::string& payload) const;
 
-  int presence_ttl_seconds_{45};
+  int presence_ttl_seconds_{15};
   std::string instance_id_;
   ConnectionRegistry& registry_;
   std::shared_ptr<userver::storages::redis::Client> client_;

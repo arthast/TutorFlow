@@ -63,6 +63,7 @@ load_environment() {
   : "${MINIO_ROOT_PASSWORD:=tutorflow_minio_password}"
   : "${FILE_S3_BUCKET:=tutorflow-files}"
   : "${FILE_S3_REGION:=us-east-1}"
+  : "${FILE_S3_ADDRESSING_STYLE:=path}"
 }
 
 database_url() {
@@ -86,11 +87,11 @@ PY
 generate_runtime_config() {
   local kafka_secdist file_secdist
   kafka_secdist='{"kafka_settings":{"kafka-producer":{"brokers":"kafka:9092"},"kafka-consumer":{"brokers":"kafka:9092"}}}'
-  file_secdist="$(python3 - "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" "$FILE_S3_BUCKET" "$FILE_S3_REGION" <<'PY'
+  file_secdist="$(python3 - "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" "$FILE_S3_BUCKET" "$FILE_S3_REGION" "$FILE_S3_ADDRESSING_STYLE" <<'PY'
 import json
 import sys
 
-access_key, secret_key, bucket, region = sys.argv[1:]
+access_key, secret_key, bucket, region, addressing_style = sys.argv[1:]
 print(json.dumps({
     "s3_file_storage": {
         "endpoint": "http://minio.tutorflow.svc.cluster.local:9000",
@@ -98,6 +99,7 @@ print(json.dumps({
         "secret_key": secret_key,
         "bucket": bucket,
         "region": region,
+        "addressing_style": addressing_style,
     }
 }, separators=(",", ":")))
 PY
@@ -109,6 +111,7 @@ PY
     --from-literal=JWT_SECRET="$JWT_SECRET" \
     --from-literal=MINIO_ROOT_USER="$MINIO_ROOT_USER" \
     --from-literal=MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" \
+    --from-literal=FILE_S3_BUCKET="$FILE_S3_BUCKET" \
     --from-literal=IDENTITY_DATABASE_URL="$(database_url identity_db)" \
     --from-literal=LESSON_DATABASE_URL="$(database_url lesson_db)" \
     --from-literal=ASSIGNMENT_DATABASE_URL="$(database_url assignment_db)" \

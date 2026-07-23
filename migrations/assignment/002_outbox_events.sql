@@ -1,4 +1,4 @@
--- assignment-service / assignment_db — transactional outbox (Этап 5F).
+-- assignment-service / assignment_db — transactional outbox
 -- Идемпотентно (IF NOT EXISTS).
 BEGIN;
 

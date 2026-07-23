@@ -1,4 +1,5 @@
 # Local dev/demo overlay for a three-node KRaft Kafka cluster.
+# Apply after the root docker-compose.yml.
 # Use only after `docker compose down -v`: a single-node KRaft data directory
 # cannot be reused as metadata for this controller quorum.
 x-scale-kafka-secdist-config: &scale-kafka-secdist-config >-

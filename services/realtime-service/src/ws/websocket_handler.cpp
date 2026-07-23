@@ -3,11 +3,12 @@
 #include <chrono>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <userver/components/component_config.hpp>
 #include <userver/components/component_context.hpp>
-#include <userver/engine/sleep.hpp>
+#include <userver/engine/deadline.hpp>
+#include <userver/engine/task/cancel.hpp>
+#include <userver/engine/wait_any.hpp>
 #include <userver/formats/json/serialize.hpp>
 #include <userver/formats/json/value_builder.hpp>
 #include <userver/logging/log.hpp>
@@ -41,6 +42,17 @@ bool IsClientPing(const std::string& data) {
   } catch (...) {
     return false;
   }
+}
+
+bool DrainOutbound(ConnectionState& connection,
+                   userver::websocket::WebSocketConnection& websocket) {
+  std::string message;
+  bool drained = false;
+  while (connection.outbound.TryPop(message)) {
+    websocket.SendText(message);
+    drained = true;
+  }
+  return drained;
 }
 
 }  // namespace
@@ -111,18 +123,7 @@ void RealtimeWebSocketHandler::Handle(
   try {
     auto last_ping_at = std::chrono::steady_clock::now();
     while (true) {
-      {
-        std::vector<std::string> outbound;
-        {
-          std::lock_guard lock(connection->mutex);
-          outbound.assign(connection->outbound.begin(),
-                          connection->outbound.end());
-          connection->outbound.clear();
-        }
-        for (const auto& message : outbound) {
-          websocket.SendText(message);
-        }
-      }
+      DrainOutbound(*connection, websocket);
 
       userver::websocket::Message incoming;
       while (websocket.TryRecv(incoming)) {
@@ -147,13 +148,21 @@ void RealtimeWebSocketHandler::Handle(
         websocket.SendPing();
         last_ping_at = now;
       }
-      userver::engine::SleepFor(std::chrono::milliseconds{100});
+
+      connection->outbound.ResetSignal();
+      if (DrainOutbound(*connection, websocket)) continue;
+
+      auto wait = userver::engine::MakeWaitAny(
+          connection->outbound.Signal(), websocket.ReadAwaiter());
+      const auto ready = wait.WaitUntil(
+          userver::engine::Deadline::FromTimePoint(
+              last_ping_at + std::chrono::seconds{15}));
+      if (!ready && userver::engine::current_task::ShouldCancel()) return;
     }
   } catch (const std::exception& ex) {
     LOG_INFO() << "[realtime] websocket closed user_id=" << connection->user_id
                << " reason=" << ex.what();
   }
-
 }
 
 }  // namespace tutorflow::realtime

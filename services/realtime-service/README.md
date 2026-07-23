@@ -112,6 +112,14 @@ Unread в Redis — не источник истины. После reconnect fro
 другая вкладка или соединение со второй репликой ещё активно. Просроченные
 leases удаляются атомарными Redis scripts при следующей presence-операции.
 
+У каждого connection есть собственная неограниченная
+`userver::concurrent::MpscQueue`. Kafka/Redis callbacks добавляют сообщения как
+producers, а WebSocket handler остаётся единственным consumer. Handler через
+`WaitAny` одновременно ждёт queue signal, готовность WebSocket для чтения и
+следующий heartbeat deadline. Поэтому idle connection больше не просыпается
+каждые 100 мс, а `SendText` и `TryRecv` по-прежнему выполняются одной корутиной,
+что безопасно и для TLS-соединений.
+
 Если клиент пропустил событие во время disconnect, WebSocket replay отсутствует.
 Он должен перечитать сообщения/notifications через REST. Persistent state не
 зависит от доступности realtime-service.

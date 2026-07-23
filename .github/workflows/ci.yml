@@ -67,4 +67,22 @@ jobs:
       GATEWAY_CORS_ORIGIN: https://netwatch-arsen-demo.ru
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose -f docker-compose.prod.yml config >/tmp/tutorflow-prod.yml
+      - name: Validate production Compose
+        env:
+          GRAFANA_ADMIN_USER: ci-admin
+          GRAFANA_ADMIN_PASSWORD: ci-only-not-a-production-secret
+        run: |
+          docker compose \
+            --project-directory . \
+            -f deploy/compose/production.yml \
+            config >/tmp/tutorflow-prod.yml
+          docker compose \
+            --project-directory . \
+            -f deploy/compose/production.yml \
+            -f deploy/compose/production.local-build.yml \
+            config >/tmp/tutorflow-prod-local-build.yml
+          docker compose \
+            --project-directory . \
+            -f docker-compose.yml \
+            -f deploy/compose/local.kafka-cluster.yml \
+            config >/tmp/tutorflow-local-kafka-cluster.yml

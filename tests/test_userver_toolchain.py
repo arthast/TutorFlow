@@ -33,6 +33,27 @@ def test_shared_dockerfile_pins_userver_v31() -> None:
     assert '--target "${SERVICE}"' in dockerfile
 
 
+def test_shared_dockerfile_has_minimal_runtime_stage() -> None:
+    dockerfile = read(SHARED_DOCKERFILE)
+    assert " AS builder" in dockerfile
+    assert "ARG RUNTIME_IMAGE=ubuntu:22.04@" in dockerfile
+    assert "FROM ${RUNTIME_IMAGE} AS runtime" in dockerfile
+    assert "ldd " in dockerfile
+    assert "COPY --from=builder /runtime-root/lib/ /usr/lib/" in dockerfile
+    assert "COPY --from=builder /runtime-root/usr/lib/ /usr/lib/" in dockerfile
+    assert (
+        "COPY --from=builder /runtime-root/usr/local/lib/ /usr/local/lib/"
+        in dockerfile
+    )
+    assert "COPY --from=builder /runtime-root/ /" not in dockerfile
+    assert "COPY --from=builder /runtime/service /app/service" in dockerfile
+    assert "COPY --from=builder /runtime/configs /app/configs" in dockerfile
+    runtime = dockerfile.split("FROM ${RUNTIME_IMAGE} AS runtime", 1)[1]
+    assert "COPY libs " not in runtime
+    assert "cmake --build" not in runtime
+    assert "ca-certificates curl" in runtime
+
+
 def test_service_specific_dockerfiles_are_removed() -> None:
     leftovers = [
         service
@@ -51,7 +72,7 @@ def test_dev_compose_uses_shared_dockerfile_for_every_service() -> None:
 
 
 def test_prod_local_build_uses_shared_dockerfile_for_every_service() -> None:
-    compose = read("docker-compose.prod.local-build.yml")
+    compose = read("deploy/compose/production.local-build.yml")
     assert compose.count(f"dockerfile: {SHARED_DOCKERFILE}") == len(SERVICES)
     for service in SERVICES:
         assert f"SERVICE: {service}" in compose

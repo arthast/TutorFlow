@@ -25,10 +25,7 @@ std::shared_ptr<ConnectionState> ConnectionRegistry::Add(
 void ConnectionRegistry::Remove(
     const std::shared_ptr<ConnectionState>& connection) {
   if (!connection) return;
-  {
-    std::lock_guard state_lock(connection->mutex);
-    connection->closed = true;
-  }
+  connection->outbound.Close();
   std::lock_guard lock(mutex_);
   auto it = by_user_.find(connection->user_id);
   if (it == by_user_.end()) return;
@@ -37,7 +34,7 @@ void ConnectionRegistry::Remove(
 }
 
 void ConnectionRegistry::SendToUser(std::string_view user_id,
-                                    std::string message) const {
+                                    const std::string& message) const {
   std::vector<std::shared_ptr<ConnectionState>> connections;
   {
     std::lock_guard lock(mutex_);
@@ -46,9 +43,7 @@ void ConnectionRegistry::SendToUser(std::string_view user_id,
     connections.assign(it->second.begin(), it->second.end());
   }
   for (const auto& connection : connections) {
-    std::lock_guard state_lock(connection->mutex);
-    if (connection->closed) continue;
-    connection->outbound.push_back(message);
+    connection->outbound.Push(message);
   }
 }
 

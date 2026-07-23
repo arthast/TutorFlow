@@ -1,4 +1,4 @@
--- finance-service / finance_db — 5L follow-up.
+-- finance-service / finance_db
 -- Correction idempotency for lesson.cancelled/lesson.restored moved to the
 -- atomic processed_events(event_id) inbox. A single lesson may now have both
 -- correction(-price) and correction(+price), while charge stays unique.

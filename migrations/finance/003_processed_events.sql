@@ -1,4 +1,4 @@
--- finance-service / finance_db — consumer inbox/idempotency (Этап 5F-0).
+-- finance-service / finance_db — consumer inbox/idempotency
 -- Kafka delivery is at-least-once; consumers record processed event_id.
 BEGIN;
 

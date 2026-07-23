@@ -1,3 +1,4 @@
+# Optional override: build production application images from this checkout.
 services:
   frontend:
     build:

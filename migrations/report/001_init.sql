@@ -1,4 +1,4 @@
--- report-service / report_db — read-models from Kafka domain events (5H).
+-- report-service / report_db — read-models from Kafka domain events
 -- Источник истины остаётся в доменных сервисах; эти таблицы пересобираемы.
 BEGIN;
 
