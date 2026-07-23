@@ -76,7 +76,8 @@ The builder continues to use the currently pinned
 The final stage uses a pinned Ubuntu 22.04 base compatible with the builder.
 It contains only:
 
-- CA certificates and the minimal operating-system runtime;
+- CA certificates, `curl` for the existing Docker health checks, and the
+  minimal operating-system runtime;
 - the selected service binary;
 - the selected service configuration directory;
 - the shared libraries resolved from the built binary;
@@ -174,7 +175,9 @@ run. The previous image remains available for rollback.
 
 The first successful deployment on a server without a retention state file
 initializes the state from the currently running API gateway before replacing
-it.
+it. Once the state exists, the pre-deploy phase does not promote a merely
+running tag: only the post-health prune phase can advance current and previous,
+so a failed release cannot displace the last successful rollback image.
 
 ## Deployment Workflow
 

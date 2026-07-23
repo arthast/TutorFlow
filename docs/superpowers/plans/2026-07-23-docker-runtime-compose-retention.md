@@ -8,6 +8,20 @@
 
 **Tech Stack:** Docker BuildKit, Docker Compose v2, Bash, Python 3.12/pytest, GitHub Actions, userver/C++20, Ubuntu 22.04.
 
+## Execution result (2026-07-23)
+
+- Compose consolidation, minimal runtime images, retention, CI/deploy wiring,
+  and tracked README references were implemented in scoped commits.
+- General files under `docs/` are ignored in this checkout, so ignored local
+  runbooks were not added back to Git; this tracked plan and the root README
+  document the new paths and rollout boundary.
+- Fresh verification covered 27 focused tests, collection of all 83 Python
+  tests, three Compose render modes, actionlint, two amd64 runtime image builds,
+  runtime dependency checks, and diff hygiene.
+- No production rollout was triggered. Production still requires pushing an
+  exact commit, running `Manual Tests` for that SHA, and invoking `Deploy` with
+  the same SHA.
+
 ## Global Constraints
 
 - Preserve the default root `docker-compose.yml` and the zero-argument `docker compose` local workflow.
@@ -36,7 +50,8 @@
 
 **Modify**
 
-- `docker/service.Dockerfile` — split builder and runtime stages.
+- `docker/service.Dockerfile` — split builder and runtime stages while keeping
+  `curl` available for existing container health checks.
 - `tests/test_userver_toolchain.py` — assert the runtime boundary and new local-build path.
 - `tests/test_file_s3_standardization.py` — read the moved production Compose file.
 - `tests/test_realtime_redis_standardization.py` — read the moved production Compose file.
@@ -306,7 +321,8 @@ def test_shared_dockerfile_has_minimal_runtime_stage() -> None:
     assert "ARG RUNTIME_IMAGE=ubuntu:22.04@" in dockerfile
     assert "FROM ${RUNTIME_IMAGE} AS runtime" in dockerfile
     assert "ldd " in dockerfile
-    assert "COPY --from=builder /runtime-root/ /" in dockerfile
+    assert "COPY --from=builder /runtime-root/lib/ /usr/lib/" in dockerfile
+    assert "COPY --from=builder /runtime-root/usr/lib/ /usr/lib/" in dockerfile
     assert "COPY --from=builder /runtime/service /app/service" in dockerfile
     assert "COPY --from=builder /runtime/configs /app/configs" in dockerfile
     runtime = dockerfile.split("FROM ${RUNTIME_IMAGE} AS runtime", 1)[1]
@@ -326,7 +342,17 @@ Expected: failure because the Dockerfile is single-stage.
 
 - [ ] **Step 3: Implement builder packaging**
 
-Refactor the first stage to `AS builder`. After the Release build:
+Declare both base-image arguments before the first `FROM`, then refactor the
+first stage to `AS builder`:
+
+```dockerfile
+ARG USERVER_IMAGE=ghcr.io/userver-framework/ubuntu-22.04-userver:v3.1@sha256:c08af6bf58f07a472376ed0bb74165e3d96fb5c8f4e07a3f0b5e11d5d0183f5b
+ARG RUNTIME_IMAGE=ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982
+
+FROM ${USERVER_IMAGE} AS builder
+```
+
+After the Release build:
 
 ```dockerfile
 RUN set -eux; \
@@ -334,7 +360,7 @@ RUN set -eux; \
     test -x "${binary}"; \
     install -D -m 0755 "${binary}" /runtime/service; \
     cp -a "/src/services/${SERVICE}/configs" /runtime/configs; \
-    mkdir -p /runtime-root; \
+    mkdir -p /runtime-root/lib /runtime-root/usr/lib /runtime-root/usr/local/lib; \
     ldd "${binary}" \
       | awk '/=> \\// {print $3} /^\\// {print $1}' \
       | sort -u \
@@ -347,15 +373,18 @@ RUN set -eux; \
 Use a pinned Ubuntu 22.04 image:
 
 ```dockerfile
-ARG RUNTIME_IMAGE=ubuntu:22.04@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982
 FROM ${RUNTIME_IMAGE} AS runtime
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=builder /runtime-root/ /
+# Ubuntu's /lib is a symlink to /usr/lib, so copy packaged libraries into the
+# real runtime directories instead of trying to replace that symlink.
+COPY --from=builder /runtime-root/lib/ /usr/lib/
+COPY --from=builder /runtime-root/usr/lib/ /usr/lib/
+COPY --from=builder /runtime-root/usr/local/lib/ /usr/local/lib/
 COPY --from=builder /runtime/service /app/service
 COPY --from=builder /runtime/configs /app/configs
 
@@ -380,12 +409,14 @@ Run:
 python3 -m pytest tests/test_userver_toolchain.py -q
 
 docker build \
+  --platform linux/amd64 \
   -f docker/service.Dockerfile \
   --build-arg SERVICE=lesson-service \
   --build-arg BUILD_JOBS=1 \
   -t tutorflow/lesson-service:runtime-check .
 
 docker build \
+  --platform linux/amd64 \
   -f docker/service.Dockerfile \
   --build-arg SERVICE=realtime-service \
   --build-arg BUILD_JOBS=1 \
@@ -407,6 +438,7 @@ do
     test ! -e /src
     ! command -v cmake
     ! command -v c++
+    command -v curl
     ! ldd /app/service | grep -q "not found"
     test -r /etc/ssl/certs/ca-certificates.crt
   '
