@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 
@@ -7,10 +8,64 @@ LOCAL_BUILD = ROOT / "deploy/compose/production.local-build.yml"
 KAFKA_CLUSTER = ROOT / "deploy/compose/local.kafka-cluster.yml"
 LOKI_CONFIG = ROOT / "deploy/observability/loki.yml"
 ALLOY_CONFIG = ROOT / "deploy/observability/alloy/config.alloy"
+LOKI_DATASOURCE = (
+    ROOT
+    / "deploy/observability/grafana/provisioning/datasources/loki.yaml"
+)
+LOGS_DASHBOARD = (
+    ROOT / "deploy/observability/grafana/dashboards/tutorflow-logs.json"
+)
+LOG_ALERTS = (
+    ROOT
+    / "deploy/observability/grafana/provisioning/alerting/tutorflow-logs.yaml"
+)
 
 
 def read(path: Path) -> str:
     return path.read_text()
+
+
+def test_grafana_provisions_loki_datasource() -> None:
+    datasource = read(LOKI_DATASOURCE)
+
+    assert "name: Loki" in datasource
+    assert "uid: tutorflow-loki" in datasource
+    assert "type: loki" in datasource
+    assert "url: http://loki:3100" in datasource
+    assert "isDefault: false" in datasource
+    assert "editable: false" in datasource
+
+
+def test_grafana_logs_dashboard_has_required_panels_and_filters() -> None:
+    dashboard = json.loads(read(LOGS_DASHBOARD))
+    panel_titles = {panel["title"] for panel in dashboard["panels"]}
+    variable_names = {
+        variable["name"] for variable in dashboard["templating"]["list"]
+    }
+
+    assert dashboard["uid"] == "tutorflow-logs"
+    assert dashboard["title"] == "TutorFlow Logs"
+    assert {
+        "ERROR logs by service",
+        "WARNING logs by service",
+        "Recent application errors",
+        "Gateway logs",
+        "Kafka and outbox logs",
+        "Infrastructure logs",
+        "All production logs",
+    } <= panel_titles
+    assert {"service", "level", "container", "search"} <= variable_names
+
+
+def test_grafana_provisions_initial_log_alerts() -> None:
+    alerts = read(LOG_ALERTS)
+
+    assert "uid: tutorflow-log-error-burst" in alerts
+    assert "uid: tutorflow-logging-stack-down" in alerts
+    assert 'level="ERROR"' in alerts
+    assert "params: [4]" in alerts
+    assert 'up{service=~"loki|alloy"}' in alerts
+    assert "noDataState: Alerting" in alerts
 
 
 def test_only_default_compose_remains_in_repository_root() -> None:

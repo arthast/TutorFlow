@@ -1,0 +1,259 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "fieldConfig": {
+        "defaults": {"min": 0, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (service) (count_over_time({environment=\"production\", service=~\"$service\", level=\"ERROR\"}[5m]))",
+          "legendFormat": "{{service}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "ERROR logs by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "fieldConfig": {
+        "defaults": {"min": 0, "unit": "short"},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {"mode": "multi", "sort": "desc"}
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (service) (count_over_time({environment=\"production\", service=~\"$service\", level=~\"WARN|WARNING\"}[5m]))",
+          "legendFormat": "{{service}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "WARNING logs by service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{environment=\"production\", service=~\"$service\", level=\"ERROR\"} |~ \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent application errors",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 18},
+      "id": 4,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{environment=\"production\", service=\"api-gateway\"} |~ \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Gateway logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 18},
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{environment=\"production\", service=~\"$service\"} |~ \"(?i)(kafka|consumer|outbox)\" |~ \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Kafka and outbox logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 27},
+      "id": 6,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{environment=\"production\", service=~\"postgres|kafka|redis|minio|caddy\"} |~ \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Infrastructure logs",
+      "type": "logs"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 36},
+      "id": 7,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{environment=\"production\", service=~\"$service\", container=~\"$container\", level=~\"$level\"} |~ \"$search\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "All production logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 42,
+  "tags": ["tutorflow", "logs", "production"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {"text": "All", "value": "$__all"},
+        "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+        "definition": "label_values({environment=\"production\"}, service)",
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "label_values({environment=\"production\"}, service)",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {"text": "All", "value": "$__all"},
+        "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+        "definition": "label_values({environment=\"production\"}, level)",
+        "includeAll": true,
+        "label": "Level",
+        "multi": true,
+        "name": "level",
+        "options": [],
+        "query": "label_values({environment=\"production\"}, level)",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {"text": "All", "value": "$__all"},
+        "datasource": {"type": "loki", "uid": "tutorflow-loki"},
+        "definition": "label_values({environment=\"production\"}, container)",
+        "includeAll": true,
+        "label": "Container",
+        "multi": true,
+        "name": "container",
+        "options": [],
+        "query": "label_values({environment=\"production\"}, container)",
+        "refresh": 2,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {"text": "", "value": ""},
+        "label": "Text search regex",
+        "name": "search",
+        "options": [],
+        "query": "",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": {"from": "now-3h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TutorFlow Logs",
+  "uid": "tutorflow-logs",
+  "version": 1
+}

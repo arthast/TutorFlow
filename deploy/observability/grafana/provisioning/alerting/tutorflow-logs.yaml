@@ -1,0 +1,117 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: TutorFlow log alerts
+    folder: TutorFlow
+    interval: 1m
+    rules:
+      - uid: tutorflow-log-error-burst
+        title: TutorFlow service error burst
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: tutorflow-loki
+            model:
+              datasource:
+                type: loki
+                uid: tutorflow-loki
+              editorMode: code
+              expr: sum by (service) (count_over_time({environment="production", level="ERROR"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: range
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [4]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: "At least five ERROR logs appeared in one TutorFlow service during five minutes."
+        labels:
+          severity: warning
+        isPaused: false
+
+      - uid: tutorflow-logging-stack-down
+        title: TutorFlow logging stack unavailable
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: tutorflow-prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: tutorflow-prometheus
+              editorMode: code
+              expr: min(up{service=~"loki|alloy"})
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: classic_conditions
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: "Prometheus cannot scrape Loki or Alloy."
+        labels:
+          severity: warning
+        isPaused: false
