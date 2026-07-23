@@ -412,7 +412,8 @@ FNV-1a(dialog_id bytes) % 2
 ## Масштабирование Kafka
 
 Обычный dev/prod Compose использует один KRaft broker для экономии ресурсов.
-Локальный overlay [`docker-compose.scale.yml`](docker-compose.scale.yml)
+Локальный overlay
+[`deploy/compose/local.kafka-cluster.yml`](deploy/compose/local.kafka-cluster.yml)
 поднимает три broker:
 
 - 5 topics × 3 partitions;
@@ -572,7 +573,7 @@ CI разделён на три независимых workflow. Обычный 
 - `npm ci` + frontend build;
 - `pytest --collect-only` — проверку импорта и обнаружения Python-тестов без
   обращения к запущенным сервисам;
-- `docker compose -f docker-compose.prod.yml config`.
+- проверку всех Compose-вариантов из `deploy/compose/`.
 
 При отправке нового коммита в тот же Pull Request незавершённый предыдущий
 быстрый прогон отменяется.
@@ -581,8 +582,8 @@ CI разделён на три независимых workflow. Обычный 
 запуска контейнеров:
 
 ```bash
-docker compose --env-file deploy/.env.prod.example \
-  -f docker-compose.prod.yml config >/dev/null
+docker compose --project-directory . --env-file deploy/.env.prod.example \
+  -f deploy/compose/production.yml config >/dev/null
 ```
 
 ### Полные тесты — ручной запуск
