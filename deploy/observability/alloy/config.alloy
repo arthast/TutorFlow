@@ -4,7 +4,7 @@ logging {
 }
 
 discovery.docker "tutorflow" {
-  host             = "unix:///var/run/docker.sock"
+  host             = "tcp://docker-socket-proxy:2375"
   refresh_interval = "5s"
 
   filter {
@@ -35,7 +35,7 @@ discovery.relabel "tutorflow_logs" {
 }
 
 loki.source.docker "tutorflow" {
-  host          = "unix:///var/run/docker.sock"
+  host          = "tcp://docker-socket-proxy:2375"
   targets       = discovery.docker.tutorflow.targets
   labels        = { environment = "production" }
   relabel_rules = discovery.relabel.tutorflow_logs.rules
@@ -50,9 +50,12 @@ loki.process "tutorflow" {
 
     stage.logfmt {
       mapping = {
-        level     = "",
         timestamp = "",
       }
+    }
+
+    stage.regex {
+      expression = "(?P<level_prefix>^|[\\t ])level=(?P<level>TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL)(?P<level_suffix>[\\t ]|$)"
     }
 
     stage.labels {

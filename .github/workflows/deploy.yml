@@ -200,7 +200,21 @@ jobs:
           scp -i ~/.ssh/deploy_key /tmp/tutorflow-deploy-bundle.tgz \
             "$DEPLOY_USER@$DEPLOY_HOST:/tmp/tutorflow-deploy-bundle.tgz"
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            'cd /opt/tutorflow && tar -xzf /tmp/tutorflow-deploy-bundle.tgz'
+            'bash -se' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/tutorflow
+          rm -rf deploy.new
+          mkdir deploy.new
+          tar -xzf /tmp/tutorflow-deploy-bundle.tgz \
+            --strip-components=1 -C deploy.new deploy
+          tar -xzf /tmp/tutorflow-deploy-bundle.tgz migrations docker/postgres
+          rm -rf deploy.previous
+          if test -e deploy; then
+            mv deploy deploy.previous
+          fi
+          mv deploy.new deploy
+          rm -f /tmp/tutorflow-deploy-bundle.tgz
+          REMOTE
       - name: Remember currently running release
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -248,13 +262,80 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
         run: |
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd /opt/tutorflow && \
-             docker compose --project-directory . --env-file .env \
-               -f deploy/compose/production.yml \
-               exec -T prometheus wget -qO- http://loki:3100/ready && \
-             docker compose --project-directory . --env-file .env \
-               -f deploy/compose/production.yml \
-               exec -T prometheus wget -qO- http://alloy:12345/-/ready"
+            'bash -se' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/tutorflow
+          compose=(
+            docker compose
+            --project-directory .
+            --env-file .env
+            -f deploy/compose/production.yml
+          )
+
+          if [[ ! -f deploy/observability/grafana/provisioning/alerting/tutorflow-logs.yaml ||
+                ! -f deploy/observability/grafana/provisioning/dashboards/tutorflow.yaml ||
+                ! -f deploy/observability/grafana/dashboards/tutorflow-logs.json ||
+                ! -f deploy/observability/grafana/provisioning/datasources/loki.yaml ]]; then
+            echo "logging provisioning is absent; deleting stale Grafana resources"
+            "${compose[@]}" exec -T grafana sh -ec '
+              delete_resource() {
+                path="$1"
+                uid="$2"
+                status="$(
+                  curl --silent --show-error \
+                    --connect-timeout 2 \
+                    --max-time 5 \
+                    --output /tmp/grafana-delete-response \
+                    --write-out "%{http_code}" \
+                    --user "${GF_SECURITY_ADMIN_USER:?}:${GF_SECURITY_ADMIN_PASSWORD:?}" \
+                    --request DELETE \
+                    "http://localhost:3000${path}${uid}"
+                )"
+                case "$status" in
+                  2??|404)
+                    ;;
+                  *)
+                    cat /tmp/grafana-delete-response >&2
+                    echo "unexpected HTTP status ${status} deleting Grafana UID ${uid}" >&2
+                    exit 1
+                    ;;
+                esac
+              }
+
+              delete_resource "/api/v1/provisioning/alert-rules/" "tutorflow-log-error-burst"
+              delete_resource "/api/v1/provisioning/alert-rules/" "tutorflow-logging-stack-down"
+              delete_resource "/api/dashboards/uid/" "tutorflow-logs"
+              delete_resource "/api/datasources/uid/" "tutorflow-loki"
+              rm -f /tmp/grafana-delete-response
+            '
+          fi
+
+          logging_services="$("${compose[@]}" config --services)"
+          if grep -Fxq loki <<<"$logging_services" &&
+            grep -Fxq alloy <<<"$logging_services"; then
+            for endpoint in \
+              http://loki:3100/ready \
+              http://alloy:12345/-/ready; do
+              ready=0
+              for attempt in $(seq 1 12); do
+                if "${compose[@]}" exec -T prometheus \
+                  wget -T 5 -qO- "$endpoint" >/dev/null; then
+                  ready=1
+                  break
+                fi
+                if ((attempt < 12)); then
+                  sleep 5
+                fi
+              done
+              if ((ready == 0)); then
+                echo "logging endpoint did not become ready: $endpoint" >&2
+                exit 1
+              fi
+            done
+          else
+            echo "logging stack is absent; skipping Loki/Alloy readiness"
+          fi
+          REMOTE
       - name: Retain current and previous image releases
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}

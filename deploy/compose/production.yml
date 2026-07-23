@@ -495,6 +495,28 @@ services:
     logging: *production-logging
     networks: [tutorflow]
 
+  docker-socket-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.4.2@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      EVENTS: "1"
+      NETWORKS: "1"
+      PING: "1"
+      VERSION: "1"
+      POST: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2375/_ping >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 64m
+    cpus: "0.10"
+    logging: *production-logging
+    networks: [docker-observer]
+
   loki:
     image: grafana/loki:3.7.3
     restart: unless-stopped
@@ -524,7 +546,6 @@ services:
       - /etc/alloy/config.alloy
     volumes:
       - ./deploy/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloydata:/var/lib/alloy/data
     healthcheck:
       test: ["CMD", "/bin/alloy", "validate", "/etc/alloy/config.alloy"]
@@ -533,12 +554,14 @@ services:
       retries: 3
       start_period: 10s
     depends_on:
+      docker-socket-proxy:
+        condition: service_healthy
       loki:
         condition: service_started
     mem_limit: 256m
     cpus: "0.25"
     logging: *production-logging
-    networks: [tutorflow]
+    networks: [tutorflow, docker-observer]
 
   grafana:
     image: grafana/grafana:13.0.2
@@ -573,6 +596,9 @@ services:
 networks:
   tutorflow:
     driver: bridge
+  docker-observer:
+    driver: bridge
+    internal: true
 
 volumes:
   pgdata:

@@ -98,3 +98,80 @@ jobs:
             grafana/alloy:v1.18.0 \
             validate /etc/alloy/config.alloy
           jq empty deploy/observability/grafana/dashboards/tutorflow-logs.json
+      - name: Validate Grafana provisioning through API
+        run: |
+          grafana_container=tutorflow-grafana-provision-test
+          grafana_user=ci-admin
+          grafana_password=ci-only-provision-test-password
+
+          cleanup() {
+            exit_status=$?
+            trap - EXIT
+            if ((exit_status != 0)); then
+              docker logs "$grafana_container" >&2 || true
+            fi
+            docker rm -f "$grafana_container" >/dev/null 2>&1 || true
+            exit "$exit_status"
+          }
+          trap cleanup EXIT
+
+          docker rm -f "$grafana_container" >/dev/null 2>&1 || true
+          docker run -d \
+            --name "$grafana_container" \
+            --publish 127.0.0.1:33000:3000 \
+            --env GF_SECURITY_ADMIN_USER="$grafana_user" \
+            --env GF_SECURITY_ADMIN_PASSWORD="$grafana_password" \
+            --env GF_USERS_ALLOW_SIGN_UP=false \
+            --env GF_PLUGINS_PREINSTALL_DISABLED=true \
+            --volume "$PWD/deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro" \
+            --volume "$PWD/deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro" \
+            grafana/grafana:13.0.2 >/dev/null
+
+          ready=0
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error \
+              --connect-timeout 2 \
+              --max-time 5 \
+              http://127.0.0.1:33000/api/health >/dev/null; then
+              ready=1
+              break
+            fi
+            if ((attempt < 12)); then
+              sleep 5
+            fi
+          done
+          if ((ready == 0)); then
+            echo "Grafana did not become ready" >&2
+            exit 1
+          fi
+
+          curl --fail --silent --show-error \
+            --connect-timeout 2 \
+            --max-time 5 \
+            --user "$grafana_user:$grafana_password" \
+            http://127.0.0.1:33000/api/datasources/uid/tutorflow-loki |
+            jq -e '.uid == "tutorflow-loki"'
+          curl --fail --silent --show-error \
+            --connect-timeout 2 \
+            --max-time 5 \
+            --user "$grafana_user:$grafana_password" \
+            http://127.0.0.1:33000/api/dashboards/uid/tutorflow-logs |
+            jq -e '.dashboard.uid == "tutorflow-logs"'
+          curl --fail --silent --show-error \
+            --connect-timeout 2 \
+            --max-time 5 \
+            --user "$grafana_user:$grafana_password" \
+            http://127.0.0.1:33000/api/v1/provisioning/alert-rules/tutorflow-log-error-burst |
+            jq -e '.uid == "tutorflow-log-error-burst"'
+          curl --fail --silent --show-error \
+            --connect-timeout 2 \
+            --max-time 5 \
+            --user "$grafana_user:$grafana_password" \
+            http://127.0.0.1:33000/api/v1/provisioning/alert-rules/tutorflow-logging-stack-down |
+            jq -e '.uid == "tutorflow-logging-stack-down"'
+
+          if docker logs "$grafana_container" 2>&1 |
+            grep -Ei 'provisioning.*level=error|level=error.*provisioning'; then
+            echo "Grafana reported provisioning failures" >&2
+            exit 1
+          fi
