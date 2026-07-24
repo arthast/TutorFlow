@@ -1,0 +1,85 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "tutorflow" {
+  host             = "tcp://docker-socket-proxy:2375"
+  refresh_interval = "5s"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=tutorflow-prod"]
+  }
+}
+
+discovery.relabel "tutorflow_logs" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    replacement   = "$1"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "tutorflow" {
+  host          = "tcp://docker-socket-proxy:2375"
+  targets       = discovery.docker.tutorflow.targets
+  labels        = { environment = "production" }
+  relabel_rules = discovery.relabel.tutorflow_logs.rules
+  forward_to    = [loki.process.tutorflow.receiver]
+}
+
+loki.process "tutorflow" {
+  forward_to = [loki.write.local.receiver]
+
+  stage.match {
+    selector = "{service=~\"api-gateway|identity-service|lesson-service|assignment-service|finance-service|file-service|notification-service|report-service|chat-service|realtime-service\"} |= \"tskv\""
+
+    stage.logfmt {
+      mapping = {
+        timestamp = "",
+      }
+    }
+
+    stage.regex {
+      expression = "(?P<level_prefix>^|[\\t ])level=(?P<level>TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL)(?P<level_suffix>[\\t ]|$)"
+    }
+
+    stage.labels {
+      values = {
+        level = "",
+      }
+    }
+
+    stage.timestamp {
+      source            = "timestamp"
+      format            = "2006-01-02T15:04:05.999999"
+      location          = "UTC"
+      action_on_failure = "skip"
+    }
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url                 = "http://loki:3100/loki/api/v1/push"
+    batch_size          = "512KiB"
+    batch_wait          = "1s"
+    min_backoff_period  = "500ms"
+    max_backoff_period  = "30s"
+    max_backoff_retries = 20
+  }
+}
